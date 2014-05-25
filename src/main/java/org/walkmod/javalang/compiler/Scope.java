@@ -15,12 +15,11 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
-import org.walkmod.javalang.ast.Node;
-import org.walkmod.javalang.ast.expr.Expression;
-import org.walkmod.javalang.ast.expr.NameExpr;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.expr.NameExpr;
 
 
 

@@ -15,26 +15,6 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
-import org.walkmod.javalang.ParseException;
-import org.walkmod.javalang.ASTManager;
-import org.walkmod.javalang.ast.ImportDeclaration;
-import org.walkmod.javalang.ast.expr.BooleanLiteralExpr;
-import org.walkmod.javalang.ast.expr.CharLiteralExpr;
-import org.walkmod.javalang.ast.expr.DoubleLiteralExpr;
-import org.walkmod.javalang.ast.expr.Expression;
-import org.walkmod.javalang.ast.expr.IntegerLiteralExpr;
-import org.walkmod.javalang.ast.expr.LiteralExpr;
-import org.walkmod.javalang.ast.expr.LongLiteralExpr;
-import org.walkmod.javalang.ast.expr.MethodCallExpr;
-import org.walkmod.javalang.ast.expr.NullLiteralExpr;
-import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
-import org.walkmod.javalang.ast.type.PrimitiveType;
-import org.walkmod.javalang.ast.type.ReferenceType;
-import org.walkmod.javalang.ast.type.Type;
-import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
-import org.walkmod.javalang.ast.type.WildcardType;
-import org.walkmod.javalang.exceptions.InvalidImportException;
-
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
@@ -48,7 +28,25 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-
+import org.walkmod.javalang.ASTManager;
+import org.walkmod.javalang.ParseException;
+import org.walkmod.javalang.ast.ImportDeclaration;
+import org.walkmod.javalang.ast.expr.BooleanLiteralExpr;
+import org.walkmod.javalang.ast.expr.CharLiteralExpr;
+import org.walkmod.javalang.ast.expr.DoubleLiteralExpr;
+import org.walkmod.javalang.ast.expr.Expression;
+import org.walkmod.javalang.ast.expr.IntegerLiteralExpr;
+import org.walkmod.javalang.ast.expr.LiteralExpr;
+import org.walkmod.javalang.ast.expr.LongLiteralExpr;
+import org.walkmod.javalang.ast.expr.MethodCallExpr;
+import org.walkmod.javalang.ast.expr.NullLiteralExpr;
+import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
+import org.walkmod.javalang.ast.type.PrimitiveType;
+import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
+import org.walkmod.javalang.ast.type.ReferenceType;
+import org.walkmod.javalang.ast.type.Type;
+import org.walkmod.javalang.ast.type.WildcardType;
+import org.walkmod.javalang.exceptions.InvalidImportException;
 
 public class TypeTable implements List<ImportDeclaration> {
 
@@ -67,6 +65,8 @@ public class TypeTable implements List<ImportDeclaration> {
 	private String currentPackage;
 
 	private String currentClassSimpleName;
+
+	private ClassLoader classLoader = this.getClass().getClassLoader();
 
 	static {
 		primitiveClasses.put("boolean", boolean.class);
@@ -140,6 +140,10 @@ public class TypeTable implements List<ImportDeclaration> {
 
 	public TypeTable() {
 	}
+	
+	public TypeTable(ClassLoader classLoader){
+		this.classLoader = classLoader;
+	}
 
 	/**
 	 * Adds an import declaration. When exists another imported class with the
@@ -197,8 +201,7 @@ public class TypeTable implements List<ImportDeclaration> {
 						+ id.getName().getName();
 
 				try {
-					Class.forName(importedClass, false, this.getClass()
-							.getClassLoader());
+					Class.forName(importedClass, false, classLoader);
 
 					// exists another class with the same name imported
 					throw new InvalidImportException();
@@ -375,7 +378,8 @@ public class TypeTable implements List<ImportDeclaration> {
 		return false;
 	}
 
-	public org.walkmod.javalang.compiler.Type valueOf(java.lang.reflect.Type type,
+	public org.walkmod.javalang.compiler.Type valueOf(
+			java.lang.reflect.Type type,
 			Map<String, org.walkmod.javalang.compiler.Type> typeMapping) {
 
 		org.walkmod.javalang.compiler.Type returnType = null;
@@ -391,10 +395,12 @@ public class TypeTable implements List<ImportDeclaration> {
 		} else if (type instanceof TypeVariable) {
 
 			String variableName = ((TypeVariable<?>) type).getName();
-			org.walkmod.javalang.compiler.Type aux = typeMapping.get(variableName);
+			org.walkmod.javalang.compiler.Type aux = typeMapping
+					.get(variableName);
 
 			if (aux == null) {
-				aux = new org.walkmod.javalang.compiler.Type(Object.class.getName());
+				aux = new org.walkmod.javalang.compiler.Type(
+						Object.class.getName());
 				return aux;
 			} else {
 				return aux;
@@ -407,14 +413,15 @@ public class TypeTable implements List<ImportDeclaration> {
 			java.lang.reflect.Type[] types = ((ParameterizedType) type)
 					.getActualTypeArguments();
 
-			returnType = new org.walkmod.javalang.compiler.Type(auxClass.getName());
+			returnType = new org.walkmod.javalang.compiler.Type(
+					auxClass.getName());
 
 			if (types != null) {
 				List<org.walkmod.javalang.compiler.Type> params = new LinkedList<org.walkmod.javalang.compiler.Type>();
 				returnType.setParameterizedTypes(params);
 				for (java.lang.reflect.Type t : types) {
-					org.walkmod.javalang.compiler.Type param = typeMapping.get(t
-							.toString());
+					org.walkmod.javalang.compiler.Type param = typeMapping
+							.get(t.toString());
 					params.add(param);
 				}
 			}
@@ -671,6 +678,11 @@ public class TypeTable implements List<ImportDeclaration> {
 
 	public Class<?> getJavaClass(String className)
 			throws ClassNotFoundException {
+		return getJavaClass(className, classLoader);
+	}
+
+	public Class<?> getJavaClass(String className, ClassLoader classLoader)
+			throws ClassNotFoundException {
 
 		if (className == null) {
 			return null;
@@ -681,11 +693,10 @@ public class TypeTable implements List<ImportDeclaration> {
 		Class<?> result = null;
 		try {
 			if (className.contains(".") || currentPackage == null) {
-				result = Class.forName(className, false, this.getClass()
-						.getClassLoader());
+				result = Class.forName(className, false, classLoader);
 			} else if (currentPackage != null) {
 				result = Class.forName(currentPackage + "." + className, false,
-						this.getClass().getClassLoader());
+						classLoader);
 			}
 
 		} catch (ClassNotFoundException e2) {
@@ -705,11 +716,11 @@ public class TypeTable implements List<ImportDeclaration> {
 				try {
 					// check if it is an inner class of any super class
 					result = Class.forName(completeName + "$" + className,
-							false, this.getClass().getClassLoader());
+							false, classLoader);
 
 				} catch (ClassNotFoundException e3) {
-					parent = Class.forName(completeName, false,
-							this.getClass().getClassLoader()).getSuperclass();
+					parent = Class.forName(completeName, false, classLoader)
+							.getSuperclass();
 					if (parent != null) {
 						completeName = parent.getName();
 					}
@@ -726,16 +737,16 @@ public class TypeTable implements List<ImportDeclaration> {
 
 						try {
 
-							result = Class.forName(importName, false, this
-									.getClass().getClassLoader());
+							result = Class.forName(importName, false,
+									classLoader);
 
 						} catch (ClassNotFoundException e) {
 							// looking for an inner class
 							int lastIdx = importName.lastIndexOf(".");
 							importName = importName.substring(0, lastIdx) + "$"
 									+ importName.substring(lastIdx + 1);
-							result = Class.forName(importName, false, this
-									.getClass().getClassLoader());
+							result = Class.forName(importName, false,
+									classLoader);
 						}
 						return result;
 					} else if (i.isAsterisk()) {
@@ -745,8 +756,8 @@ public class TypeTable implements List<ImportDeclaration> {
 														// included
 							importName = importName + "." + className;
 							try {
-								result = Class.forName(importName, false, this
-										.getClass().getClassLoader());
+								result = Class.forName(importName, false,
+										classLoader);
 
 								if (result != null) {
 									return result;
@@ -761,8 +772,7 @@ public class TypeTable implements List<ImportDeclaration> {
 
 				className = "java.lang." + className;
 				try {
-					result = Class.forName(className, false, this.getClass()
-							.getClassLoader());
+					result = Class.forName(className, false, classLoader);
 				} catch (ClassNotFoundException e) {
 					throw e;
 				}
@@ -908,6 +918,10 @@ public class TypeTable implements List<ImportDeclaration> {
 
 	public List<ImportDeclaration> toImportList() {
 		return imports;
+	}
+
+	public void setClassLoader(ClassLoader classLoader) {
+		this.classLoader = classLoader;
 	}
 
 }
