@@ -54,7 +54,7 @@ public class Scope {
 		 }
 	}
 	
-	public void addSymbol(String symbolName, Type type, Node initNode){
+	public void addSymbol(String symbolName, SymbolType type, Node initNode){
 		NameExpr sname = new NameExpr(symbolName);
 		Symbol s = new Symbol(sname, type, initNode);
 		symbols.put(sname, s);

@@ -32,7 +32,7 @@ public class SymbolTable {
 		indexStructure = new Stack<Scope>();
 	}
 	
-	public Type getType(String symbolName){		
+	public SymbolType getType(String symbolName){		
 		Symbol s = getSymbol(symbolName);
 		if(s != null){
 			return s.getType();
@@ -55,13 +55,13 @@ public class SymbolTable {
 	}
 	
 	public boolean containsSymbol(String symbolName){
-		Type type = getType(symbolName);
+		SymbolType type = getType(symbolName);
 		return(type != null);
 	}
 	
-	public void insertSymbol(String symbolName, Type symbolType, Node initExpr){
+	public void insertSymbol(String symbolName, SymbolType symbolType, Node initExpr){
 		Scope lastScope = indexStructure.peek();
-		Type type = getType(symbolName);
+		SymbolType type = getType(symbolName);
 		if(type!=null){
 			 Symbol aux = createSymbol(type);
 			 lastScope.chageSymbol(getSymbol(symbolName), aux);			 
@@ -79,9 +79,9 @@ public class SymbolTable {
 		indexStructure.push(newScope);
 	}
 	
-	public Symbol createSymbol(Type typeName){
+	public Symbol createSymbol(SymbolType typeName){
 		String sname = "v"+symbolCounter;
-		Type type = getType(sname);
+		SymbolType type = getType(sname);
 		if(type != null){
 			symbolCounter ++;
 			return createSymbol(typeName);

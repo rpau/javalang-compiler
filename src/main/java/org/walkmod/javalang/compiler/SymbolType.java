@@ -15,48 +15,51 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
-import org.walkmod.javalang.ast.Node;
-import org.walkmod.javalang.ast.expr.NameExpr;
+import java.util.List;
 
 
-public class Symbol {
+public class SymbolType {
+	
 
-	private NameExpr name;
+	private String name;
 	
-	private SymbolType type;
+	private List<SymbolType> parameterizedTypes;
 	
-	private Node initNode;
-	
-	public Symbol(NameExpr name, SymbolType type, Node initExpression){
-		setName(name);
-		setType(type);
-		setInitNode(initExpression);
+	private int arrayCount = 0;
+
+	public SymbolType(){
+		
 	}
-
-	public NameExpr getName() {
+	
+	public SymbolType(String name){
+		this.name = name;
+	}
+	
+	public String getName() {
 		return name;
 	}
 
-	public void setName(NameExpr name) {
+	public void setName(String name) {
 		this.name = name;
 	}
 
-	public SymbolType getType() {
-		return type;
+	public List<SymbolType> getParameterizedTypes() {
+		return parameterizedTypes;
 	}
 
-	public void setType(SymbolType type) {
-		this.type = type;
+	public void setParameterizedTypes(List<SymbolType> parameterizedTypes) {
+		this.parameterizedTypes = parameterizedTypes;
 	}
 
-	public Node getInitNode() {
-		return initNode;
+	public int getArrayCount() {
+		return arrayCount;
 	}
 
-	public void setInitNode(Node initNode) {
-		this.initNode = initNode;
+	public void setArrayCount(int arrayCount) {
+		this.arrayCount = arrayCount;
 	}
 
+		
 	
-	
+
 }
