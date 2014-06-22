@@ -18,6 +18,8 @@ package org.walkmod.javalang.compiler;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,8 +29,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+<<<<<<< Updated upstream
 import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
+=======
+
+>>>>>>> Stashed changes
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
@@ -78,9 +84,9 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		String name = type.getName();
 		if (contextName != null) {
 			if (packageName.equals(contextName)) {
-				name = contextName + "." + type;
+				name = contextName + "." + name;
 			} else {
-				name = contextName.replace("$", ".") + "$" + type;
+				name = contextName.replace("$", ".") + "$" + name;
 			}
 		}
 		if (typeNames.add(name)) {
@@ -96,9 +102,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		if (!id.isAsterisk()) {
 			if (!id.isStatic()) {
 				String typeName = id.getName().toString();
-				if (typeNames.add(typeName)) {
-					typeTable.put(id.getName().getName(), typeName);
-				}
+				addType(typeName);
 			}
 		} else {
 			if (classLoader != null) {
@@ -108,7 +112,51 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		}
 	}
 
+	private void addType(String name) {
+		if (classLoader != null && name != null) {
+			try {
+				Class<?> clazz = Class.forName(name, false, classLoader);
+				if (typeNames.add(name)) {
+					typeTable.put(clazz.getSimpleName(), name);
+				}
+				Class<?>[] innerClasses = clazz.getDeclaredClasses();
+				if (innerClasses != null) {
+					for (int i = 0; i < innerClasses.length; i++) {
+						if (typeNames.add(innerClasses[i].getName())) {
+							typeTable.put(innerClasses[i].getSimpleName(),
+									innerClasses[i].getName());
+						}
+					}
+
+				}
+			} catch (ClassNotFoundException e) {
+				int index = name.lastIndexOf(".");
+				if (index != -1) {
+					// it is an inner class?
+					name = name.substring(0, index) + "$"
+							+ name.substring(index + 1);
+					try {
+						Class<?> clazz = Class
+								.forName(name, false, classLoader);
+						if (typeNames.add(name)) {
+							typeTable.put(clazz.getSimpleName(), name);
+						}
+					} catch (ClassNotFoundException e1) {
+						throw new RuntimeException("The referenced class "
+								+ name + " does not exists", e);
+					}
+
+				} else {
+					throw new RuntimeException("The referenced class " + name
+							+ " does not exists", e);
+				}
+			}
+
+		}
+	}
+
 	private void loadClassesFromPackage(String packageName) {
+<<<<<<< Updated upstream
 		Reflections reflections = new Reflections(packageName,
 				new SubTypesScanner(false), classLoader);
 		Set<Class<?>> types = reflections.getSubTypesOf(Object.class);
@@ -116,8 +164,56 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			for (Class<?> resource : types) {
 				typeNames.add(resource.getName());
 				typeTable.put(resource.getSimpleName(), resource.getName());
+=======
+
+		URL[] urls = ((URLClassLoader) classLoader).getURLs();
+		String directory = packageName.replaceAll("\\.", "/");
+
+		for (URL url : urls) {
+			File file = new File(url.getFile());
+
+			if (!file.isDirectory() && file.canRead()) {
+				// it is a jar file
+				JarFile jar = null;
+				try {
+					jar = new JarFile(file);
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+				Enumeration<JarEntry> entries = jar.entries();
+				while (entries.hasMoreElements()) {
+					JarEntry entry = entries.nextElement();
+					String name = entry.getName();
+
+					int index = name.indexOf(directory);
+
+					if (index != -1
+							&& name.lastIndexOf("/") == directory.length() - 1) {
+
+						name = name.replaceAll("/", ".");
+						name = name.substring(0, name.length() - 6);
+
+						addType(name);
+					}
+				}
+
+			} else if(file.isDirectory() && file.canRead()){
+				File aux = new File(file, directory);
+				if (aux.exists() && aux.isDirectory()) {
+					File[] contents = aux.listFiles();
+					for (File resource : contents) {
+						if (resource.getName().endsWith(".class")) {
+							String simpleName = resource.getName().substring(0,
+									resource.getName().lastIndexOf(".class"));
+							String name = packageName + "." + simpleName;
+							addType(name);							
+						}
+					}
+				}
+>>>>>>> Stashed changes
 			}
 		}
+
 	}
 
 	static {
@@ -198,7 +294,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		if (type != null && !type.getName().equals("void")
 				&& !type.getName().startsWith("[")) {
 			String clazzName = type.getName();
-			if (type.getArrayCount() != 0) {
+			if (type.getArrayCount() > 0) {
 				Class<?> aux = loadClass(clazzName);
 				return Array.newInstance(aux, 1).getClass();
 			}
@@ -286,6 +382,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		} else if (parserType instanceof WildcardType) {
 			if (((WildcardType) parserType).toString().equals("?")) {
 				result.setName("java.lang.Object");
+			} else {
+				result = valueOf(((WildcardType) parserType).getExtends());
 			}
 		}
 		return result;

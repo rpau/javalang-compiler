@@ -11,20 +11,20 @@ import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 
-public class TypeTableLoaderTest {
+public class TypeTableTest {
 
 	@SuppressWarnings("rawtypes")
 	@Test
 	public void testSimpleClass() throws Exception {
 
 		File aux = new File(new File("src/main/java"),
-				"org/walkmod/javalang/compiler/TypeTableLoader.java");
+				"org/walkmod/javalang/compiler/TypeTable.java");
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(aux);
 
 		TypeTable ttl = new TypeTable();
 
-		ttl.setClassLoader(this.getClass().getClassLoader());
+		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
 
 		ttl.visit(cu, null);
 
@@ -37,13 +37,16 @@ public class TypeTableLoaderTest {
 
 	@Test
 	public void importsWithAsterisk() throws Exception {
-		String code = "import org.walkmod.javalang.visitors.*; public class Foo {}";
+		String code = "import org.walkmod.javalang.compiler.*; public class Foo {}";
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
 		TypeTable ttl = new TypeTable();
+		
+		URL[] classpath = new URL[] { new File("target/classes").toURI().toURL()};
+		URLClassLoader urlCL = new URLClassLoader(classpath);
 
-		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
+		ttl.setClassLoader(urlCL);
 
 		ttl.visit(cu, null);
 
@@ -51,7 +54,7 @@ public class TypeTableLoaderTest {
 
 		Assert.assertNotNull(map);
 
-		Assert.assertNotNull(map.get("VoidVisitor"));
+		Assert.assertNotNull(map.get("Scope"));
 
 	}
 
