@@ -66,6 +66,9 @@ public class SymbolTable {
 			 Symbol aux = createSymbol(type);
 			 lastScope.chageSymbol(getSymbol(symbolName), aux);			 
 		}
+		else if(symbolType.getName() == null){
+			throw new RuntimeException("Null symbol type resoltion for "+symbolName);
+		}
 		lastScope.addSymbol(symbolName, symbolType, initExpr);
 	}
 	

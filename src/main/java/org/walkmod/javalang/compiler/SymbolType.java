@@ -17,24 +17,24 @@ package org.walkmod.javalang.compiler;
 
 import java.util.List;
 
-
 public class SymbolType {
-	
 
 	private String name;
-	
+
 	private List<SymbolType> parameterizedTypes;
-	
+
 	private int arrayCount = 0;
 
-	public SymbolType(){
-		
+	private boolean isTemplateVariable = false;
+
+	public SymbolType() {
+
 	}
-	
-	public SymbolType(String name){
+
+	public SymbolType(String name) {
 		this.name = name;
 	}
-	
+
 	public String getName() {
 		return name;
 	}
@@ -59,7 +59,21 @@ public class SymbolType {
 		this.arrayCount = arrayCount;
 	}
 
-		
+	public boolean isTemplateVariable() {
+		return isTemplateVariable;
+	}
+
+	public void setTemplateVariable(boolean isTemplateVariable) {
+		this.isTemplateVariable = isTemplateVariable;
+	}
 	
+	@Override
+	public boolean equals(Object o){
+		if(o instanceof SymbolType){
+			SymbolType aux = (SymbolType)o;
+			return name.equals(aux.getName()) && arrayCount == aux.getArrayCount();
+		}
+		return false;
+	}
 
 }
