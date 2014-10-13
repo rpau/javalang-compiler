@@ -205,7 +205,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 	static {
 		// static block to resolve java.lang package classes
 		String[] bootPath = System.getProperties().get("sun.boot.class.path")
-				.toString().split(";");
+				.toString().split(Character.toString(File.pathSeparatorChar));
 		for (String lib : bootPath) {
 			if (lib.endsWith("rt.jar")) {
 				File f = new File(lib);
