@@ -5,6 +5,7 @@
 	<artifactId>javalang-compiler</artifactId>
 	<version>1.0.1</version>
 	<url>https://github.com/rpau/javalang-compiler</url>
+	<name>javalang-compiler</name>
 	<licenses>
 		<license>
 			<name>GNU General Public License (GPL v.3)</name>
@@ -65,6 +66,23 @@
 			<version>4.5</version>
 			<scope>test</scope>
 		</dependency>
-		
+
 	</dependencies>
+	<scm>
+		<url>https://github.com/rpau/javalang-compiler.git</url>
+		<connection>https://github.com/rpau/javalang-compiler.git</connection>
+	</scm>
+	<developers>
+		<developer>
+			<id>rpau</id>
+			<name>rpau</name>
+			<email>raquelpau@gmail.com</email>
+		</developer>
+		<developer>
+			<id>acoroleu</id>
+			<name>acoroleu</name>
+			<email>acoroleu@gmail.com</email>
+		</developer>
+	</developers>
+	<description>Library of compiler components to processs Java code.</description>
 </project>
