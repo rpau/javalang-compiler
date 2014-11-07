@@ -42,7 +42,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 	private static Set<String> defaultJavaLangClasses = new HashSet<String>();
 
 	private static Map<String, Class<?>> primitiveClasses = new HashMap<String, Class<?>>();
-	
+
 	private static JarFile SDKJar;
 
 	public TypeTable() {
@@ -67,7 +67,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		String name = type.getName();
 
 		if (contextName != null) {
-			if (packageName.equals(contextName)) {
+			if (packageName != null && packageName.equals(contextName)) {
 				name = contextName + "." + name;
 			} else {
 				name = contextName.replace("$", ".") + "$" + name;
@@ -119,33 +119,47 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 				}
 			} catch (ClassNotFoundException e) {
-				int index = name.lastIndexOf(".");
-				if (index != -1) {
-					// it is an inner class?
-					name = name.substring(0, index) + "$"
-							+ name.substring(index + 1);
-					try {
-						Class<?> clazz = Class
-								.forName(name, false, classLoader);
-						if (typeNames.add(name)) {
-							typeTable.put(clazz.getSimpleName(), name);
-						}
-					} catch (ClassNotFoundException e1) {
-						throw new RuntimeException("The referenced class "
-								+ name + " does not exists", e);
-					}
-
-				} else {
-					throw new RuntimeException("The referenced class " + name
-							+ " does not exists", e);
-				}
+				loadInnerClass(name);
+			} catch (IncompatibleClassChangeError e2) {
+				int index = name.lastIndexOf("$");
+				if(index != -1){
+					addType(name.substring(0, index));
+				}				
 			}
 
 		}
 	}
-	
-	private void loadClassesFromJar(JarFile jar, String directory ){		
-		
+
+	private void loadInnerClass(String name) {
+		int index = name.lastIndexOf(".");
+		if (index != -1) {
+			// it is an inner class?
+			name = name.substring(0, index) + "$" + name.substring(index + 1);
+			try {
+				Class<?> clazz = Class.forName(name, false, classLoader);
+				if (typeNames.add(name)) {
+					typeTable.put(clazz.getSimpleName(), name);
+				}
+			} catch (ClassNotFoundException e1) {
+				throw new RuntimeException("The referenced class " + name
+						+ " does not exists");
+			}
+			catch (IncompatibleClassChangeError e2) {
+				//existent bug of the JVM http://bugs.java.com/view_bug.do?bug_id=7003595
+				index = name.lastIndexOf("$");
+				if(index != -1){
+					addType(name.substring(0, index));
+				}
+			}
+
+		} else {
+			throw new RuntimeException("The referenced class " + name
+					+ " does not exists");
+		}
+	}
+
+	private void loadClassesFromJar(JarFile jar, String directory) {
+
 		Enumeration<JarEntry> entries = jar.entries();
 		while (entries.hasMoreElements()) {
 			JarEntry entry = entries.nextElement();
@@ -153,7 +167,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 			int index = name.indexOf(directory);
 
-			if (index != -1 && name.endsWith(".class") 
+			if (index != -1 && name.endsWith(".class")
 					&& name.lastIndexOf("/") == directory.length()) {
 
 				name = name.replaceAll("/", ".");
@@ -170,7 +184,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		String directory = packageName.replaceAll("\\.", "/");
 
 		loadClassesFromJar(SDKJar, directory);
-		
+
 		for (URL url : urls) {
 			File file = new File(url.getFile());
 
@@ -317,7 +331,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 	public Class<?> loadClass(SymbolType type) throws ClassNotFoundException {
 		if (type != null && !type.getName().equals("void")
-				&& !type.getName().startsWith("[") 
+				&& !type.getName().startsWith("[")
 				&& !type.isTemplateVariable()) {
 			String clazzName = type.getName();
 			if (type.getArrayCount() > 0) {
@@ -328,7 +342,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			return loadClass(clazzName);
 
 		} else {
-			
+
 			return null;
 		}
 	}
@@ -336,8 +350,9 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 	public Class<?> loadClass(Type t) throws ClassNotFoundException {
 
 		Class<?> result = loadClass(valueOf(t));
-		if(result == null){
-			throw new ClassNotFoundException("The class "+t.toString()+" is not found");
+		if (result == null) {
+			throw new ClassNotFoundException("The class " + t.toString()
+					+ " is not found");
 		}
 		return result;
 	}

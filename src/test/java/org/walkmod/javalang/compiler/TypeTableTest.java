@@ -77,5 +77,22 @@ public class TypeTableTest {
 		Assert.assertNotNull(map.get("String"));
 
 	}
+	
+	@Test
+	public void javaInnerClasses() throws Exception {
+		String code = "public class Foo { public class A {} public class B extends A{} }";
+		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
+
+		TypeTable ttl = new TypeTable();
+
+		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
+
+		ttl.visit(cu, null);
+
+		Map<String, String> map = ttl.getTypeTable();
+
+		Assert.assertNotNull(map);
+
+	}
 
 }
