@@ -26,6 +26,7 @@ import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.actions.LoadFieldDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadMethodDeclarationsAction;
+import org.walkmod.javalang.compiler.actions.LoadStaticImportsAction;
 import org.walkmod.javalang.compiler.actions.LoadTypeDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadTypeParamsAction;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
@@ -113,9 +114,10 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		try {
 			String name = id.getName().toString();
 			Set<String> types = typeTable.findTypesByPrefix(name);
-			List<SymbolAction> actions = null;
+			List<SymbolAction> actions = new LinkedList<SymbolAction>();
+			actions.add(new LoadStaticImportsAction());
 			if (actionProvider != null) {
-				actions = actionProvider.getActions(id);
+				actions.addAll(actionProvider.getActions(id));
 			}
 			for (String type : types) {
 				SymbolType stype = new SymbolType();
@@ -141,11 +143,11 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		actions.add(new LoadFieldDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadTypeDeclarationsAction(typeTable, actionProvider));
-		
+
 		if (actionProvider != null) {
 			actions.addAll(actionProvider.getActions(declaration));
 		}
-		
+
 		SymbolType type = null;
 		if (lastScope == null) {
 			type = new SymbolType(className);

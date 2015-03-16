@@ -143,13 +143,14 @@ public class SemanticVisitorAdapterTest {
 	}
 
 	@Test
-	public void testStaticImports() {
-		// TODO: static imports implies its members are available from "this"
+	public void testStaticImports() throws Exception {
+		CompilationUnit cu = runRemoveUnusedMembers("import static java.lang.Math.*; public class HelloWorld { private double compute = PI; private double foo() { return (PI * pow(2.5,2));} }");
+		Assert.assertTrue(cu.getTypes().get(0).getMembers().isEmpty());
 	}
 
 	@Test
 	public void testReferencesToAnnotations() {
-		// TODO: mark the types of the annotations
+		// TODO: mark the types of the annotations to remove unused imports
 	}
 
 	@Test

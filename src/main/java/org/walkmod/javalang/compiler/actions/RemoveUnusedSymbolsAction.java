@@ -12,6 +12,7 @@ import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.LiteralExpr;
+import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
@@ -64,13 +65,25 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 	public List<? extends Node> getSiblings() {
 		return siblings;
 	}
+	
+	private void remove(Object o){
+		Iterator<? extends Node> it = siblings.iterator();
+		boolean removed = false;
+		while(it.hasNext() && !removed){
+			Node aux = it.next();
+			if(aux == o){ //yes, by reference
+				it.remove();
+				removed = true;
+			}
+		}
+	}
 
 	public void removeMethod(Symbol symbol, SymbolTable table) {
 		MethodDeclaration md = (MethodDeclaration) symbol.getLocation();
 
 		int modifiers = md.getModifiers();
 		if (ModifierSet.isPrivate(modifiers)) {
-			siblings.remove(md);
+			remove(md);
 		}
 	}
 
@@ -78,7 +91,7 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 		TypeDeclaration td = (TypeDeclaration) symbol.getLocation();
 		int modifiers = td.getModifiers();
 		if (ModifierSet.isPrivate(modifiers)) {
-			siblings.remove(td);
+			remove(td);
 		}
 	}
 
@@ -88,7 +101,7 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 				.getExpression();
 		List<VariableDeclarator> vds = vd.getVars();
 		if (vds.size() == 1) {
-			siblings.remove(original);
+			remove(original);
 		} else {
 			Iterator<VariableDeclarator> it = vds.iterator();
 			boolean finish = false;
@@ -113,9 +126,10 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 					VariableDeclarator vd = it.next();
 					if (vd.getId().getName().equals(symbol.getName())) {
 						Expression init = vd.getInit();
-						if (init == null || init instanceof LiteralExpr) {
+						if (init == null || init instanceof LiteralExpr
+								|| init instanceof NameExpr) {
 							if (vds.size() == 1) {
-								siblings.remove(fd);
+								remove(fd);
 							} else {
 								it.remove();
 							}

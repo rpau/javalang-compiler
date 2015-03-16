@@ -71,7 +71,7 @@ public class RemoveUnusedSymbolsProvider implements SymbolActionProvider {
 
 	@Override
 	public List<SymbolAction> getActions(MethodDeclaration n) {
-		buildActionList();
+		buildActionList(n, new LinkedList<Node>());
 		return actions;
 	}
 

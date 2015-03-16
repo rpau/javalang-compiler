@@ -15,6 +15,8 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.TypeVariable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,14 +32,47 @@ public class SymbolType {
 	private int arrayCount = 0;
 
 	private boolean isTemplateVariable = false;
-	
+
 	private Class<?> clazz;
 
 	public SymbolType() {
 	}
-	
-	
-	public void setClazz(Class<?> clazz){
+
+	public SymbolType(Class<?> clazz) {
+		setParameterizedTypes(resolveGenerics(clazz));
+		setClazz(clazz);
+		setName(clazz.getName());
+		setArrayCount(resolveDimmensions(clazz));
+	}
+
+	private int resolveDimmensions(Class<?> clazz) {
+		if (clazz.isArray()) {
+			Class<?> component = clazz.getComponentType();
+			return resolveDimmensions(component) + 1;
+		}
+		return 0;
+	}
+
+	private List<SymbolType> resolveGenerics(Class<?> clazz) {
+		List<SymbolType> result = null;
+		TypeVariable<?>[] typeParams = clazz.getTypeParameters();
+		if (typeParams.length > 0) {
+			result = new LinkedList<SymbolType>();
+			for (TypeVariable<?> td : typeParams) {
+				GenericDeclaration genDec = td.getGenericDeclaration();
+				if (genDec instanceof Class) {
+					SymbolType st = new SymbolType((Class<?>) genDec);
+					result.add(st);
+				} else {
+					throw new UnsupportedOperationException(
+							"Invalid type resoltion for " + clazz);
+				}
+			}
+		}
+		return result;
+	}
+
+	public void setClazz(Class<?> clazz) {
 		this.clazz = clazz;
 	}
 
@@ -76,51 +111,52 @@ public class SymbolType {
 	public void setTemplateVariable(boolean isTemplateVariable) {
 		this.isTemplateVariable = isTemplateVariable;
 	}
-	
+
 	@Override
-	public boolean equals(Object o){
-		if(o instanceof SymbolType){
-			SymbolType aux = (SymbolType)o;
-			return name.equals(aux.getName()) && arrayCount == aux.getArrayCount();
+	public boolean equals(Object o) {
+		if (o instanceof SymbolType) {
+			SymbolType aux = (SymbolType) o;
+			return name.equals(aux.getName())
+					&& arrayCount == aux.getArrayCount();
 		}
 		return false;
 	}
-	
-	public boolean isCompatible(SymbolType other){
-		
+
+	public boolean isCompatible(SymbolType other) {
+
 		return Types.isCompatible(other.clazz, clazz);
 	}
-	
+
 	@Override
-	public String toString(){
+	public String toString() {
 		StringBuffer result = new StringBuffer();
 		result.append(name);
-		if(parameterizedTypes != null){
+		if (parameterizedTypes != null) {
 			result.append("<");
 			Iterator<SymbolType> it = parameterizedTypes.iterator();
-			while(it.hasNext()){
+			while (it.hasNext()) {
 				SymbolType next = it.next();
 				result.append(next.toString());
-				if(it.hasNext()){
+				if (it.hasNext()) {
 					result.append(", ");
 				}
 			}
 			result.append(">");
 		}
-		for(int i = 0; i < arrayCount; i++){
+		for (int i = 0; i < arrayCount; i++) {
 			result.append("[]");
 		}
 		return result.toString();
 	}
-	
-	public SymbolType clone(){
+
+	public SymbolType clone() {
 		SymbolType result = new SymbolType();
 		result.setName(name);
 		result.setClazz(clazz);
 		result.isTemplateVariable = isTemplateVariable;
-		if (parameterizedTypes != null){
+		if (parameterizedTypes != null) {
 			List<SymbolType> list = new LinkedList<SymbolType>();
-			for(SymbolType type: parameterizedTypes){
+			for (SymbolType type : parameterizedTypes) {
 				list.add(type.clone());
 			}
 			result.setParameterizedTypes(list);
