@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.walkmod</groupId>
 	<artifactId>javalang-compiler</artifactId>
-	<version>1.0.2</version>
+	<version>2.0</version>
 	<url>https://github.com/rpau/javalang-compiler</url>
 	<name>javalang-compiler</name>
 	<licenses>
@@ -65,6 +65,11 @@
 			<artifactId>junit</artifactId>
 			<version>4.5</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>1.2.16</version>
 		</dependency>
 
 	</dependencies>

@@ -1,0 +1,1 @@
+public class Foo { private class A{} private String A ="a"; public void bar(){ A="b";} }

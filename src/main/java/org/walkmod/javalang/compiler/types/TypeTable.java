@@ -1,4 +1,4 @@
-package org.walkmod.javalang.compiler;
+package org.walkmod.javalang.compiler.types;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,12 +18,15 @@ import java.util.jar.JarFile;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
 import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
 import org.walkmod.javalang.ast.type.ReferenceType;
 import org.walkmod.javalang.ast.type.Type;
+import org.walkmod.javalang.ast.type.VoidType;
 import org.walkmod.javalang.ast.type.WildcardType;
+import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class TypeTable<T> extends VoidVisitorAdapter<T> {
@@ -61,6 +64,29 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 	public Map<String, String> getTypeTable() {
 		return typeTable;
+	}
+
+	public Set<String> findTypesByPrefix(String namePrefix) {
+		Set<String> result = new HashSet<String>();
+		for (String type : typeNames) {
+			if (type.startsWith(namePrefix)) {
+				result.add(type);
+			}
+		}
+		return result;
+	}
+	
+	public String getSimpleName(String type){
+		int dotIndex = type.lastIndexOf('.');
+		int dollarIndex = type.lastIndexOf('$');
+		int index = dotIndex;
+		if(dollarIndex > 0){
+			index = dollarIndex;
+		}
+		if(index > 0){
+			return type.substring(index+1);
+		}
+		return type;
 	}
 
 	public void visit(ClassOrInterfaceDeclaration type, T context) {
@@ -122,9 +148,9 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 				loadInnerClass(name);
 			} catch (IncompatibleClassChangeError e2) {
 				int index = name.lastIndexOf("$");
-				if(index != -1){
+				if (index != -1) {
 					addType(name.substring(0, index));
-				}				
+				}
 			}
 
 		}
@@ -143,11 +169,11 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			} catch (ClassNotFoundException e1) {
 				throw new RuntimeException("The referenced class " + name
 						+ " does not exists");
-			}
-			catch (IncompatibleClassChangeError e2) {
-				//existent bug of the JVM http://bugs.java.com/view_bug.do?bug_id=7003595
+			} catch (IncompatibleClassChangeError e2) {
+				// existent bug of the JVM
+				// http://bugs.java.com/view_bug.do?bug_id=7003595
 				index = name.lastIndexOf("$");
-				if(index != -1){
+				if (index != -1) {
 					addType(name.substring(0, index));
 				}
 			}
@@ -467,6 +493,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			} else {
 				result = valueOf(((WildcardType) parserType).getExtends());
 			}
+		} else if (parserType instanceof VoidType) {
+			result.setName(Void.class.getName());
 		}
 		if (result.getName() == null) {
 			throw new RuntimeException("The type " + parserType.toString()
@@ -490,7 +518,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 	}
 
-	public String getFullName(ClassOrInterfaceDeclaration type) {
+	public String getFullName(TypeDeclaration type) {
 		return typeTable.get(type.getName());
 	}
 

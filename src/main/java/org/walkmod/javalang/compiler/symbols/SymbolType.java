@@ -13,9 +13,13 @@
  
  You should have received a copy of the GNU Lesser General Public License
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
-package org.walkmod.javalang.compiler;
+package org.walkmod.javalang.compiler.symbols;
 
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+
+import org.walkmod.javalang.compiler.types.Types;
 
 public class SymbolType {
 
@@ -26,9 +30,15 @@ public class SymbolType {
 	private int arrayCount = 0;
 
 	private boolean isTemplateVariable = false;
+	
+	private Class<?> clazz;
 
 	public SymbolType() {
-
+	}
+	
+	
+	public void setClazz(Class<?> clazz){
+		this.clazz = clazz;
 	}
 
 	public SymbolType(String name) {
@@ -74,6 +84,48 @@ public class SymbolType {
 			return name.equals(aux.getName()) && arrayCount == aux.getArrayCount();
 		}
 		return false;
+	}
+	
+	public boolean isCompatible(SymbolType other){
+		
+		return Types.isCompatible(other.clazz, clazz);
+	}
+	
+	@Override
+	public String toString(){
+		StringBuffer result = new StringBuffer();
+		result.append(name);
+		if(parameterizedTypes != null){
+			result.append("<");
+			Iterator<SymbolType> it = parameterizedTypes.iterator();
+			while(it.hasNext()){
+				SymbolType next = it.next();
+				result.append(next.toString());
+				if(it.hasNext()){
+					result.append(", ");
+				}
+			}
+			result.append(">");
+		}
+		for(int i = 0; i < arrayCount; i++){
+			result.append("[]");
+		}
+		return result.toString();
+	}
+	
+	public SymbolType clone(){
+		SymbolType result = new SymbolType();
+		result.setName(name);
+		result.setClazz(clazz);
+		result.isTemplateVariable = isTemplateVariable;
+		if (parameterizedTypes != null){
+			List<SymbolType> list = new LinkedList<SymbolType>();
+			for(SymbolType type: parameterizedTypes){
+				list.add(type.clone());
+			}
+			result.setParameterizedTypes(list);
+		}
+		return result;
 	}
 
 }

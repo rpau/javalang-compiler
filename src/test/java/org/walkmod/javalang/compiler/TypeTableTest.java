@@ -10,6 +10,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.compiler.types.TypeTable;
 
 public class TypeTableTest {
 
@@ -18,7 +19,7 @@ public class TypeTableTest {
 	public void testSimpleClass() throws Exception {
 
 		File aux = new File(new File("src/main/java"),
-				"org/walkmod/javalang/compiler/TypeTable.java");
+				"org/walkmod/javalang/compiler/types/TypeTable.java");
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(aux);
 
@@ -37,7 +38,7 @@ public class TypeTableTest {
 
 	@Test
 	public void importsWithAsterisk() throws Exception {
-		String code = "import org.walkmod.javalang.compiler.*; public class Foo {}";
+		String code = "import org.walkmod.javalang.compiler.symbols.*; public class Foo {}";
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
