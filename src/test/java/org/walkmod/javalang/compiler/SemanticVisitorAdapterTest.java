@@ -134,9 +134,9 @@ public class SemanticVisitorAdapterTest {
 		Assert.assertTrue(md.getBody().getStmts().isEmpty());
 
 	}
-	
+
 	@Test
-	public void testRemoveUnusedImports() throws Exception{
+	public void testRemoveUnusedImports() throws Exception {
 		CompilationUnit cu = runRemoveUnusedMembers("import java.util.List; public class Foo {  }");
 		Assert.assertTrue(cu.getImports().isEmpty());
 	}
@@ -154,7 +154,7 @@ public class SemanticVisitorAdapterTest {
 		Assert.assertTrue(cu.getTypes().get(0).getMembers().isEmpty());
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
-	
+
 	@Test
 	public void testStaticImportsWithSpecificMember() throws Exception {
 		CompilationUnit cu = runRemoveUnusedMembers("import static java.lang.Math.PI; public class HelloWorld { private double compute = PI; private double foo() { return (PI * 2);} }");
@@ -168,10 +168,9 @@ public class SemanticVisitorAdapterTest {
 		cu = runRemoveUnusedMembers("import javax.annotation.Generated; public class Foo {}");
 		Assert.assertTrue(cu.getImports().isEmpty());
 	}
-	
-	
+
 	@Test
-	public void testImportsOfJavadocTypes() throws Exception{
+	public void testImportsOfJavadocTypes() throws Exception {
 		String javadoc = " Returns an ordering that compares objects according to the order "
 				+ "in which they appear in the\n"
 				+ "given list. Only objects present in the list (according to {@link Object#equals}) may be\n"
@@ -191,10 +190,11 @@ public class SemanticVisitorAdapterTest {
 				+ " @throws NullPointerException if any of the provided values is null\n"
 				+ " @throws IllegalArgumentException if {@code valuesInOrder} contains any duplicate values\n"
 				+ " (according to {@link Object#equals})\n*";
-		
-		String code = "public class Foo { /**"+javadoc+"/ public void foo(){}}";
+
+		String code = "public class Foo { /**" + javadoc
+				+ "/ public void foo(){}}";
 		runRemoveUnusedMembers(code);
-		
+
 		javadoc = "This class provides a skeletal implementation of the {@code Cache} interface to minimize the\n"
 				+ " effort required to implement this interface.\n\n"
 				+ " <p>\n"
@@ -205,12 +205,12 @@ public class SemanticVisitorAdapterTest {
 				+ " {@link #putAll} is implemented in terms of {@link #put}, {@link #invalidateAll(Iterable)} is\n"
 				+ " implemented in terms of {@link #invalidate}. The method {@link #cleanUp} is a no-op. All other\n"
 				+ " methods throw an {@link UnsupportedOperationException}.";
-		
-		code = "import java.util.concurrent.Callable; public class Foo {/**"+javadoc+"*/ public void foo(){}}";
+
+		code = "import java.util.concurrent.Callable; public class Foo {/**"
+				+ javadoc + "*/ public void foo(){}}";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
-		
-		
+
 		javadoc = "Returns a comparator that compares two arrays of unsigned {@code int} values lexicographically.\n"
 				+ " That is, it compares, using {@link #compare(int, int)}), the first pair of values that follow\n"
 				+ " any common prefix, or when one array is a prefix of the other, treats the shorter array as the\n"
@@ -224,14 +224,17 @@ public class SemanticVisitorAdapterTest {
 
 				" @see <a href=\"http://en.wikipedia.org/wiki/Lexicographical_order\"> Lexicographical order\n"
 				+ "      article at Wikipedia</a>\n";
-		code = "import java.util.Arrays; public class Foo {/**"+javadoc+"*/ public void foo(){}}";
+		code = "import java.util.Arrays; public class Foo {/**" + javadoc
+				+ "*/ public void foo(){}}";
 		cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
 
 	@Test
-	public void testReferencesToEnum() {
-		// TODO: which is the type of an expression using annotations? it is
-		// well resolved?
+	public void testReferencesToEnum() throws Exception {
+		String code = "public enum Foo { A, B; private void bar(Foo o){} public void bar2(){ bar(Foo.B);}}";
+		CompilationUnit cu = runRemoveUnusedMembers(code);
+		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
 	}
+
 }

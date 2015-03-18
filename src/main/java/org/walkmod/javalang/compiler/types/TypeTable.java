@@ -3,6 +3,7 @@ package org.walkmod.javalang.compiler.types;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Enumeration;
@@ -17,7 +18,9 @@ import java.util.jar.JarFile;
 
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
+import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
@@ -75,21 +78,21 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		}
 		return result;
 	}
-	
-	public String getSimpleName(String type){
+
+	public String getSimpleName(String type) {
 		int dotIndex = type.lastIndexOf('.');
 		int dollarIndex = type.lastIndexOf('$');
 		int index = dotIndex;
-		if(dollarIndex > 0){
+		if (dollarIndex > 0) {
 			index = dollarIndex;
 		}
-		if(index > 0){
-			return type.substring(index+1);
+		if (index > 0) {
+			return type.substring(index + 1);
 		}
 		return type;
 	}
 
-	public void visit(ClassOrInterfaceDeclaration type, T context) {
+	public String getContext(TypeDeclaration type){
 		String name = type.getName();
 
 		if (contextName != null) {
@@ -103,6 +106,27 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		if (typeNames.add(name)) {
 			typeTable.put(type.getName(), name);
 		}
+		return name;
+	}
+	
+	public void visit(ClassOrInterfaceDeclaration type, T context) {
+		String name = getContext(type);
+		String oldCtx = contextName;
+		contextName = name;
+		super.visit(type, context);
+		contextName = oldCtx;
+	}
+	
+	public void visit(EnumDeclaration type, T context){
+		String name = getContext(type);
+		String oldCtx = contextName;
+		contextName = name;
+		super.visit(type, context);
+		contextName = oldCtx;
+	}
+	
+	public void visit(AnnotationDeclaration type, T context){
+		String name = getContext(type);
 		String oldCtx = contextName;
 		contextName = name;
 		super.visit(type, context);
@@ -129,20 +153,26 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		if (classLoader != null && name != null) {
 			try {
 				Class<?> clazz = Class.forName(name, false, classLoader);
-				if (typeNames.add(name)) {
-					typeTable.put(clazz.getSimpleName(), name);
-				}
-				Class<?>[] innerClasses = clazz.getDeclaredClasses();
-				if (innerClasses != null) {
-					for (int i = 0; i < innerClasses.length; i++) {
-						if (typeNames.add(innerClasses[i].getName())) {
-
-							typeTable.put(innerClasses[i].getSimpleName(),
-									innerClasses[i].getName());
-
-						}
+				if (!Modifier.isPrivate(clazz.getModifiers())) {
+					if (typeNames.add(name)) {
+						typeTable.put(clazz.getSimpleName(), name);
 					}
+					Class<?>[] innerClasses = clazz.getDeclaredClasses();
+					if (innerClasses != null) {
+						for (int i = 0; i < innerClasses.length; i++) {
+							if (!Modifier.isPrivate(innerClasses[i]
+									.getModifiers())) {
+								if (typeNames.add(innerClasses[i].getName())) {
 
+									typeTable.put(
+											innerClasses[i].getSimpleName(),
+											innerClasses[i].getName());
+
+								}
+							}
+						}
+
+					}
 				}
 			} catch (ClassNotFoundException e) {
 				loadInnerClass(name);
@@ -163,7 +193,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			name = name.substring(0, index) + "$" + name.substring(index + 1);
 			try {
 				Class<?> clazz = Class.forName(name, false, classLoader);
-				if (typeNames.add(name)) {
+				if (!Modifier.isPrivate(clazz.getModifiers()) && typeNames.add(name)) {
 					typeTable.put(clazz.getSimpleName(), name);
 				}
 			} catch (ClassNotFoundException e1) {

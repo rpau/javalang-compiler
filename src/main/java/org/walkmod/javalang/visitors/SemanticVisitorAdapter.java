@@ -1,5 +1,6 @@
 package org.walkmod.javalang.visitors;
 
+import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -11,11 +12,14 @@ import org.walkmod.javalang.JavadocManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.JavadocComment;
 import org.walkmod.javalang.ast.body.JavadocTag;
 import org.walkmod.javalang.ast.body.MultiTypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
+import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.Expression;
@@ -31,6 +35,7 @@ import org.walkmod.javalang.ast.stmt.CatchClause;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.Type;
+import org.walkmod.javalang.compiler.actions.LoadEnumConstantLiteralsAction;
 import org.walkmod.javalang.compiler.actions.LoadFieldDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadMethodDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadStaticImportsAction;
@@ -117,9 +122,12 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 				SymbolType stype = new SymbolType();
 				stype.setName(type);
 				try {
-					stype.setClazz(typeTable.loadClass(type));
-					symbolTable.pushSymbol(typeTable.getSimpleName(type),
-							ReferenceType.TYPE, stype, null, actions);
+					Class<?> clazz = typeTable.loadClass(type);
+					stype.setClazz(clazz);
+					if (Modifier.isPublic(stype.getClazz().getModifiers())) {
+						symbolTable.pushSymbol(typeTable.getSimpleName(type),
+								ReferenceType.TYPE, stype, null, actions);
+					}
 				} catch (ClassNotFoundException e) {
 					new NoSuchExpressionTypeException(e);
 				}
@@ -212,6 +220,17 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		}
 	}
 
+	public void visit(EnumDeclaration n, A arg) {
+		try {
+			symbolTable.pushScope();
+			loadThisSymbol(n, arg);
+			super.visit(n, arg);
+			symbolTable.popScope();
+		} catch (ClassNotFoundException e) {
+			new NoSuchExpressionTypeException(e);
+		}
+	}
+
 	public void visit(ImportDeclaration id, A arg) {
 		try {
 			String name = id.getName().toString();
@@ -249,7 +268,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		}
 	}
 
-	public void loadThisSymbol(ClassOrInterfaceDeclaration declaration, A arg)
+	public void loadThisSymbol(TypeDeclaration declaration, A arg)
 			throws ClassNotFoundException {
 		SymbolType lastScope = symbolTable.getType("this",
 				ReferenceType.VARIABLE);
@@ -260,6 +279,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		actions.add(new LoadFieldDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadTypeDeclarationsAction(typeTable, actionProvider));
+		actions.add(new LoadEnumConstantLiteralsAction());
 
 		if (actionProvider != null) {
 			actions.addAll(actionProvider.getActions(declaration));
@@ -289,6 +309,18 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(ClassOrInterfaceDeclaration n, A arg) {
 
+		try {
+			symbolTable.pushScope();
+			loadThisSymbol(n, arg);
+			super.visit(n, arg);
+			symbolTable.popScope();
+		} catch (ClassNotFoundException e) {
+			new NoSuchExpressionTypeException(e);
+		}
+	}
+
+	@Override
+	public void visit(AnnotationDeclaration n, A arg) {
 		try {
 			symbolTable.pushScope();
 			loadThisSymbol(n, arg);
