@@ -1,23 +1,30 @@
 package org.walkmod.javalang.visitors;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.JavadocManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.body.JavadocComment;
+import org.walkmod.javalang.ast.body.JavadocTag;
 import org.walkmod.javalang.ast.body.MultiTypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.FieldAccessExpr;
+import org.walkmod.javalang.ast.expr.MarkerAnnotationExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
+import org.walkmod.javalang.ast.expr.NormalAnnotationExpr;
+import org.walkmod.javalang.ast.expr.SingleMemberAnnotationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.BlockStmt;
 import org.walkmod.javalang.ast.stmt.CatchClause;
@@ -40,7 +47,6 @@ import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.ExpressionTypeAnalyzer;
 import org.walkmod.javalang.compiler.types.TypeTable;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
-import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		VoidVisitorAdapter<A> implements SymbolActionProviderAware {
@@ -105,17 +111,128 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 		expressionTypeAnalyzer = new ExpressionTypeAnalyzer<A>(typeTable,
 				symbolTable);
-
+		Set<String> langImports = typeTable.findTypesByPrefix("java.lang");
+		if (langImports != null) {
+			for (String type : langImports) {
+				SymbolType stype = new SymbolType();
+				stype.setName(type);
+				try {
+					stype.setClazz(typeTable.loadClass(type));
+					symbolTable.pushSymbol(typeTable.getSimpleName(type),
+							ReferenceType.TYPE, stype, null, actions);
+				} catch (ClassNotFoundException e) {
+					new NoSuchExpressionTypeException(e);
+				}
+			}
+		}
 		super.visit(unit, arg);
 		symbolTable.popScope();
+	}
+
+	public void visit(NormalAnnotationExpr n, A arg) {
+
+		symbolTable.lookUpSymbolForRead(n.getName().toString(),
+				ReferenceType.TYPE);
+		super.visit(n, arg);
+	}
+
+	public void visit(MarkerAnnotationExpr n, A arg) {
+		symbolTable.lookUpSymbolForRead(n.getName().toString(),
+				ReferenceType.TYPE);
+		super.visit(n, arg);
+	}
+
+	public void visit(SingleMemberAnnotationExpr n, A arg) {
+		symbolTable.lookUpSymbolForRead(n.getName().toString(),
+				ReferenceType.TYPE);
+		super.visit(n, arg);
+	}
+
+	private void processJavadocTypeReference(String type) {
+		if (type != null) {
+			String[] split = type.split("#");
+			String typeName = split[0];
+			if (!"".equals(typeName)) {
+				symbolTable.lookUpSymbolForRead(typeName, ReferenceType.TYPE);
+			}
+			if (split.length == 2) {
+				String signature = split[1];
+				int start = signature.indexOf("(");
+				if (start > 0 && signature.endsWith(")")) {
+					signature = signature.substring(start + 1,
+							signature.length() - 1);
+					String[] params = signature.split(",");
+					if (params != null) {
+						for (String param : params) {
+							if (!"".equals(param)) {
+								if (param.endsWith("[]")) {
+									param = param.substring(0,
+											param.length() - 2);
+								}
+								symbolTable.lookUpSymbolForRead(param.trim(),
+										ReferenceType.TYPE);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	public void visit(JavadocComment n, A arg) {
+		List<JavadocTag> tags = null;
+		try {
+			tags = JavadocManager.parse(n.getContent());
+		} catch (Exception e) {
+			// nothing, javadoc can be bad writen and the code compiles
+		}
+		if (tags != null) {
+			for (JavadocTag tag : tags) {
+				String name = tag.getName();
+				if ("@link".equals(name) || "@linkplain".equals(name)
+						|| "@throws".equals(name)) {
+					List<String> values = tag.getValues();
+					if (values != null) {
+						String type = values.get(0);
+						processJavadocTypeReference(type);
+
+					}
+				} else if ("@see".equals(name)) {
+					List<String> values = tag.getValues();
+					if (values != null) {
+						String type = values.get(0);
+						if (type != null && !type.startsWith("<")
+								&& !type.startsWith("\"")) {
+							processJavadocTypeReference(type);
+
+						}
+					}
+				}
+			}
+		}
 	}
 
 	public void visit(ImportDeclaration id, A arg) {
 		try {
 			String name = id.getName().toString();
-			Set<String> types = typeTable.findTypesByPrefix(name);
+			Set<String> types = null;
+			if (!id.isStatic() || id.isAsterisk()) {
+				types = typeTable.findTypesByPrefix(name);
+			} else {
+				int classNameEnding = name.lastIndexOf('.');
+				if (classNameEnding != -1) {
+					name = name.substring(0, classNameEnding);
+					types = new HashSet<String>();
+					types.add(name);
+				} else {
+					throw new NoSuchExpressionTypeException("Ops! The import "
+							+ id.toString() + " can't be resolved", null);
+				}
+			}
 			List<SymbolAction> actions = new LinkedList<SymbolAction>();
-			actions.add(new LoadStaticImportsAction());
+			if (id.isStatic()) {
+				actions.add(new LoadStaticImportsAction());
+			}
 			if (actionProvider != null) {
 				actions.addAll(actionProvider.getActions(id));
 			}

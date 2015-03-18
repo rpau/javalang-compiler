@@ -15,11 +15,13 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.ast.Node;
 
@@ -58,7 +60,8 @@ public class Scope {
 			Iterator<Symbol> it = list.iterator();
 			while (it.hasNext()) {
 				Symbol s = it.next();
-				if (referenceType == null || s.getReferenceType().equals(referenceType)) {
+				if (referenceType == null
+						|| s.getReferenceType().equals(referenceType)) {
 					return s;
 				}
 			}
@@ -70,7 +73,45 @@ public class Scope {
 		return symbols.get(name);
 	}
 
-	public Symbol getSymbol(String name, ReferenceType referenceType, SymbolType scope, SymbolType[] args) {
+	public List<Symbol> getSymbolsByLocation(Node node) {
+		List<Symbol> result = new LinkedList<Symbol>();
+		Collection<List<Symbol>> values = symbols.values();
+		Iterator<List<Symbol>> it = values.iterator();
+		while (it.hasNext()) {
+			List<Symbol> list = it.next();
+			for (Symbol symbol : list) {
+				if (symbol.getLocation() == node) {// yes, by reference
+					result.add(symbol);
+				}
+			}
+		}
+
+		return result;
+	}
+
+	public List<Symbol> getSymbolsByType(String typeName,
+			ReferenceType referenceType) {
+		List<Symbol> result = new LinkedList<Symbol>();
+		Collection<List<Symbol>> values = symbols.values();
+		Iterator<List<Symbol>> it = values.iterator();
+		while (it.hasNext()) {
+			List<Symbol> list = it.next();
+			for (Symbol symbol : list) {
+				if (symbol.getReferenceType() == referenceType) {// yes, by reference
+					
+					if (symbol.getType().getName().startsWith(typeName)){
+						result.add(symbol);
+					}
+				}
+			}
+		}
+
+		return result;
+
+	}
+
+	public Symbol getSymbol(String name, ReferenceType referenceType,
+			SymbolType scope, SymbolType[] args) {
 		if (args == null) {
 			return getSymbol(name, referenceType);
 		} else {

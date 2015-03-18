@@ -20,47 +20,52 @@ public class LoadStaticImportsAction implements SymbolAction {
 	@Override
 	public void execute(Symbol symbol, SymbolTable table, SymbolEvent event)
 			throws Exception {
+		if (event.equals(SymbolEvent.PUSH)) {
+			Node n = symbol.getLocation();
+			if (n instanceof ImportDeclaration) {
+				ImportDeclaration id = (ImportDeclaration) n;
+				if (id.isStatic()) {
+					Class<?> clazz = symbol.getType().getClazz();
+					Method[] methods = clazz.getMethods();
+					for (Method m : methods) {
+						if (id.isAsterisk() || id.getName().getName().equals(m.getName())) {
+							if (Modifier.isStatic(m.getModifiers())
+									&& Modifier.isPublic(m.getModifiers())) {
+								Class<?> returnClass = m.getReturnType();
+								Class<?>[] params = m.getParameterTypes();
+								SymbolType[] args = null;
+								if (params.length > 0) {
+									args = new SymbolType[params.length];
+									int i = 0;
+									for (Class<?> param : params) {
+										args[i] = new SymbolType(param);
+										i++;
+									}
+								}
 
-		Node n = symbol.getLocation();
-		if (n instanceof ImportDeclaration) {
-			ImportDeclaration id = (ImportDeclaration) n;
-			if (id.isStatic()) {
-				Class<?> clazz = symbol.getClass();
-				Method[] methods = clazz.getMethods();
-				for (Method m : methods) {
-					if (Modifier.isStatic(m.getModifiers())
-							&& Modifier.isPublic(m.getModifiers())) {
-						Class<?> returnClass = m.getReturnType();
-						Class<?>[] params = m.getParameterTypes();
-						SymbolType[] args = null;
-						if (params.length > 0) {
-							args = new SymbolType[params.length];
-							int i = 0;
-							for (Class<?> param : params) {
-								args[i] = new SymbolType(param);
-								i++;
+								SymbolType st = new SymbolType(returnClass);
+								MethodSymbol method = new MethodSymbol(
+										m.getName(), st, n, symbol.getType(),
+										args, true, (List<SymbolAction>) null);
+								table.pushSymbol(method);
 							}
 						}
-
-						SymbolType st = new SymbolType(returnClass);
-						MethodSymbol method = new MethodSymbol(m.getName(), st,
-								n, symbol.getType(), args,
-								(List<SymbolAction>) null);
-						table.pushSymbol(method);
 					}
-				}
-				Field[] fields = clazz.getFields();
-				for (Field field : fields) {
-					if (Modifier.isStatic(field.getModifiers())
-							&& Modifier.isPublic(field.getModifiers())) {
-						Class<?> type = field.getType();
-						SymbolType st = new SymbolType(type);
-						table.pushSymbol(field.getName(),
-								ReferenceType.VARIABLE, st, null);
+					Field[] fields = clazz.getFields();
+					for (Field field : fields) {
+						if (id.isAsterisk()
+								|| id.getName().getName().equals(field.getName())) {
+							if (Modifier.isStatic(field.getModifiers())
+									&& Modifier.isPublic(field.getModifiers())) {
+								Class<?> type = field.getType();
+								SymbolType st = new SymbolType(type);
+								table.pushSymbol(field.getName(),
+										ReferenceType.VARIABLE, st, n);
+							}
+						}
 					}
 				}
 			}
 		}
-
 	}
 }

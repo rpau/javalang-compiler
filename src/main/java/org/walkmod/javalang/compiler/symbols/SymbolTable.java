@@ -17,6 +17,7 @@ package org.walkmod.javalang.compiler.symbols;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
@@ -90,8 +91,9 @@ public class SymbolTable {
 						// declared in a more closed superclass
 						if (!containsSymbol(field.getName(),
 								ReferenceType.VARIABLE)) {
-							pushSymbol(field.getName(),ReferenceType.VARIABLE, new SymbolType(field
-									.getType().getName()), null);
+							pushSymbol(field.getName(), ReferenceType.VARIABLE,
+									new SymbolType(field.getType().getName()),
+									null);
 						}
 					}
 				}
@@ -126,7 +128,8 @@ public class SymbolTable {
 							SymbolType aux = new SymbolType(field.getType()
 									.getName());
 							aux.setClazz(field.getType());
-							pushSymbol(field.getName(), ReferenceType.VARIABLE, aux, null);
+							pushSymbol(field.getName(), ReferenceType.VARIABLE,
+									aux, null);
 						}
 					}
 				}
@@ -144,6 +147,29 @@ public class SymbolTable {
 			Scope scope = indexStructure.get(i);
 			result = scope.getSymbol(symbolName, referenceType, symbolScope,
 					args);
+			i--;
+		}
+		return result;
+	}
+
+	public List<Symbol> findSymbolsByType(String typeName,
+			ReferenceType referenceType) {
+		List<Symbol> result = new LinkedList<Symbol>();
+		int i = indexStructure.size() - 1;
+		while (i >= 0) {
+			Scope scope = indexStructure.get(i);
+			result.addAll(scope.getSymbolsByType(typeName, referenceType));
+			i--;
+		}
+		return result;
+	}
+
+	public List<Symbol> findSymbolsByLocation(Node node) {
+		List<Symbol> result = new LinkedList<Symbol>();
+		int i = indexStructure.size() - 1;
+		while (i >= 0) {
+			Scope scope = indexStructure.get(i);
+			result.addAll(scope.getSymbolsByLocation(node));
 			i--;
 		}
 		return result;
@@ -175,15 +201,16 @@ public class SymbolTable {
 		return lookUpSymbolForRead(symbolName, referenceType, null, null);
 	}
 
-	
 	public Symbol lookUpSymbolForRead(String symbolName,
 			ReferenceType referenceType, SymbolType symbolScope,
 			SymbolType[] args) {
 		Symbol s = findSymbol(symbolName, referenceType, symbolScope, args);
-		try {
-			invokeActions(indexStructure.peek(), s, SymbolEvent.READ);
-		} catch (Exception e) {
-			throw new SymbolTableException(e);
+		if (s != null) {
+			try {
+				invokeActions(indexStructure.peek(), s, SymbolEvent.READ);
+			} catch (Exception e) {
+				throw new SymbolTableException(e);
+			}
 		}
 		return s;
 	}

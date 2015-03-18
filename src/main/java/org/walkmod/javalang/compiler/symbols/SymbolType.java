@@ -126,6 +126,10 @@ public class SymbolType {
 
 		return Types.isCompatible(other.clazz, clazz);
 	}
+	
+	public Class<?> getClazz(){
+		return clazz;
+	}
 
 	@Override
 	public String toString() {

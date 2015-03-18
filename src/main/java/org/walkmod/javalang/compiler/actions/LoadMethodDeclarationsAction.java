@@ -49,7 +49,7 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 			actions = actionProvider.getActions(md);
 		}
 		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
-				symbol.getType(), args, actions);
+				symbol.getType(), args, false, actions);
 		table.pushSymbol(method);
 	}
 
@@ -71,7 +71,7 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 			actions = actionProvider.getActions(md);
 		}
 		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
-				symbol.getType(), args, actions);
+				symbol.getType(), args, false, actions);
 		table.pushSymbol(method);
 	}
 

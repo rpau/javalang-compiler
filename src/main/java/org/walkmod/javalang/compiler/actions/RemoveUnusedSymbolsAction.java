@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
@@ -56,6 +57,8 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 						}
 					} else if (n instanceof ExpressionStmt) {
 						removeVariable(symbol, table);
+					} else if (n instanceof ImportDeclaration) {
+						removeImport(symbol, table);
 					}
 				}
 			}
@@ -65,13 +68,83 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 	public List<? extends Node> getSiblings() {
 		return siblings;
 	}
-	
-	private void remove(Object o){
+
+	public void removeImport(Symbol symbol, SymbolTable table) {
+		ImportDeclaration id = (ImportDeclaration) symbol.getLocation();
+		if (id.isAsterisk() || id.isStatic()) {
+
+			String type = id.getName().toString();
+			if (!id.isAsterisk()) {
+				int pos = type.lastIndexOf('.');
+				type = type.substring(0, pos);
+			}
+			List<Symbol> symbols = table.findSymbolsByType(type,
+					ReferenceType.TYPE);
+			boolean used = false;
+			List<Symbol> staticElems = null;
+			if (id.isStatic()) {
+				staticElems = table.findSymbolsByLocation(id);
+			}
+			Iterator<Symbol> it = symbols.iterator();
+			while (it.hasNext() && !used) {
+				Symbol candidate = it.next();
+
+				if (id.isStatic()) {
+
+					Iterator<Symbol> itStatic = staticElems.iterator();
+					while (itStatic.hasNext() && !used) {
+						Symbol staticElem = itStatic.next();
+
+						ReferenceType rt = staticElem.getReferenceType();
+						if (rt.equals(ReferenceType.METHOD)
+								|| rt.equals(ReferenceType.VARIABLE)) {
+							Map<String, Object> attrs = staticElem
+									.getAttributes();
+							Object reads = attrs
+									.get(ReferencesCounterAction.READS);
+							Object writes = attrs
+									.get(ReferencesCounterAction.WRITES);
+							used = (reads != null || writes != null);
+						}
+
+					}
+
+					if (!used) {
+						Map<String, Object> attrs = candidate.getAttributes();
+						Object reads = attrs.get(ReferencesCounterAction.READS);
+						used = (reads != null);
+					}
+				}
+			}
+			if (!used) {
+				remove(id);
+			}
+		} else {
+			String type = id.getName().toString();
+			// internal classes
+			List<Symbol> symbols = table.findSymbolsByType(type,
+					ReferenceType.TYPE);
+			boolean used = false;
+			Iterator<Symbol> it = symbols.iterator();
+			while (it.hasNext() && !used) {
+				Symbol next = it.next();
+				Map<String, Object> attrs = next.getAttributes();
+				Object reads = attrs.get(ReferencesCounterAction.READS);
+				Object writes = attrs.get(ReferencesCounterAction.WRITES);
+				used = (reads != null || writes != null);
+			}
+			if (!used) {
+				remove(id);
+			}
+		}
+	}
+
+	private void remove(Object o) {
 		Iterator<? extends Node> it = siblings.iterator();
 		boolean removed = false;
-		while(it.hasNext() && !removed){
+		while (it.hasNext() && !removed) {
 			Node aux = it.next();
-			if(aux == o){ //yes, by reference
+			if (aux == o) { // yes, by reference
 				it.remove();
 				removed = true;
 			}

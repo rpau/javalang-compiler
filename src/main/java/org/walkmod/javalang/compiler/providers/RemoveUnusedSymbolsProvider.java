@@ -66,7 +66,8 @@ public class RemoveUnusedSymbolsProvider implements SymbolActionProvider {
 
 	@Override
 	public List<SymbolAction> getActions(ImportDeclaration n) {
-		return Collections.emptyList();
+		buildActionList();
+		return actions;
 	}
 
 	@Override
@@ -144,7 +145,11 @@ public class RemoveUnusedSymbolsProvider implements SymbolActionProvider {
 		ReferencesCounterAction counter = new ReferencesCounterAction();
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(counter);
+		
 		siblings.push(n.getTypes());
+		if(n.getImports() != null){
+			siblings.push(n.getImports());
+		}
 		return actions;
 	}
 

@@ -177,6 +177,9 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						String className = c.getName();
 						scopeType = new SymbolType();
 						scopeType.setName(className);
+						symbolTable.lookUpSymbolForRead(
+								typeTable.getSimpleName(className),
+								ReferenceType.TYPE);
 						arg.put(TYPE_KEY, scopeType);
 					} else {
 						arg.put(TYPE_KEY, null);
@@ -186,7 +189,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				}
 			} else {
 				c = typeTable.loadClass(scopeType);
-				
+
 				Field field = null;
 				if (c.isArray() && n.getField().equals("length")) {
 
@@ -232,6 +235,13 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						}
 
 					}
+					SymbolType thisType = symbolTable.getType("this",
+							ReferenceType.VARIABLE);
+					if (scopeType.isCompatible(thisType)) {
+						symbolTable.lookUpSymbolForRead(n.getField(),
+								ReferenceType.VARIABLE);
+					}
+
 					arg.put(TYPE_KEY,
 							valueOf(field.getGenericType(), typeMapping));
 				}
@@ -363,12 +373,15 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			}
 
 			Class<?>[] typeArgs = null;
+			SymbolType[] symbolTypes = null;
 			if (n.getArgs() != null) {
 				typeArgs = new Class[n.getArgs().size()];
+				symbolTypes = new SymbolType[n.getArgs().size()];
 				int i = 0;
 				for (Expression e : n.getArgs()) {
 					e.accept(this, arg);
 					SymbolType argType = (SymbolType) arg.remove(TYPE_KEY);
+					symbolTypes[i] = argType;
 					typeArgs[i] = typeTable.loadClass(argType);
 					i++;
 				}
@@ -396,6 +409,13 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 			Method method = getMethod(scope, n.getName(), typeArgs,
 					n.getArgs(), arg, typeMapping);
+
+			SymbolType thisType = symbolTable.getType("this",
+					ReferenceType.VARIABLE);
+			if (scope.isCompatible(thisType)) {
+				symbolTable.lookUpSymbolForRead(n.getName(),
+						ReferenceType.METHOD, scope, symbolTypes);
+			}
 
 			Type[] types = method.getGenericParameterTypes();
 			int pos = 0;
@@ -803,9 +823,9 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(NameExpr n, A arg) {
-		
-		SymbolType type = symbolTable.lookUpSymbolForRead(n.getName(),
-				null).getType();
+
+		SymbolType type = symbolTable.lookUpSymbolForRead(n.getName(), null)
+				.getType();
 
 		if (type == null) {
 			try {
