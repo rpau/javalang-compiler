@@ -308,6 +308,10 @@ public class SymbolTable {
 	public void pushScope() {
 		pushScope(null);
 	}
+	
+	public void addActionsToScope(List<SymbolAction> actions){
+		indexStructure.peek().addActions(actions);
+	}
 
 	public void pushScope(List<SymbolAction> actions) {
 		Scope newScope = new Scope(actions);

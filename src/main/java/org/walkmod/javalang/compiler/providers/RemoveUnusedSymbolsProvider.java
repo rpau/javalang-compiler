@@ -21,6 +21,7 @@ import org.walkmod.javalang.ast.body.MultiTypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.BlockStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
@@ -183,6 +184,16 @@ public class RemoveUnusedSymbolsProvider implements SymbolActionProvider {
 		actions = new LinkedList<SymbolAction>();
 		actions.add(unusedSymbols);
 		siblings.push(n.getVars());
+		return actions;
+	}
+
+	@Override
+	public List<SymbolAction> getActions(ObjectCreationExpr n) {
+		RemoveUnusedSymbolsAction unusedSymbols = new RemoveUnusedSymbolsAction(
+				siblings.peek());
+		actions = new LinkedList<SymbolAction>();
+		actions.add(unusedSymbols);
+		siblings.push(n.getAnonymousClassBody());
 		return actions;
 	}
 

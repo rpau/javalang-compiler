@@ -174,18 +174,27 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 				.getExpression();
 		List<VariableDeclarator> vds = vd.getVars();
 		if (vds.size() == 1) {
-			remove(original);
+			Expression init = vds.get(0).getInit();
+			if (isReadOnlyExpression(init)) {
+				remove(original);
+			}
 		} else {
 			Iterator<VariableDeclarator> it = vds.iterator();
 			boolean finish = false;
 			while (it.hasNext() && !finish) {
 				VariableDeclarator current = it.next();
 				if (current.getId().getName().equals(symbol.getName())) {
-					finish = true;
-					it.remove();
+					if (isReadOnlyExpression(current.getInit())) {
+						finish = true;
+						it.remove();
+					}
 				}
 			}
 		}
+	}
+
+	private boolean isReadOnlyExpression(Expression init) {
+		return (init == null || init instanceof LiteralExpr || init instanceof NameExpr);
 	}
 
 	public void removeField(Symbol symbol, SymbolTable table) {
@@ -199,8 +208,7 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 					VariableDeclarator vd = it.next();
 					if (vd.getId().getName().equals(symbol.getName())) {
 						Expression init = vd.getInit();
-						if (init == null || init instanceof LiteralExpr
-								|| init instanceof NameExpr) {
+						if (isReadOnlyExpression(init)) {
 							if (vds.size() == 1) {
 								remove(fd);
 							} else {

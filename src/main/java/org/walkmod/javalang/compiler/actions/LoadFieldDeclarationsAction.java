@@ -7,6 +7,7 @@ import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
@@ -34,36 +35,43 @@ public class LoadFieldDeclarationsAction implements SymbolAction {
 			throws Exception {
 		if (event.equals(SymbolEvent.PUSH)) {
 			Node node = symbol.getLocation();
+
+			List<BodyDeclaration> members = null;
+
 			if (node instanceof TypeDeclaration) {
 				TypeDeclaration n = (TypeDeclaration) node;
+				members = n.getMembers();
+			} else if (node instanceof ObjectCreationExpr) {
+				members = ((ObjectCreationExpr) node).getAnonymousClassBody();
+			}
 
-				if (n.getMembers() != null) {
+			if (members != null) {
 
-					for (BodyDeclaration member : n.getMembers()) {
-						if (member instanceof FieldDeclaration) {
+				for (BodyDeclaration member : members) {
+					if (member instanceof FieldDeclaration) {
 
-							FieldDeclaration fd = (FieldDeclaration) member;
-							Type type = fd.getType();
-							List<SymbolAction> actions = null;
-							if (actionProvider != null) {
-								actions = actionProvider.getActions(fd);
-							}
-							SymbolType resolvedType = typeTable.valueOf(type);
-							resolvedType.setClazz(typeTable
-									.loadClass(resolvedType));
-
-							for (VariableDeclarator var : fd.getVariables()) {
-								SymbolType symType = resolvedType.clone();
-								symType.setArrayCount(var.getId()
-										.getArrayCount());
-
-								table.pushSymbol(var.getId().getName(),ReferenceType.VARIABLE,
-										symType, fd, actions);
-							}
-
+						FieldDeclaration fd = (FieldDeclaration) member;
+						Type type = fd.getType();
+						List<SymbolAction> actions = null;
+						if (actionProvider != null) {
+							actions = actionProvider.getActions(fd);
 						}
+						SymbolType resolvedType = typeTable.valueOf(type);
+						resolvedType
+								.setClazz(typeTable.loadClass(resolvedType));
+
+						for (VariableDeclarator var : fd.getVariables()) {
+							SymbolType symType = resolvedType.clone();
+							symType.setArrayCount(var.getId().getArrayCount());
+
+							table.pushSymbol(var.getId().getName(),
+									ReferenceType.VARIABLE, symType, fd,
+									actions);
+						}
+
 					}
 				}
+
 			}
 		}
 	}

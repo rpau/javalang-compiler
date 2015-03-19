@@ -8,6 +8,7 @@ import org.walkmod.javalang.ast.body.ConstructorDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
@@ -80,24 +81,29 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 			throws Exception {
 		if (event.equals(SymbolEvent.PUSH)) {
 			Node node = symbol.getLocation();
+			List<BodyDeclaration> members = null;
+
 			if (node instanceof TypeDeclaration) {
 				TypeDeclaration n = (TypeDeclaration) node;
+				members = n.getMembers();
+			} else if (node instanceof ObjectCreationExpr) {
+				members = ((ObjectCreationExpr) node).getAnonymousClassBody();
+			}
 
-				if (n.getMembers() != null) {
+			if (members != null) {
 
-					for (BodyDeclaration member : n.getMembers()) {
-						if (member instanceof MethodDeclaration) {
-							MethodDeclaration md = (MethodDeclaration) member;
-							pushMethod(symbol, table, md);
+				for (BodyDeclaration member : members) {
+					if (member instanceof MethodDeclaration) {
+						MethodDeclaration md = (MethodDeclaration) member;
+						pushMethod(symbol, table, md);
 
-						} else if (member instanceof ConstructorDeclaration) {
-							ConstructorDeclaration cd = (ConstructorDeclaration) member;
-							pushConstructor(symbol, table, cd);
-						}
+					} else if (member instanceof ConstructorDeclaration) {
+						ConstructorDeclaration cd = (ConstructorDeclaration) member;
+						pushConstructor(symbol, table, cd);
 					}
 				}
-
 			}
+
 		}
 	}
 }

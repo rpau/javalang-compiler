@@ -17,6 +17,7 @@ import org.walkmod.javalang.ast.body.MultiTypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.BlockStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
@@ -67,4 +68,6 @@ public interface SymbolActionProvider {
 	public List<SymbolAction> getActions(BlockStmt n);
 
 	public List<SymbolAction> getActions(VariableDeclarationExpr n);
+
+	public List<SymbolAction> getActions(ObjectCreationExpr n);
 }

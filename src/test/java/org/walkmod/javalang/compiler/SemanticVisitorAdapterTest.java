@@ -14,6 +14,9 @@ import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
+import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
+import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
@@ -235,6 +238,41 @@ public class SemanticVisitorAdapterTest {
 		String code = "public enum Foo { A, B; private void bar(Foo o){} public void bar2(){ bar(Foo.B);}}";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
+	}
+
+	@Test
+	public void testMethodReferences() throws Exception {
+
+	}
+
+	@Test
+	public void testLambdaExpressions() throws Exception {
+
+	}
+
+	@Test
+	public void testReferencesToAnnotationMembers() throws Exception {
+		String code = "import java.lang.annotation.ElementType;\n"
+				+ "import java.lang.annotation.Retention;\n"
+				+ "import java.lang.annotation.RetentionPolicy;\n"
+				+ "import java.lang.annotation.Target;\n"
+				+ "@Retention(RetentionPolicy.RUNTIME)\n"
+				+ "@Target(ElementType.METHOD)\n"
+				+ "public @interface Foo { public boolean enabled() default true; }";
+		CompilationUnit cu = runRemoveUnusedMembers(code);
+		Assert.assertTrue(!cu.getImports().isEmpty());
+	}
+
+	@Test
+	public void testAnnonymousClass() throws Exception {
+		String code = "public class Foo{ public void bar() { Foo o = new Foo() { private String name; public void bar() { System.out.println(\"hello\"); }};}}";
+		CompilationUnit cu = runRemoveUnusedMembers(code);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		VariableDeclarationExpr expr = (VariableDeclarationExpr)stmt.getExpression();
+		ObjectCreationExpr oce = (ObjectCreationExpr) expr.getVars().get(0).getInit();
+		//The name attribute should be removed
+		Assert.assertEquals(1, oce.getAnonymousClassBody().size());
 	}
 
 }

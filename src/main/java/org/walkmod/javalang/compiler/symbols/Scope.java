@@ -163,5 +163,14 @@ public class Scope {
 	public List<SymbolAction> getActions() {
 		return actions;
 	}
+	
+	public void addActions(List<SymbolAction> actions){
+		if(this.actions == null){
+			this.actions = actions;
+		}
+		else{
+			this.actions.addAll(actions);
+		}
+	}
 
 }

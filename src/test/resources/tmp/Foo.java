@@ -1,1 +1,1 @@
-public enum Foo { A, B; private void bar(Foo o){} public void bar2(){ bar(Foo.B);}}
+public class Foo{ public void bar() { Foo o = new Foo() { private String name; public void bar() { System.out.println("hello"); }};}}

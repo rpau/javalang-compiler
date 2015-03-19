@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.BinaryExpr;
@@ -44,13 +45,18 @@ import org.walkmod.javalang.ast.expr.FieldAccessExpr;
 import org.walkmod.javalang.ast.expr.InstanceOfExpr;
 import org.walkmod.javalang.ast.expr.IntegerLiteralExpr;
 import org.walkmod.javalang.ast.expr.IntegerLiteralMinValueExpr;
+import org.walkmod.javalang.ast.expr.LambdaExpr;
 import org.walkmod.javalang.ast.expr.LongLiteralExpr;
 import org.walkmod.javalang.ast.expr.LongLiteralMinValueExpr;
+import org.walkmod.javalang.ast.expr.MarkerAnnotationExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
+import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
+import org.walkmod.javalang.ast.expr.NormalAnnotationExpr;
 import org.walkmod.javalang.ast.expr.NullLiteralExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.QualifiedNameExpr;
+import org.walkmod.javalang.ast.expr.SingleMemberAnnotationExpr;
 import org.walkmod.javalang.ast.expr.StringLiteralExpr;
 import org.walkmod.javalang.ast.expr.SuperExpr;
 import org.walkmod.javalang.ast.expr.ThisExpr;
@@ -71,11 +77,19 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	private SymbolTable symbolTable;
 
 	private static Logger LOG = Logger.getLogger(ExpressionTypeAnalyzer.class);
+	
+	private VoidVisitorAdapter<A> semanticVisitor;
 
 	public ExpressionTypeAnalyzer(TypeTable<?> typeTable,
 			SymbolTable symbolTable) {
+		this(typeTable, symbolTable, null);
+	}
+	
+	public ExpressionTypeAnalyzer(TypeTable<?> typeTable,
+			SymbolTable symbolTable, VoidVisitorAdapter<A> semanticVisitor) {
 		this.typeTable = typeTable;
 		this.symbolTable = symbolTable;
+		this.semanticVisitor = semanticVisitor;
 	}
 
 	@Override
@@ -391,6 +405,14 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 			Class<?> clazz = typeTable.loadClass(scope);
 
+
+			SymbolType thisType = symbolTable.getType("this",
+					ReferenceType.VARIABLE);
+			if (scope.isCompatible(thisType)) {
+				symbolTable.lookUpSymbolForRead(n.getName(),
+						ReferenceType.METHOD, scope, symbolTypes);
+			}
+			
 			TypeVariable<?>[] typeParams = clazz.getTypeParameters();
 
 			if (typeParams != null) {
@@ -410,12 +432,6 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			Method method = getMethod(scope, n.getName(), typeArgs,
 					n.getArgs(), arg, typeMapping);
 
-			SymbolType thisType = symbolTable.getType("this",
-					ReferenceType.VARIABLE);
-			if (scope.isCompatible(thisType)) {
-				symbolTable.lookUpSymbolForRead(n.getName(),
-						ReferenceType.METHOD, scope, symbolTypes);
-			}
 
 			Type[] types = method.getGenericParameterTypes();
 			int pos = 0;
@@ -429,7 +445,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					}
 					Type aux = ((ParameterizedType) type).getRawType();
 					if (aux instanceof Class) {
-						if (((Class) aux).getName().equals("java.lang.Class")) {
+						if (((Class<?>) aux).getName().equals("java.lang.Class")) {
 							Type[] targs = ((ParameterizedType) type)
 									.getActualTypeArguments();
 							for (Type targ : targs) {
@@ -850,7 +866,12 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ObjectCreationExpr n, A arg) {
+		
+		if(semanticVisitor != null){
+			n.accept(semanticVisitor, arg);
+		}
 		arg.put(TYPE_KEY, typeTable.valueOf(n.getType()));
+		
 	}
 
 	@Override
@@ -886,6 +907,77 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 		arg.put(TYPE_KEY,
 				symbolTable.lookUpSymbolForRead("this", ReferenceType.VARIABLE)
 						.getType());
+	}
+
+	@Override
+	public void visit(MethodReferenceExpr n, A arg) {
+
+		SymbolType scopeType = null;
+
+		if (n.getScope() == null) {
+			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
+		} else {
+			n.getScope().accept(this, arg);
+			scopeType = (SymbolType) arg
+					.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+			try {
+				Class<?> clazz = typeTable.loadClass(scopeType);
+				scopeType.setClazz(clazz);
+			} catch (ClassNotFoundException e) {
+				new NoSuchExpressionTypeException("Error resolving "
+						+ scopeType + " as scope type of " + n.toString(), e);
+			}
+		}
+		try {
+			Method m = scopeType.getClazz().getMethod(n.getIdentifier());
+			SymbolType st = new SymbolType(m.getReturnType());
+			arg.put(TYPE_KEY, st);
+
+		} catch (Exception e) {
+			throw new NoSuchExpressionTypeException("Error resolving "
+					+ n.toString(), e);
+		}
+		List<TypeParameter> args = n.getTypeParameters();
+
+		if (args != null) {
+			Iterator<TypeParameter> it = args.iterator();
+			while (it.hasNext()) {
+				it.next().accept(this, arg);
+			}
+		}
+
+	}
+
+	public void visit(NormalAnnotationExpr n, A arg) {
+		if(semanticVisitor != null){
+			n.accept(semanticVisitor, arg);
+		}
+	}
+
+	public void visit(MarkerAnnotationExpr n, A arg) {
+		if(semanticVisitor != null){
+			n.accept(semanticVisitor, arg);
+		}
+	}
+
+	public void visit(SingleMemberAnnotationExpr n, A arg) {
+		if(semanticVisitor != null){
+			n.accept(semanticVisitor, arg);
+		}
+	}
+
+	@Override
+	public void visit(TypeParameter n, A arg) {
+		if(semanticVisitor != null){
+			n.accept(semanticVisitor, arg);
+		}
+		super.visit(n, arg);
+	}
+
+	public void visit(LambdaExpr n, A arg) {
+		// TODO
+
+		super.visit(n, arg);
 	}
 
 }
