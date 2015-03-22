@@ -450,7 +450,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						}
 					}
 				} else if (type instanceof TypeVariable) {
-					String name = ((TypeVariable) type).getName();
+					String name = ((TypeVariable<?>) type).getName();
 					SymbolType st = typeMapping.get(name);
 					if (st == null) {
 						typeMapping.put(name, new SymbolType(typeArgs[pos]));

@@ -4,6 +4,8 @@ import java.beans.Expression;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.lang.model.SourceVersion;
+
 import junit.framework.Assert;
 
 import org.junit.Test;
@@ -358,9 +360,9 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
 		Assert.assertEquals("A", type.getName());
-		
-		expr = (MethodCallExpr) ASTManager.parse(
-				Expression.class, "a.set(a).close()");
+
+		expr = (MethodCallExpr) ASTManager.parse(Expression.class,
+				"a.set(a).close()");
 		ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
 		type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
@@ -422,9 +424,9 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 
 	@Test
 	public void testTargetInference() throws Exception {
-		compile("import java.util.Collections; "+
-				"import java.util.List; "+
-				"public class A { public static void processStringList(List<String> stringList) {}}");
+		compile("import java.util.Collections; "
+				+ "import java.util.List; "
+				+ "public class A { public static void processStringList(List<String> stringList) {}}");
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
@@ -438,6 +440,13 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
 		Assert.assertEquals("void", type.getName());
+	}
+
+	@Test
+	public void testLambdaExpressions() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			
+		}
 	}
 
 }
