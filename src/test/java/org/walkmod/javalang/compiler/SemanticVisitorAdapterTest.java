@@ -22,10 +22,7 @@ import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.visitors.SemanticVisitorAdapter;
 
-public class SemanticVisitorAdapterTest {
-
-	private static String SOURCES_DIR = "./src/test/resources/tmp/";
-	private static String CLASSES_DIR = "./src/test/resources/tmp/classes";
+public class SemanticVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testNoActions() throws Exception {
@@ -62,30 +59,14 @@ public class SemanticVisitorAdapterTest {
 		Assert.assertTrue(counter.getReadsCounter() > 0);
 	}
 
-	@Before
-	public void prepare() throws Exception {
-		File compilerDir = new File(CLASSES_DIR);
-		compilerDir.mkdir();
-	}
-
-	@After
-	public void clean() throws Exception {
-		File compilerDir = new File(CLASSES_DIR);
-		compilerDir.delete();
-	}
-
 	private CompilationUnit runRemoveUnusedMembers(String code)
 			throws Exception {
-		Compiler compiler = new Compiler();
 
-		compiler.compile(new File(CLASSES_DIR), new File(SOURCES_DIR), code);
-		CompilationUnit cu = ASTManager.parse(code);
+		CompilationUnit cu = compile(code);
 		SemanticVisitorAdapter<HashMap<String, Object>> visitor = new SemanticVisitorAdapter<HashMap<String, Object>>();
 		RemoveUnusedSymbolsProvider provider = new RemoveUnusedSymbolsProvider();
-		File aux = new File(CLASSES_DIR);
 
-		ClassLoader cl = new URLClassLoader(new URL[] { aux.toURI().toURL() });
-		visitor.setClassLoader(cl);
+		visitor.setClassLoader(getClassLoader());
 		visitor.setActionProvider(provider);
 		visitor.visit(cu, new HashMap<String, Object>());
 		return cu;
@@ -267,11 +248,14 @@ public class SemanticVisitorAdapterTest {
 	public void testAnnonymousClass() throws Exception {
 		String code = "public class Foo{ public void bar() { Foo o = new Foo() { private String name; public void bar() { System.out.println(\"hello\"); }};}}";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		VariableDeclarationExpr expr = (VariableDeclarationExpr)stmt.getExpression();
-		ObjectCreationExpr oce = (ObjectCreationExpr) expr.getVars().get(0).getInit();
-		//The name attribute should be removed
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt
+				.getExpression();
+		ObjectCreationExpr oce = (ObjectCreationExpr) expr.getVars().get(0)
+				.getInit();
+		// The name attribute should be removed
 		Assert.assertEquals(1, oce.getAnonymousClassBody().size());
 	}
 

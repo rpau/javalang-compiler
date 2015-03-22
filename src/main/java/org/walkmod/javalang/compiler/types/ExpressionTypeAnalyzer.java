@@ -251,7 +251,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					}
 					SymbolType thisType = symbolTable.getType("this",
 							ReferenceType.VARIABLE);
-					if (scopeType.isCompatible(thisType)) {
+					if (thisType != null && scopeType.isCompatible(thisType)) {
 						symbolTable.lookUpSymbolForRead(n.getField(),
 								ReferenceType.VARIABLE);
 					}
@@ -408,7 +408,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 			SymbolType thisType = symbolTable.getType("this",
 					ReferenceType.VARIABLE);
-			if (scope.isCompatible(thisType)) {
+			if (thisType != null && scope.isCompatible(thisType)) {
 				symbolTable.lookUpSymbolForRead(n.getName(),
 						ReferenceType.METHOD, scope, symbolTypes);
 			}
