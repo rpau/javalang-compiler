@@ -15,7 +15,7 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
-import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -26,6 +26,8 @@ import org.walkmod.javalang.compiler.types.Types;
 public class SymbolType {
 
 	private String name;
+	
+	private List<SymbolType> bounds = null;
 
 	private List<SymbolType> parameterizedTypes;
 
@@ -36,6 +38,14 @@ public class SymbolType {
 	private Class<?> clazz;
 
 	public SymbolType() {
+	}
+	
+	public SymbolType(List<SymbolType> bounds){
+		this.bounds = bounds;
+		if(!bounds.isEmpty()){
+			name = bounds.get(0).getName();
+			clazz = bounds.get(0).getClazz();
+		}
 	}
 
 	public SymbolType(Class<?> clazz) {
@@ -52,6 +62,14 @@ public class SymbolType {
 		}
 		return 0;
 	}
+	
+	public boolean hasBounds(){
+		return bounds != null;
+	}
+	
+	public List<SymbolType> getBounds(){
+		return bounds;
+	}
 
 	private List<SymbolType> resolveGenerics(Class<?> clazz) {
 		List<SymbolType> result = null;
@@ -59,13 +77,13 @@ public class SymbolType {
 		if (typeParams.length > 0) {
 			result = new LinkedList<SymbolType>();
 			for (TypeVariable<?> td : typeParams) {
-				GenericDeclaration genDec = td.getGenericDeclaration();
-				if (genDec instanceof Class) {
-					SymbolType st = new SymbolType((Class<?>) genDec);
+				Type[] bounds= td.getBounds();
+				if(bounds.length == 1 && bounds[0] instanceof Class){
+					SymbolType st = new SymbolType((Class<?>) bounds[0]);
 					result.add(st);
-				} else {
-					throw new UnsupportedOperationException(
-							"Invalid type resoltion for " + clazz);
+				}
+				else{
+					throw new RuntimeException("Multiple bounds not supported");
 				}
 			}
 		}
@@ -123,7 +141,14 @@ public class SymbolType {
 	}
 
 	public boolean isCompatible(SymbolType other) {
-
+		if(bounds != null){
+			Iterator<SymbolType> it = bounds.iterator();
+			boolean isCompatible = true;
+			while(it.hasNext() && isCompatible){
+				isCompatible = it.next().isCompatible(other);
+			}
+			return isCompatible;
+		}
 		return Types.isCompatible(other.clazz, clazz);
 	}
 	

@@ -60,6 +60,7 @@ import org.walkmod.javalang.ast.expr.SingleMemberAnnotationExpr;
 import org.walkmod.javalang.ast.expr.StringLiteralExpr;
 import org.walkmod.javalang.ast.expr.SuperExpr;
 import org.walkmod.javalang.ast.expr.ThisExpr;
+import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
@@ -77,14 +78,14 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	private SymbolTable symbolTable;
 
 	private static Logger LOG = Logger.getLogger(ExpressionTypeAnalyzer.class);
-	
+
 	private VoidVisitorAdapter<A> semanticVisitor;
 
 	public ExpressionTypeAnalyzer(TypeTable<?> typeTable,
 			SymbolTable symbolTable) {
 		this(typeTable, symbolTable, null);
 	}
-	
+
 	public ExpressionTypeAnalyzer(TypeTable<?> typeTable,
 			SymbolTable symbolTable, VoidVisitorAdapter<A> semanticVisitor) {
 		this.typeTable = typeTable;
@@ -401,38 +402,18 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				}
 			}
 
-			Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
-
-			Class<?> clazz = typeTable.loadClass(scope);
-
-
 			SymbolType thisType = symbolTable.getType("this",
 					ReferenceType.VARIABLE);
 			if (thisType != null && scope.isCompatible(thisType)) {
 				symbolTable.lookUpSymbolForRead(n.getName(),
 						ReferenceType.METHOD, scope, symbolTypes);
 			}
-			
-			TypeVariable<?>[] typeParams = clazz.getTypeParameters();
+			Method method = null;
+			Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+			// it should be initialized after resolving the method
 
-			if (typeParams != null) {
-
-				for (int i = 0; i < typeParams.length; i++) {
-					if (scope != null && scope.getParameterizedTypes() != null) {
-						typeMapping.put(typeParams[i].getName(), scope
-								.getParameterizedTypes().get(i));
-					} else {
-						typeMapping.put(typeParams[i].getName(),
-								new SymbolType("java.lang.Object"));
-					}
-				}
-
-			}
-
-			Method method = getMethod(scope, n.getName(), typeArgs,
-					n.getArgs(), arg, typeMapping);
-
-
+			method = getMethod(scope, n.getName(), typeArgs, n.getArgs(), arg,
+					typeMapping);
 			Type[] types = method.getGenericParameterTypes();
 			int pos = 0;
 			boolean hasGenerics = false;
@@ -445,7 +426,8 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					}
 					Type aux = ((ParameterizedType) type).getRawType();
 					if (aux instanceof Class) {
-						if (((Class<?>) aux).getName().equals("java.lang.Class")) {
+						if (((Class<?>) aux).getName()
+								.equals("java.lang.Class")) {
 							Type[] targs = ((ParameterizedType) type)
 									.getActualTypeArguments();
 							for (Type targ : targs) {
@@ -466,6 +448,18 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 								}
 							}
 						}
+					}
+				} else if (type instanceof TypeVariable) {
+					SymbolType st = typeMapping.get(type.getTypeName());
+					if (st == null) {
+						typeMapping.put(type.getTypeName(), new SymbolType(
+								typeArgs[pos]));
+					} else {
+						Class<?> common = ClassInspector
+								.getTheNearestSuperClass(st.getClazz(),
+										typeArgs[pos]);
+						typeMapping.put(type.getTypeName(), new SymbolType(
+								common));
 					}
 				}
 				pos++;
@@ -567,9 +561,8 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					symbols.putAll(typeMapping);
 					SymbolType returnType = getMethodType(method, symbols);
 
-					if (isCompatible(method, methodName, typeArgs,
-							typeTable.loadClass(returnType), requiredMethod,
-							requiredField, arg)) {
+					if (isCompatible(method, methodName, typeArgs, returnType,
+							requiredMethod, requiredField, arg)) {
 						arg.put(TYPE_KEY, returnType);
 						typeMapping.putAll(typeMapping);
 						result = method;
@@ -661,11 +654,52 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	// into the scope
 	) throws ClassNotFoundException, NoSuchMethodException, SecurityException,
 			InvalidTypeException {
+		List<Class<?>> candidates = new LinkedList<Class<?>>();
+		if (scope.hasBounds()) {
+			for (SymbolType bound : scope.getBounds()) {
+				candidates.add(bound.getClazz());
+			}
+		} else {
+			Class<?> clazz = scope.getClazz();
+			if (clazz == null) {
+				clazz = typeTable.loadClass(scope);
+			}
+			candidates.add(clazz);
+		}
+		Method result = null;
+		Iterator<Class<?>> it = candidates.iterator();
+		HashMap<String, SymbolType> mapping = null;
+		while (it.hasNext() && result == null) {
+			Class<?> clazz = it.next();
+			TypeVariable<?>[] typeParams = clazz.getTypeParameters();
+			mapping = new HashMap<String, SymbolType>();
+			if (typeParams != null) {
 
-		Class<?> clazz = typeTable.loadClass(scope);
+				for (int i = 0; i < typeParams.length; i++) {
+					if (scope != null && scope.getParameterizedTypes() != null) {
+						mapping.put(typeParams[i].getName(), scope
+								.getParameterizedTypes().get(i));
+					} else {
+						mapping.put(typeParams[i].getName(), new SymbolType(
+								"java.lang.Object"));
+					}
+				}
+			}
 
-		return getMethod(clazz, methodName, typeArgs, argumentValues, arg,
-				typeMapping, true);
+			try {
+
+				result = getMethod(clazz, methodName, typeArgs, argumentValues,
+						arg, mapping, true);
+			} catch (NoSuchMethodException e1) {
+				if (!it.hasNext()) {
+					throw e1;
+				}
+			}
+		}
+		if (result != null) {
+			typeMapping.putAll(mapping);
+		}
+		return result;
 
 	}
 
@@ -673,14 +707,33 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			Map<String, SymbolType> typeMapping) throws ClassNotFoundException,
 			InvalidTypeException {
 
-		// mirem el tipus de resultat
+		TypeVariable<Method>[] tvs = method.getTypeParameters();
 		java.lang.reflect.Type type = method.getGenericReturnType();
+		if (tvs.length > 0) {
+			for (TypeVariable<Method> tv : tvs) {
+				Type[] bounds = tv.getBounds();
+				List<SymbolType> boundsList = new LinkedList<SymbolType>();
+				for (int i = 0; i < bounds.length; i++) {
+					boundsList.add(new SymbolType((Class<?>) bounds[i]));
+				}
+				SymbolType st = typeMapping.get(tv.getName());
+				if (st == null) {
+					if (boundsList.size() == 1) {
+						typeMapping.put(tv.getName(), boundsList.get(0));
+
+					} else {
+						typeMapping.put(tv.getName(),
+								new SymbolType(boundsList));
+					}
+				}
+			}
+		}
 
 		return valueOf(type, typeMapping);
 	}
 
 	private boolean isCompatible(Method method, String name,
-			Class<?>[] typeArgs, Class<?> returnType,
+			Class<?>[] typeArgs, SymbolType returnType,
 			MethodCallExpr requiredMethod, FieldAccessExpr requiredField, A arg)
 			throws ClassNotFoundException {
 
@@ -751,80 +804,103 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 				if (isCompatible) {
 
+					List<Class<?>> compatibleClasses = new LinkedList<Class<?>>();
+					if (returnType.hasBounds()) {
+						List<SymbolType> bounds = returnType.getBounds();
+						for (SymbolType bound : bounds) {
+							compatibleClasses.add(bound.getClass());
+						}
+
+					} else {
+						Class<?> clazz = returnType.getClazz();
+						if (clazz == null) {
+							clazz = typeTable.loadClass(returnType);
+						}
+						compatibleClasses.add(clazz);
+					}
 					if (requiredMethod != null) {
 
 						List<Method> methods = new LinkedList<Method>();
 
-						methods.addAll(Arrays.asList(returnType
-								.getDeclaredMethods()));
-
-						methods.addAll(Arrays.asList(returnType.getMethods()));
-
-						Iterator<Method> it = methods.iterator();
+						Iterator<Class<?>> itC = compatibleClasses.iterator();
 
 						boolean returnTypeCompatible = false;
+						while (itC.hasNext() && !returnTypeCompatible) {
+							Class<?> candidate = itC.next();
+							methods.addAll(Arrays.asList(candidate
+									.getDeclaredMethods()));
 
-						while (it.hasNext() && !returnTypeCompatible) {
+							methods.addAll(Arrays.asList(candidate.getMethods()));
+							Iterator<Method> it = methods.iterator();
+							while (it.hasNext() && !returnTypeCompatible) {
 
-							Method currentMethod = it.next();
+								Method currentMethod = it.next();
 
-							// checking method name
-							if (currentMethod.getName().equals(
-									requiredMethod.getName())) {
-								List<Expression> args = requiredMethod
-										.getArgs();
-								Class<?>[] parameterTypes = currentMethod
-										.getParameterTypes();
-								if (args != null) {
-									boolean compatibleArgs = true;
-									int k = 0;
-									for (Expression argExpr : args) {
-										argExpr.accept(this, arg);
-										SymbolType typeArg = (SymbolType) arg
-												.remove(TYPE_KEY);
-										if (!Types.isCompatible(
-												typeTable.loadClass(typeArg),
-												parameterTypes[k])) {
-											compatibleArgs = false;
+								// checking method name
+								if (currentMethod.getName().equals(
+										requiredMethod.getName())) {
+									List<Expression> args = requiredMethod
+											.getArgs();
+									Class<?>[] parameterTypes = currentMethod
+											.getParameterTypes();
+									if (args != null) {
+										boolean compatibleArgs = true;
+										int k = 0;
+										for (Expression argExpr : args) {
+											argExpr.accept(this, arg);
+											SymbolType typeArg = (SymbolType) arg
+													.remove(TYPE_KEY);
+											if (!Types.isCompatible(typeTable
+													.loadClass(typeArg),
+													parameterTypes[k])) {
+												compatibleArgs = false;
+											}
+											k++;
 										}
-										k++;
+										returnTypeCompatible = compatibleArgs;
+									} else {
+										returnTypeCompatible = true;
 									}
-									returnTypeCompatible = compatibleArgs;
-								} else {
-									returnTypeCompatible = true;
-								}
 
+								}
 							}
 						}
 						isCompatible = returnTypeCompatible;
 					} else if (requiredField != null) {
-						try {
 
-							if (returnType.isArray()
+						Iterator<Class<?>> itC = compatibleClasses.iterator();
+						boolean fieldCompatible = false;
+
+						while (itC.hasNext() && !fieldCompatible) {
+							Class<?> candidate = itC.next();
+							if (candidate.isArray()
 									&& requiredField.getField()
 											.equals("length")) {
 								return true;
 							}
-							// the return type has the required field as public?
-							returnType.getField(requiredField.getField());
-							// the field has been found. Then, the method is
-							// compatible
-							return true;
-
-						} catch (NoSuchFieldException e) {
-							// searching in all fields
-							Field[] fields = returnType.getDeclaredFields();
-							String fieldName = requiredField.getField();
-							isCompatible = false;
-							i = 0;
-							for (i = 0; i < fields.length && !isCompatible; i++) {
-								isCompatible = (fields[i].getName()
-										.equals(fieldName));
+							try {
+								// the return type has the required field as
+								// public?
+								candidate.getField(requiredField.getField());
+								fieldCompatible = true;
+							} catch (NoSuchFieldException e) {
+								// searching in all fields
+								Field[] fields = candidate.getDeclaredFields();
+								String fieldName = requiredField.getField();
+								fieldCompatible = false;
+								i = 0;
+								for (i = 0; i < fields.length
+										&& !fieldCompatible; i++) {
+									fieldCompatible = (fields[i].getName()
+											.equals(fieldName));
+								}
 							}
 						}
-
+						isCompatible = fieldCompatible;
+						// the field has been found. Then, the method is
+						// compatible
+						return true;
 					}
-
 				}
 
 				if (isCompatible) {
@@ -840,8 +916,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	@Override
 	public void visit(NameExpr n, A arg) {
 
-		SymbolType type = symbolTable.lookUpSymbolForRead(n.getName(), null)
-				.getType();
+		SymbolType type = symbolTable.getType(n.getName(), null);
 
 		if (type == null) {
 			try {
@@ -855,6 +930,9 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				throw new NoSuchExpressionTypeException(e);
 			}
 		}
+		else{
+			symbolTable.lookUpSymbolForRead(n.getName(), null);
+		}
 		arg.put(TYPE_KEY, type);
 
 	}
@@ -866,12 +944,12 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ObjectCreationExpr n, A arg) {
-		
-		if(semanticVisitor != null){
+
+		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
 		arg.put(TYPE_KEY, typeTable.valueOf(n.getType()));
-		
+
 	}
 
 	@Override
@@ -949,26 +1027,26 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	}
 
 	public void visit(NormalAnnotationExpr n, A arg) {
-		if(semanticVisitor != null){
+		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
 	}
 
 	public void visit(MarkerAnnotationExpr n, A arg) {
-		if(semanticVisitor != null){
+		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
 	}
 
 	public void visit(SingleMemberAnnotationExpr n, A arg) {
-		if(semanticVisitor != null){
+		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
 	}
 
 	@Override
 	public void visit(TypeParameter n, A arg) {
-		if(semanticVisitor != null){
+		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
 		super.visit(n, arg);

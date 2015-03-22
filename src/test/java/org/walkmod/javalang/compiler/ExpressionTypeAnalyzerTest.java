@@ -14,6 +14,7 @@ import org.walkmod.javalang.ast.expr.BinaryExpr;
 import org.walkmod.javalang.ast.expr.FieldAccessExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.UnaryExpr;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -44,7 +45,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		expressionAnalyzer.visit(n, ctx);
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
-		Assert.assertEquals(type.getName(), "int");
+		Assert.assertEquals("int", type.getName());
 	}
 
 	@Test
@@ -61,7 +62,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
-		Assert.assertEquals(type.getName(), "int");
+		Assert.assertEquals("int", type.getName());
 	}
 
 	@Test
@@ -80,7 +81,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
-		Assert.assertEquals(type.getName(), "int");
+		Assert.assertEquals("int", type.getName());
 	}
 
 	private SymbolType eval(Class<?> op1, Class<?> op2, String op)
@@ -168,7 +169,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
-		Assert.assertEquals(type.getName(), "char");
+		Assert.assertEquals("char", type.getName());
 	}
 
 	@Test
@@ -194,43 +195,249 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
 		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
-		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(Expression.class, "a.name");
+		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(
+				Expression.class, "a.name");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
-	
+
 	@Test
-	public void testEnumAccess() throws Exception{
+	public void testEnumAccess() throws Exception {
 		compile("public enum A { OPEN, CLOSE }");
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
-		symTable.pushSymbol("A", ReferenceType.TYPE, new SymbolType(getClassLoader().loadClass("A")), null);
-		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(Expression.class, "A.OPEN");
+		symTable.pushSymbol("A", ReferenceType.TYPE, new SymbolType(
+				getClassLoader().loadClass("A")), null);
+		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(
+				Expression.class, "A.OPEN");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
 		Assert.assertEquals("A", type.getName());
 	}
-	
+
 	@Test
-	public void testMethodWithoutArgsAccess() throws Exception{
+	public void testMethodWithoutArgsAccess() throws Exception {
 		compile("public class A { }");
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
 		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
-		MethodCallExpr expr = (MethodCallExpr)ASTManager.parse(Expression.class, "a.toString()");
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "a.toString()");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
-	
-	
+
+	@Test
+	public void testMethodInference() throws Exception {
+		compile("public class A { public String foo(String bar) {return bar;} }");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "a.foo(\"hello\")");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.lang.String", type.getName());
+	}
+
+	@Test
+	public void testMethodInferenceWithSubClassesAsArgument() throws Exception {
+		compile("public class A { public String foo(Object bar) {return bar.toString();} }");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "a.foo(\"hello\")");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.lang.String", type.getName());
+	}
+
+	@Test
+	public void testMethodWithDynamicArgs() throws Exception {
+		compile("public class A { public String foo(int bar, String... others) {return bar+\"hello+\";} }");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class,
+				"a.foo(1,\"hello\",\"hello\",\"hello\",\"hello\")");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.lang.String", type.getName());
+	}
+
+	@Test
+	public void testDiamond() throws Exception {
+		compile("import java.util.List; import java.util.LinkedList; public class A{ List<Integer> bar = new LinkedList<>(); }");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(
+				Expression.class, "a.bar");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.util.List", type.getName());
+		Assert.assertNotNull(type.getParameterizedTypes());
+		Assert.assertEquals("java.lang.Integer", type.getParameterizedTypes()
+				.get(0).getName());
+	}
+
+	@Test
+	public void testRawTypes() throws Exception {
+		compile("import java.util.List; import java.util.LinkedList; public class A { List bar = new LinkedList(); }");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(
+				Expression.class, "a.bar");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.util.List", type.getName());
+		Assert.assertNull(type.getParameterizedTypes());
+
+	}
+
+	@Test
+	public void testBoundedTypeParameters() throws Exception {
+		compile("public class A<T> { private T t;  public T get(){ return t; }}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "a.get()");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.lang.Object", type.getName());
+	}
+
+	@Test
+	public void testMultipleBoundParameters() throws Exception {
+		compile("import java.io.Serializable;"
+				+ "import java.io.Closeable;"
+				+ "import java.io.IOException;"
+				+ "public class A implements Closeable, Serializable {"
+				+ " private Object t;  "
+				+ " public <T extends Serializable & Closeable> T set(T a){ return a; }"
+				+ " @Override public void close() throws IOException{}}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "a.set(a)");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("A", type.getName());
+		
+		expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "a.set(a).close()");
+		ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+	}
+
+	@Test
+	public void testGenericMethods() throws Exception {
+		compile("import java.util.ArrayList; import java.io.Serializable;"
+				+ " public class A { public static <T> T pick(T a1, T a2) { return a2; }}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
+
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "A.pick(\"d\", new ArrayList<String>())");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.io.Serializable", type.getName());
+	}
+
+	@Test
+	public void testGenericMethodsExplicitTypeInvocation() throws Exception {
+		compile("import java.util.ArrayList; import java.io.Serializable;"
+				+ " public class A { public static <T> T pick(T a1, T a2) { return a2; }}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
+
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class,
+				"A.<Serializable>pick(\"d\", new ArrayList<String>())");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.io.Serializable", type.getName());
+	}
+
+	@Test
+	public void testGenericsInConstructors() throws Exception {
+		compile("public class A<X> { <T extends A> A(T t) {}}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		ObjectCreationExpr expr = (ObjectCreationExpr) ASTManager.parse(
+				Expression.class, "new A(a)");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("A", type.getName());
+	}
+
+	@Test
+	public void testTargetInference() throws Exception {
+		compile("import java.util.Collections; "+
+				"import java.util.List; "+
+				"public class A { public static void processStringList(List<String> stringList) {}}");
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
+
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class,
+				"A.processStringList(Collections.emptyList());");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		Assert.assertNotNull(type);
+		Assert.assertEquals("void", type.getName());
+	}
 
 }
