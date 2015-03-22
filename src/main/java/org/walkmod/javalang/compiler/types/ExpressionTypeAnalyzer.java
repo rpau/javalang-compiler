@@ -450,16 +450,15 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						}
 					}
 				} else if (type instanceof TypeVariable) {
-					SymbolType st = typeMapping.get(type.getTypeName());
+					String name = ((TypeVariable) type).getName();
+					SymbolType st = typeMapping.get(name);
 					if (st == null) {
-						typeMapping.put(type.getTypeName(), new SymbolType(
-								typeArgs[pos]));
+						typeMapping.put(name, new SymbolType(typeArgs[pos]));
 					} else {
 						Class<?> common = ClassInspector
 								.getTheNearestSuperClass(st.getClazz(),
 										typeArgs[pos]);
-						typeMapping.put(type.getTypeName(), new SymbolType(
-								common));
+						typeMapping.put(name, new SymbolType(common));
 					}
 				}
 				pos++;
@@ -929,8 +928,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			} catch (ClassNotFoundException e) {
 				throw new NoSuchExpressionTypeException(e);
 			}
-		}
-		else{
+		} else {
 			symbolTable.lookUpSymbolForRead(n.getName(), null);
 		}
 		arg.put(TYPE_KEY, type);
