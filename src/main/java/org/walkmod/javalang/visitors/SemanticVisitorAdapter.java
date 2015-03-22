@@ -397,7 +397,9 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 			actions = actionProvider.getActions(n);
 		}
 		symbolTable.addActionsToScope(actions);
+		symbolTable.pushScope();
 		super.visit(n, arg);
+		symbolTable.popScope();
 	}
 
 	@Override
