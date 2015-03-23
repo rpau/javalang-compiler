@@ -1,15 +1,11 @@
 package org.walkmod.javalang.compiler;
 
 import java.io.File;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;

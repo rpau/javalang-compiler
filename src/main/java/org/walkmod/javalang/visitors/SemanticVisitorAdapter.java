@@ -67,7 +67,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	private ClassLoader classLoader;
 
-	private TypeTable<A> typeTable;
+	private TypeTable<Map<String, Object>> typeTable;
 
 	private ExpressionTypeAnalyzer<A> expressionTypeAnalyzer;
 
@@ -93,14 +93,6 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		this.classLoader = classLoader;
 	}
 
-	public TypeTable<A> getTypeTable() {
-		return typeTable;
-	}
-
-	public void setTypeTable(TypeTable<A> typeTable) {
-		this.typeTable = typeTable;
-	}
-
 	public void setSymbolActions(List<SymbolAction> actions) {
 		this.actions = actions;
 	}
@@ -116,7 +108,8 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		}
 		symbolTable = new SymbolTable();
 		symbolTable.setActions(actions);
-		typeTable = new TypeTable<A>();
+		typeTable = TypeTable.getInstance();
+		typeTable.clear();
 		typeTable.setClassLoader(classLoader);
 		typeTable.visit(unit, arg);
 		symbolTable.pushScope();
@@ -128,16 +121,12 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 			for (String type : langImports) {
 				SymbolType stype = new SymbolType();
 				stype.setName(type);
-				try {
-					Class<?> clazz = typeTable.loadClass(type);
-					stype.setClazz(clazz);
-					if (Modifier.isPublic(stype.getClazz().getModifiers())) {
-						symbolTable.pushSymbol(typeTable.getSimpleName(type),
-								ReferenceType.TYPE, stype, null, actions);
-					}
-				} catch (ClassNotFoundException e) {
-					throw new NoSuchExpressionTypeException(e);
+
+				if (Modifier.isPublic(stype.getClazz().getModifiers())) {
+					symbolTable.pushSymbol(typeTable.getSimpleName(type),
+							ReferenceType.TYPE, stype, null, actions);
 				}
+
 			}
 		}
 		super.visit(unit, arg);
@@ -239,40 +228,36 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	public void visit(ImportDeclaration id, A arg) {
-		try {
-			String name = id.getName().toString();
-			Set<String> types = null;
-			if (!id.isStatic() || id.isAsterisk()) {
-				types = typeTable.findTypesByPrefix(name);
-			} else {
-				int classNameEnding = name.lastIndexOf('.');
-				if (classNameEnding != -1) {
-					name = name.substring(0, classNameEnding);
-					types = new HashSet<String>();
-					types.add(name);
-				} else {
-					throw new NoSuchExpressionTypeException("Ops! The import "
-							+ id.toString() + " can't be resolved", null);
-				}
-			}
-			List<SymbolAction> actions = new LinkedList<SymbolAction>();
-			if (id.isStatic()) {
-				actions.add(new LoadStaticImportsAction());
-			}
-			if (actionProvider != null) {
-				actions.addAll(actionProvider.getActions(id));
-			}
-			for (String type : types) {
-				SymbolType stype = new SymbolType();
-				stype.setName(type);
-				stype.setClazz(typeTable.loadClass(type));
 
-				symbolTable.pushSymbol(typeTable.getSimpleName(type),
-						ReferenceType.TYPE, stype, id, actions);
+		String name = id.getName().toString();
+		Set<String> types = null;
+		if (!id.isStatic() || id.isAsterisk()) {
+			types = typeTable.findTypesByPrefix(name);
+		} else {
+			int classNameEnding = name.lastIndexOf('.');
+			if (classNameEnding != -1) {
+				name = name.substring(0, classNameEnding);
+				types = new HashSet<String>();
+				types.add(name);
+			} else {
+				throw new NoSuchExpressionTypeException("Ops! The import "
+						+ id.toString() + " can't be resolved", null);
 			}
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
 		}
+		List<SymbolAction> actions = new LinkedList<SymbolAction>();
+		if (id.isStatic()) {
+			actions.add(new LoadStaticImportsAction());
+		}
+		if (actionProvider != null) {
+			actions.addAll(actionProvider.getActions(id));
+		}
+		for (String type : types) {
+			SymbolType stype = new SymbolType();
+			stype.setName(type);
+			symbolTable.pushSymbol(typeTable.getSimpleName(type),
+					ReferenceType.TYPE, stype, id, actions);
+		}
+
 	}
 
 	private void loadThisSymbol(TypeDeclaration declaration, A arg)
@@ -295,7 +280,6 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		SymbolType type = null;
 		if (lastScope == null) {
 			type = new SymbolType(className);
-			type.setClazz(typeTable.loadClass(type));
 			symbolTable.pushSymbol(typeTable.getSimpleName(className),
 					ReferenceType.TYPE, type, declaration);
 			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
@@ -304,7 +288,6 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		} else {
 			type = new SymbolType(lastScope.getName() + "$"
 					+ declaration.getName());
-			type.setClazz(typeTable.loadClass(type));
 			symbolTable.pushSymbol(typeTable.getSimpleName(className),
 					ReferenceType.TYPE, type, declaration);
 			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
@@ -330,7 +313,6 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 		SymbolType type = null;
 		type = new SymbolType(className);
-		type.setClazz(typeTable.loadClass(type));
 		symbolTable
 				.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
 
@@ -412,7 +394,15 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(Parameter n, A arg) {
-		SymbolType type = typeTable.valueOf(n.getType());
+		Type ptype = n.getType();
+		SymbolType type = null;
+		if (ptype != null) {
+			type = typeTable.valueOf(ptype);
+		} else {
+			// TODO:entryset
+			type = ((SymbolType) arg.get(ExpressionTypeAnalyzer.TYPE_KEY))
+					.getParameterizedTypes().get(0);
+		}
 		List<SymbolAction> actions = null;
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(n);
@@ -459,48 +449,40 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(MethodCallExpr n, A arg) {
-		try {
-			SymbolType scopeType = null;
 
-			if (n.getScope() == null) {
-				scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
-			} else {
-				n.getScope().accept(expressionTypeAnalyzer, arg);
-				scopeType = (SymbolType) arg
-						.remove(ExpressionTypeAnalyzer.TYPE_KEY);
-				Class<?> clazz = typeTable.loadClass(scopeType);
-				scopeType.setClazz(clazz);
-			}
-			List<Expression> args = n.getArgs();
-			SymbolType[] argsType = null;
-			if (args != null) {
-				Iterator<Expression> it = args.iterator();
-				argsType = new SymbolType[args.size()];
-				int i = 0;
-				while (it.hasNext()) {
-					Expression current = it.next();
-					current.accept(expressionTypeAnalyzer, arg);
-					SymbolType argType = (SymbolType) arg
-							.remove(ExpressionTypeAnalyzer.TYPE_KEY);
-					if (argType != null) { // current instance of
-											// NullLiteralExpr
-						Class<?> clazz = typeTable.loadClass(argType);
-						argType.setClazz(clazz);
-					}
-					argsType[i] = argType;
+		SymbolType scopeType = null;
 
-					i++;
+		if (n.getScope() == null) {
+			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
+		} else {
+			n.getScope().accept(expressionTypeAnalyzer, arg);
+			scopeType = (SymbolType) arg
+					.remove(ExpressionTypeAnalyzer.TYPE_KEY);
 
-				}
-			} else {
-				argsType = new SymbolType[0];
-			}
-
-			symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.METHOD,
-					scopeType, argsType);
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
 		}
+		List<Expression> args = n.getArgs();
+		SymbolType[] argsType = null;
+		if (args != null) {
+			Iterator<Expression> it = args.iterator();
+			argsType = new SymbolType[args.size()];
+			int i = 0;
+			while (it.hasNext()) {
+				Expression current = it.next();
+				current.accept(expressionTypeAnalyzer, arg);
+				SymbolType argType = (SymbolType) arg
+						.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+
+				argsType[i] = argType;
+
+				i++;
+
+			}
+		} else {
+			argsType = new SymbolType[0];
+		}
+
+		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.METHOD,
+				scopeType, argsType);
 
 	}
 
@@ -528,27 +510,23 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	public void visit(VariableDeclarationExpr n, A arg) {
-		try {
-			Type type = n.getType();
-			SymbolType st = typeTable.valueOf(type);
-			Class<?> clazz = typeTable.loadClass(st);
-			st.setClazz(clazz);
-			List<SymbolAction> actions = null;
-			if (actionProvider != null) {
-				actions = actionProvider.getActions(n);
-			}
-			List<VariableDeclarator> vars = n.getVars();
-			for (VariableDeclarator vd : vars) {
-				SymbolType aux = st.clone();
 
-				symbolTable.pushSymbol(vd.getId().getName(),
-						ReferenceType.VARIABLE, aux,
-						(Node) (arg.get(ORIGINAL_LOCATION)), actions);
-			}
+		Type type = n.getType();
+		SymbolType st = typeTable.valueOf(type);
 
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
+		List<SymbolAction> actions = null;
+		if (actionProvider != null) {
+			actions = actionProvider.getActions(n);
 		}
+		List<VariableDeclarator> vars = n.getVars();
+		for (VariableDeclarator vd : vars) {
+			SymbolType aux = st.clone();
+
+			symbolTable.pushSymbol(vd.getId().getName(),
+					ReferenceType.VARIABLE, aux,
+					(Node) (arg.get(ORIGINAL_LOCATION)), actions);
+		}
+
 		super.visit(n, arg);
 	}
 
@@ -579,32 +557,29 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(MethodReferenceExpr n, A arg) {
-		try {
-			SymbolType scopeType = null;
 
-			if (n.getScope() == null) {
-				scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
-			} else {
-				n.getScope().accept(expressionTypeAnalyzer, arg);
-				scopeType = (SymbolType) arg
-						.remove(ExpressionTypeAnalyzer.TYPE_KEY);
-				Class<?> clazz = typeTable.loadClass(scopeType);
-				scopeType.setClazz(clazz);
-			}
-			List<TypeParameter> args = n.getTypeParameters();
-			SymbolType[] argsType = new SymbolType[0];
-			if (args != null) {
-				Iterator<TypeParameter> it = args.iterator();
-				while (it.hasNext()) {
-					it.next().accept(this, arg);
-				}
-			}
+		SymbolType scopeType = null;
 
-			symbolTable.lookUpSymbolForRead(n.getIdentifier(),
-					ReferenceType.METHOD, scopeType, argsType);
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
+		if (n.getScope() == null) {
+			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
+		} else {
+			n.getScope().accept(expressionTypeAnalyzer, arg);
+			scopeType = (SymbolType) arg
+					.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+
 		}
+		List<TypeParameter> args = n.getTypeParameters();
+		SymbolType[] argsType = new SymbolType[0];
+		if (args != null) {
+			Iterator<TypeParameter> it = args.iterator();
+			while (it.hasNext()) {
+				it.next().accept(this, arg);
+			}
+		}
+
+		symbolTable.lookUpSymbolForRead(n.getIdentifier(),
+				ReferenceType.METHOD, scopeType, argsType);
+
 	}
 
 	@Override

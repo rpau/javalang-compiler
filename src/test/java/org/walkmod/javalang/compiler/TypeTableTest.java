@@ -23,8 +23,10 @@ public class TypeTableTest {
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(aux);
 
-		TypeTable ttl = new TypeTable();
-
+		TypeTable ttl = TypeTable.getInstance();
+		
+		ttl.clear();
+		
 		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
 
 		ttl.visit(cu, null);
@@ -42,7 +44,8 @@ public class TypeTableTest {
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
-		TypeTable ttl = new TypeTable();
+		TypeTable ttl = TypeTable.getInstance();
+		ttl.clear();
 		
 		URL[] classpath = new URL[] { new File("target/classes").toURI().toURL()};
 		URLClassLoader urlCL = new URLClassLoader(classpath);
@@ -65,7 +68,8 @@ public class TypeTableTest {
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
-		TypeTable ttl = new TypeTable();
+		TypeTable ttl = TypeTable.getInstance();
+		ttl.clear();
 
 		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
 
@@ -84,8 +88,9 @@ public class TypeTableTest {
 		String code = "public class Foo { public class A {} public class B extends A{} }";
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
-		TypeTable ttl = new TypeTable();
-
+		TypeTable ttl = TypeTable.getInstance();
+		ttl.clear();
+		
 		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
 
 		ttl.visit(cu, null);

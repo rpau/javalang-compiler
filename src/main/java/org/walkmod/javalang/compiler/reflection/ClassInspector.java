@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class ClassInspector {
+	
 
 	public static Class<?> getTheNearestSuperClass(Class<?> clazz1, Class<?> clazz2){
 		if(clazz1.equals(clazz2)){
@@ -41,4 +42,6 @@ public class ClassInspector {
 		}
 		return parent;
 	}
+	
+	
 }

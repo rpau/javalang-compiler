@@ -30,6 +30,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.walkmod.javalang.ast.TypeParameter;
+import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.BinaryExpr;
@@ -72,6 +73,8 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 		VoidVisitorAdapter<A> {
 
 	public static final String TYPE_KEY = "type_key";
+
+	public static final String IMPLICIT_PARAM_TYPE = "implicit_param_type";
 
 	private TypeTable<?> typeTable;
 
@@ -257,8 +260,8 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 								ReferenceType.VARIABLE);
 					}
 
-					arg.put(TYPE_KEY,
-							valueOf(field.getGenericType(), typeMapping));
+					arg.put(TYPE_KEY, SymbolType.valueOf(
+							field.getGenericType(), typeMapping));
 				}
 			}
 
@@ -269,77 +272,6 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			throw new NoSuchExpressionTypeException(e);
 
 		}
-	}
-
-	private SymbolType valueOf(Type type, Map<String, SymbolType> typeMapping)
-			throws InvalidTypeException {
-
-		SymbolType returnType = null;
-
-		if (type instanceof Class<?>) {
-			Class<?> aux = ((Class<?>) type);
-			returnType = new SymbolType(aux.getName());
-			if (aux.isArray()) {
-				returnType.setArrayCount(1);
-				returnType.setName(aux.getComponentType().getName());
-			}
-
-		} else if (type instanceof TypeVariable) {
-
-			String variableName = ((TypeVariable<?>) type).getName();
-			SymbolType aux = typeMapping.get(variableName);
-
-			if (aux == null) {
-				aux = new SymbolType(Object.class.getName());
-				return aux;
-			} else {
-				return aux;
-			}
-
-		} else if (type instanceof ParameterizedType) {
-			Class<?> auxClass = (Class<?>) ((ParameterizedType) type)
-					.getRawType();
-
-			Type[] types = ((ParameterizedType) type).getActualTypeArguments();
-
-			returnType = new SymbolType(auxClass.getName());
-
-			if (types != null) {
-				List<SymbolType> params = new LinkedList<SymbolType>();
-				returnType.setParameterizedTypes(params);
-				for (Type t : types) {
-					SymbolType param = typeMapping.get(t.toString());
-					if (param != null) {
-						params.add(param);
-					} else {
-						try {
-							SymbolType st = valueOf(t, typeMapping);
-							if (st != null) {
-								params.add(st);
-							}
-						} catch (InvalidTypeException e) {
-							LOG.warn("Unmappeable type " + t.toString());
-						}
-					}
-				}
-				if (params.isEmpty()) {
-					returnType.setParameterizedTypes(null);
-				}
-			}
-
-		} else if (type instanceof GenericArrayType) {
-			// method.getReturnType();(
-			returnType = new SymbolType(valueOf(
-					((GenericArrayType) type).getGenericComponentType(),
-					typeMapping).getName());
-
-			returnType.setArrayCount(1);
-
-		} else {
-			throw new InvalidTypeException(type);
-		}
-		return returnType;
-
 	}
 
 	@Override
@@ -464,7 +396,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				pos++;
 			}
 
-			SymbolType st = getMethodType(method, typeMapping);
+			SymbolType st = SymbolType.valueOf(method, typeMapping);
 
 			// Generics exception it.next() -> returns Object instead of the it
 			// parametrized type
@@ -558,7 +490,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 							method, argumentValues);
 
 					symbols.putAll(typeMapping);
-					SymbolType returnType = getMethodType(method, symbols);
+					SymbolType returnType = SymbolType.valueOf(method, symbols);
 
 					if (isCompatible(method, methodName, typeArgs, returnType,
 							requiredMethod, requiredField, arg)) {
@@ -612,8 +544,8 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 						for (int i = 0; i < types.length && result == null; i++) {
 
-							Class<?> type = typeTable.loadClass(valueOf(
-									types[i], typeMapping));
+							Class<?> type = typeTable.loadClass(SymbolType
+									.valueOf(types[i], typeMapping));
 
 							result = getMethod(type, methodName, typeArgs,
 									argumentValues, arg, typeMapping, false);
@@ -702,34 +634,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	}
 
-	private SymbolType getMethodType(Method method,
-			Map<String, SymbolType> typeMapping) throws ClassNotFoundException,
-			InvalidTypeException {
-
-		TypeVariable<Method>[] tvs = method.getTypeParameters();
-		java.lang.reflect.Type type = method.getGenericReturnType();
-		if (tvs.length > 0) {
-			for (TypeVariable<Method> tv : tvs) {
-				Type[] bounds = tv.getBounds();
-				List<SymbolType> boundsList = new LinkedList<SymbolType>();
-				for (int i = 0; i < bounds.length; i++) {
-					boundsList.add(new SymbolType((Class<?>) bounds[i]));
-				}
-				SymbolType st = typeMapping.get(tv.getName());
-				if (st == null) {
-					if (boundsList.size() == 1) {
-						typeMapping.put(tv.getName(), boundsList.get(0));
-
-					} else {
-						typeMapping.put(tv.getName(),
-								new SymbolType(boundsList));
-					}
-				}
-			}
-		}
-
-		return valueOf(type, typeMapping);
-	}
+	
 
 	private boolean isCompatible(Method method, String name,
 			Class<?>[] typeArgs, SymbolType returnType,
@@ -1051,9 +956,16 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	}
 
 	public void visit(LambdaExpr n, A arg) {
-		// TODO
-
-		super.visit(n, arg);
+		if (semanticVisitor != null) {
+			symbolTable.pushScope();
+			List<Parameter> params = n.getParameters();
+			if (params != null) {
+				for (Parameter p : params) {
+					p.accept(semanticVisitor, arg);
+				}
+			}
+			n.getBody().accept(semanticVisitor, arg);
+			symbolTable.popScope();
+		}
 	}
-
 }

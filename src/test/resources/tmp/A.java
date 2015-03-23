@@ -1,1 +1,1 @@
-import java.util.Collections; import java.util.List; public class A { public static void processStringList(List<String> stringList) {}}
+import java.util.LinkedList; public class A{ public String getName() { return "hello"; }}

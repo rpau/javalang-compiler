@@ -55,7 +55,7 @@ public abstract class SemanticTest {
 
 	public TypeTable<Map<String, Object>> getTypeTable() throws Exception {
 		if (tt == null) {
-			tt = new TypeTable<Map<String, Object>>();
+			tt = TypeTable.getInstance();
 			tt.setClassLoader(getClassLoader());
 			cu.accept(tt, new HashMap<String, Object>());
 		}

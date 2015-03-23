@@ -2,6 +2,8 @@ package org.walkmod.javalang.compiler;
 
 import java.beans.Expression;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.SourceVersion;
@@ -22,6 +24,7 @@ import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.ExpressionTypeAnalyzer;
+import org.walkmod.javalang.visitors.SemanticVisitorAdapter;
 
 public class ExpressionTypeAnalyzerTest extends SemanticTest {
 
@@ -30,8 +33,11 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 	@Override
 	public CompilationUnit compile(String code) throws Exception {
 		CompilationUnit cu = super.compile(code);
+		SemanticVisitorAdapter<Map<String, Object>> semanticVisitor = 
+				new SemanticVisitorAdapter<Map<String, Object>>();
+		semanticVisitor.setSymbolTable(getSymbolTable());
 		expressionAnalyzer = new ExpressionTypeAnalyzer<Map<String, Object>>(
-				getTypeTable(), getSymbolTable());
+				getTypeTable(), getSymbolTable(), semanticVisitor);
 		return cu;
 	}
 
@@ -289,21 +295,24 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 
 	@Test
 	public void testDiamond() throws Exception {
-		compile("import java.util.List; import java.util.LinkedList; public class A{ List<Integer> bar = new LinkedList<>(); }");
-		SymbolTable symTable = getSymbolTable();
-		symTable.pushScope();
-		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
-		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
-		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(
-				Expression.class, "a.bar");
-		HashMap<String, Object> ctx = new HashMap<String, Object>();
-		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
-		Assert.assertNotNull(type);
-		Assert.assertEquals("java.util.List", type.getName());
-		Assert.assertNotNull(type.getParameterizedTypes());
-		Assert.assertEquals("java.lang.Integer", type.getParameterizedTypes()
-				.get(0).getName());
+		if (SourceVersion.latestSupported().ordinal() >= 7) {
+			compile("import java.util.List; import java.util.LinkedList; public class A{ List<Integer> bar = new LinkedList<>(); }");
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+			symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+			FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(
+					Expression.class, "a.bar");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) ctx
+					.get(ExpressionTypeAnalyzer.TYPE_KEY);
+			Assert.assertNotNull(type);
+			Assert.assertEquals("java.util.List", type.getName());
+			Assert.assertNotNull(type.getParameterizedTypes());
+			Assert.assertEquals("java.lang.Integer", type
+					.getParameterizedTypes().get(0).getName());
+		}
 	}
 
 	@Test
@@ -424,6 +433,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 
 	@Test
 	public void testTargetInference() throws Exception {
+
 		compile("import java.util.Collections; "
 				+ "import java.util.List; "
 				+ "public class A { public static void processStringList(List<String> stringList) {}}");
@@ -445,7 +455,24 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 	@Test
 	public void testLambdaExpressions() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			
+			compile("import java.util.LinkedList; public class A{ public String getName() { return \"hello\"; }}");
+			SymbolType st = new SymbolType(getClassLoader().loadClass(
+					"java.util.LinkedList"));
+			List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+			parameterizedTypes.add(new SymbolType(getClassLoader().loadClass(
+					"A")));
+			st.setParameterizedTypes(parameterizedTypes);
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("a", ReferenceType.TYPE, st, null);
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class,
+					"a.stream().filter(p->p.getName().equals(\"hello\"))");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) ctx
+					.get(ExpressionTypeAnalyzer.TYPE_KEY);
+			Assert.assertNotNull(type);
 		}
 	}
 

@@ -15,18 +15,24 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
+import org.walkmod.javalang.compiler.types.TypeTable;
 import org.walkmod.javalang.compiler.types.Types;
+import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class SymbolType {
 
 	private String name;
-	
+
 	private List<SymbolType> bounds = null;
 
 	private List<SymbolType> parameterizedTypes;
@@ -39,10 +45,10 @@ public class SymbolType {
 
 	public SymbolType() {
 	}
-	
-	public SymbolType(List<SymbolType> bounds){
+
+	public SymbolType(List<SymbolType> bounds) {
 		this.bounds = bounds;
-		if(!bounds.isEmpty()){
+		if (!bounds.isEmpty()) {
 			name = bounds.get(0).getName();
 			clazz = bounds.get(0).getClazz();
 		}
@@ -62,12 +68,12 @@ public class SymbolType {
 		}
 		return 0;
 	}
-	
-	public boolean hasBounds(){
+
+	public boolean hasBounds() {
 		return bounds != null;
 	}
-	
-	public List<SymbolType> getBounds(){
+
+	public List<SymbolType> getBounds() {
 		return bounds;
 	}
 
@@ -77,12 +83,11 @@ public class SymbolType {
 		if (typeParams.length > 0) {
 			result = new LinkedList<SymbolType>();
 			for (TypeVariable<?> td : typeParams) {
-				Type[] bounds= td.getBounds();
-				if(bounds.length == 1 && bounds[0] instanceof Class){
+				Type[] bounds = td.getBounds();
+				if (bounds.length == 1 && bounds[0] instanceof Class) {
 					SymbolType st = new SymbolType((Class<?>) bounds[0]);
 					result.add(st);
-				}
-				else{
+				} else {
 					throw new RuntimeException("Multiple bounds not supported");
 				}
 			}
@@ -141,19 +146,43 @@ public class SymbolType {
 	}
 
 	public boolean isCompatible(SymbolType other) {
-		if(bounds != null){
+		if (bounds != null) {
 			Iterator<SymbolType> it = bounds.iterator();
 			boolean isCompatible = true;
-			while(it.hasNext() && isCompatible){
+			while (it.hasNext() && isCompatible) {
 				isCompatible = it.next().isCompatible(other);
 			}
 			return isCompatible;
 		}
 		return Types.isCompatible(other.clazz, clazz);
 	}
-	
-	public Class<?> getClazz(){
+
+	public Class<?> getClazz() {
+		if (clazz == null) {
+			try {
+				clazz = TypeTable.getInstance().loadClass(this);
+			} catch (ClassNotFoundException e) {
+				throw new RuntimeException("Error resolving the class for "
+						+ name, e.getCause());
+			}
+		}
 		return clazz;
+	}
+
+	public List<Class<?>> getBoundClasses() {
+		List<Class<?>> compatibleClasses = new LinkedList<Class<?>>();
+		if (hasBounds()) {
+			List<SymbolType> bounds = getBounds();
+			for (SymbolType bound : bounds) {
+				compatibleClasses.add(bound.getClass());
+			}
+
+		} else {
+			Class<?> clazz = getClazz();
+
+			compatibleClasses.add(clazz);
+		}
+		return compatibleClasses;
 	}
 
 	@Override
@@ -191,6 +220,106 @@ public class SymbolType {
 			result.setParameterizedTypes(list);
 		}
 		return result;
+	}
+
+	public static SymbolType valueOf(Type type,
+			Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+
+		SymbolType returnType = null;
+
+		if (type instanceof Class<?>) {
+			Class<?> aux = ((Class<?>) type);
+			returnType = new SymbolType(aux.getName());
+			if (aux.isArray()) {
+				returnType.setArrayCount(1);
+				returnType.setName(aux.getComponentType().getName());
+			}
+
+		} else if (type instanceof TypeVariable) {
+
+			String variableName = ((TypeVariable<?>) type).getName();
+			SymbolType aux = typeMapping.get(variableName);
+
+			if (aux == null) {
+				aux = new SymbolType(Object.class.getName());
+				return aux;
+			} else {
+				return aux;
+			}
+
+		} else if (type instanceof ParameterizedType) {
+			Class<?> auxClass = (Class<?>) ((ParameterizedType) type)
+					.getRawType();
+
+			Type[] types = ((ParameterizedType) type).getActualTypeArguments();
+
+			returnType = new SymbolType(auxClass.getName());
+
+			if (types != null) {
+				List<SymbolType> params = new LinkedList<SymbolType>();
+				returnType.setParameterizedTypes(params);
+				for (Type t : types) {
+					SymbolType param = typeMapping.get(t.toString());
+					if (param != null) {
+						params.add(param);
+					} else {
+						try {
+							SymbolType st = valueOf(t, typeMapping);
+							if (st != null) {
+								params.add(st);
+							}
+						} catch (InvalidTypeException e) {
+							// LOG.warn("Unmappeable type " + t.toString());
+						}
+					}
+				}
+				if (params.isEmpty()) {
+					returnType.setParameterizedTypes(null);
+				}
+			}
+
+		} else if (type instanceof GenericArrayType) {
+			// method.getReturnType();(
+			returnType = new SymbolType(valueOf(
+					((GenericArrayType) type).getGenericComponentType(),
+					typeMapping).getName());
+
+			returnType.setArrayCount(1);
+
+		} else {
+			throw new InvalidTypeException(type);
+		}
+		return returnType;
+
+	}
+	
+	public static SymbolType valueOf(Method method,
+			Map<String, SymbolType> typeMapping) throws ClassNotFoundException,
+			InvalidTypeException {
+
+		TypeVariable<Method>[] tvs = method.getTypeParameters();
+		java.lang.reflect.Type type = method.getGenericReturnType();
+		if (tvs.length > 0) {
+			for (TypeVariable<Method> tv : tvs) {
+				Type[] bounds = tv.getBounds();
+				List<SymbolType> boundsList = new LinkedList<SymbolType>();
+				for (int i = 0; i < bounds.length; i++) {
+					boundsList.add(new SymbolType((Class<?>) bounds[i]));
+				}
+				SymbolType st = typeMapping.get(tv.getName());
+				if (st == null) {
+					if (boundsList.size() == 1) {
+						typeMapping.put(tv.getName(), boundsList.get(0));
+
+					} else {
+						typeMapping.put(tv.getName(),
+								new SymbolType(boundsList));
+					}
+				}
+			}
+		}
+
+		return SymbolType.valueOf(type, typeMapping);
 	}
 
 }

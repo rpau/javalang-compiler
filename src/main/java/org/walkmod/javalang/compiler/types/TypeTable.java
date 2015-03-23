@@ -50,8 +50,10 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 	private static Map<String, Class<?>> primitiveClasses = new HashMap<String, Class<?>>();
 
 	private static JarFile SDKJar;
+	
+	private static TypeTable<Map<String, Object>> instance = null;
 
-	public TypeTable() {
+	private TypeTable() {
 
 		for (String defaultType : defaultJavaLangClasses) {
 			typeNames.add(defaultType);
@@ -60,6 +62,14 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 					defaultType);
 		}
 	}
+	
+	public static TypeTable<Map<String, Object>> getInstance(){
+		if(instance == null){
+			instance = new TypeTable<Map<String, Object>>();
+		}
+		return instance;
+	}
+	
 
 	public void setClassLoader(ClassLoader cl) {
 		this.classLoader = cl;
@@ -555,7 +565,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 	public void clear() {
 		typeNames.clear();
 		typeTable.clear();
-
+		packageName = null;
+		contextName = null;
 		for (String defaultType : defaultJavaLangClasses) {
 			typeNames.add(defaultType);
 			typeTable.put(
