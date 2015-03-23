@@ -8,7 +8,7 @@ public class CompositeBuilder<T> implements Builder<T>{
 	List<Builder<T>> builders = new LinkedList<Builder<T>>();
 	
 	@Override
-	public T build (T arg){
+	public T build (T arg) throws Exception{
 		for (Builder<T> builder : builders){
 			arg = builder.build(arg);
 		}

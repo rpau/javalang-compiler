@@ -42,6 +42,8 @@ public class SymbolType {
 	private boolean isTemplateVariable = false;
 
 	private Class<?> clazz;
+	
+	private Method method = null;
 
 	public SymbolType() {
 	}
@@ -293,6 +295,10 @@ public class SymbolType {
 
 	}
 	
+	public Method getMethod(){
+		return method;
+	}
+	
 	public static SymbolType valueOf(Method method,
 			Map<String, SymbolType> typeMapping) throws ClassNotFoundException,
 			InvalidTypeException {
@@ -318,8 +324,9 @@ public class SymbolType {
 				}
 			}
 		}
-
-		return SymbolType.valueOf(type, typeMapping);
+		SymbolType st = SymbolType.valueOf(type, typeMapping);
+		st.method = method;
+		return st;
 	}
 
 }

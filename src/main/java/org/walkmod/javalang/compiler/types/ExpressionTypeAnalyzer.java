@@ -16,15 +16,12 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.types;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -61,11 +58,16 @@ import org.walkmod.javalang.ast.expr.SingleMemberAnnotationExpr;
 import org.walkmod.javalang.ast.expr.StringLiteralExpr;
 import org.walkmod.javalang.ast.expr.SuperExpr;
 import org.walkmod.javalang.ast.expr.ThisExpr;
-import org.walkmod.javalang.compiler.reflection.ClassInspector;
+import org.walkmod.javalang.compiler.ArrayFilter;
+import org.walkmod.javalang.compiler.CompositeBuilder;
+import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
+import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromParameterTypes;
+import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
+import org.walkmod.javalang.compiler.reflection.MethodInspector;
+import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.exceptions.InvalidTypeException;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
@@ -340,72 +342,21 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				symbolTable.lookUpSymbolForRead(n.getName(),
 						ReferenceType.METHOD, scope, symbolTypes);
 			}
-			Method method = null;
 			Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 			// it should be initialized after resolving the method
 
-			method = getMethod(scope, n.getName(), typeArgs, n.getArgs(), arg,
-					typeMapping);
-			Type[] types = method.getGenericParameterTypes();
-			int pos = 0;
-			boolean hasGenerics = false;
+			ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
 
-			for (Type type : types) {
-				if (type instanceof ParameterizedType) {
-					if (!hasGenerics) {
-						LOG.debug(n + " is a call with generics ");
-						hasGenerics = true;
-					}
-					Type aux = ((ParameterizedType) type).getRawType();
-					if (aux instanceof Class) {
-						if (((Class<?>) aux).getName()
-								.equals("java.lang.Class")) {
-							Type[] targs = ((ParameterizedType) type)
-									.getActualTypeArguments();
-							for (Type targ : targs) {
-								String letter = targ.toString();
-								if (!"?".equals(letter)
-										&& !typeMapping.containsKey(letter)) {
-									Expression e = (Expression) n.getArgs()
-											.get(pos);
-									String className = "";
-									if (e instanceof ClassExpr) {
-										className = ((ClassExpr) e).getType()
-												.toString();
-										Class<?> tclazz = typeTable
-												.loadClass(className);
-										typeMapping.put(letter, new SymbolType(
-												tclazz.getName()));
-									}
-								}
-							}
-						}
-					}
-				} else if (type instanceof TypeVariable) {
-					String name = ((TypeVariable<?>) type).getName();
-					SymbolType st = typeMapping.get(name);
-					if (st == null) {
-						typeMapping.put(name, new SymbolType(typeArgs[pos]));
-					} else {
-						Class<?> common = ClassInspector
-								.getTheNearestSuperClass(st.getClazz(),
-										typeArgs[pos]);
-						typeMapping.put(name, new SymbolType(common));
-					}
-				}
-				pos++;
-			}
+			filter.appendPredicate(new MethodsByNamePredicate(n.getName()))
+					.appendPredicate(new InvokableMethodsPredicate())
+					.appendPredicate(new CompatibleArgsPredicate(typeArgs));
 
-			SymbolType st = SymbolType.valueOf(method, typeMapping);
+			CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
+			builder.appendBuilder(new GenericsBuilderFromParameterTypes(
+					typeMapping, n.getArgs(), typeArgs));
 
-			// Generics exception it.next() -> returns Object instead of the it
-			// parametrized type
-			if (st.getName().equals("java.lang.Object")
-					&& scope.getParameterizedTypes() != null) {
-				if (!scope.getParameterizedTypes().isEmpty()) {
-					st.setName(scope.getParameterizedTypes().get(0).getName());
-				}
-			}
+			SymbolType st = MethodInspector.findMethodType(scope, filter,
+					builder, typeMapping);
 
 			arg.put(TYPE_KEY, st);
 
@@ -465,356 +416,6 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			}
 		}
 		return symbols;
-	}
-
-	public Method findMethod(Method[] methods, String methodName,
-			Class<?>[] typeArgs, List<Expression> argumentValues,
-			Map<String, SymbolType> typeMapping, MethodCallExpr requiredMethod,
-			FieldAccessExpr requiredField, A arg) throws NoSuchMethodException,
-			ClassNotFoundException, InvalidTypeException {
-
-		Method result = null;
-		if (methods == null) {
-			throw new NoSuchMethodException("There are not methods to select");
-		}
-
-		for (int i = 0; i < methods.length && result == null; i++) {
-
-			Method method = methods[i];
-			if (!method.isBridge() && !method.isSynthetic()) {
-				if (method.getName().equals(methodName)) {
-					LOG.debug("Method " + method.getDeclaringClass().getName()
-							+ "#" + methodName + ":"
-							+ method.getReturnType().getName() + " found");
-					Map<String, SymbolType> symbols = getSymbolsOfGenericParameterTypes(
-							method, argumentValues);
-
-					symbols.putAll(typeMapping);
-					SymbolType returnType = SymbolType.valueOf(method, symbols);
-
-					if (isCompatible(method, methodName, typeArgs, returnType,
-							requiredMethod, requiredField, arg)) {
-						arg.put(TYPE_KEY, returnType);
-						typeMapping.putAll(typeMapping);
-						result = method;
-						LOG.debug("compatible?  [OK] - result: "
-								+ returnType.getName());
-					} else {
-						LOG.debug("compatible?  [NO]");
-					}
-				}
-			}
-		}
-
-		return result;
-	}
-
-	public Method getMethod(Class<?> clazz, String methodName,
-			Class<?>[] typeArgs, List<Expression> argumentValues, A arg,
-			Map<String, SymbolType> typeMapping, boolean throwException)
-			throws SecurityException, NoSuchMethodException,
-			ClassNotFoundException, InvalidTypeException {
-
-		LOG.debug("Looking for " + clazz.getName() + "#" + methodName);
-		Method result = findMethod(clazz.getDeclaredMethods(), methodName,
-				typeArgs, argumentValues, typeMapping, null, null, arg);
-
-		if (result == null) {
-
-			if (clazz.isMemberClass()) {
-
-				result = getMethod(clazz.getDeclaringClass(), methodName,
-						typeArgs, argumentValues, arg, typeMapping, false);
-
-			} else if (clazz.isAnonymousClass()) {
-
-				result = getMethod(clazz.getEnclosingClass(), methodName,
-						typeArgs, argumentValues, arg, typeMapping, false);
-			}
-			if (result == null) {
-				Class<?> superClass = clazz.getSuperclass();
-				if (superClass != null) {
-					result = getMethod(superClass, methodName, typeArgs,
-							argumentValues, arg, typeMapping, false);
-				}
-
-				if (result == null) {
-					Type[] types = clazz.getGenericInterfaces();
-					if (types.length > 0) {
-
-						for (int i = 0; i < types.length && result == null; i++) {
-
-							Class<?> type = typeTable.loadClass(SymbolType
-									.valueOf(types[i], typeMapping));
-
-							result = getMethod(type, methodName, typeArgs,
-									argumentValues, arg, typeMapping, false);
-						}
-
-					}
-					if (result == null && clazz.isInterface()) {
-						result = getMethod(Object.class, methodName, typeArgs,
-								argumentValues, arg, typeMapping, false);
-					}
-				}
-			}
-
-		}
-		if (result == null && throwException) {
-			throw new NoSuchMethodException("The method " + clazz.getName()
-					+ "#" + methodName + " cannot be found");
-		}
-		return result;
-	}
-
-	// TODO: Test
-	public Method getMethod(SymbolType scope, // scope
-												// to
-												// find
-			// the method
-			String methodName, // method name to look for.
-								// Multiple methods with the same name can exist
-								// in a taxonomy.
-								// Methods are not included into the
-								// symbolTable. These are found by Java
-								// introspection.
-			Class<?>[] typeArgs, // java types of the argument expressions
-			List<Expression> argumentValues, A arg, // context
-			Map<String, SymbolType> typeMapping // mapping for Java Generics
-												// applied
-	// into the scope
-	) throws ClassNotFoundException, NoSuchMethodException, SecurityException,
-			InvalidTypeException {
-		List<Class<?>> candidates = new LinkedList<Class<?>>();
-		if (scope.hasBounds()) {
-			for (SymbolType bound : scope.getBounds()) {
-				candidates.add(bound.getClazz());
-			}
-		} else {
-			Class<?> clazz = scope.getClazz();
-			if (clazz == null) {
-				clazz = typeTable.loadClass(scope);
-			}
-			candidates.add(clazz);
-		}
-		Method result = null;
-		Iterator<Class<?>> it = candidates.iterator();
-		HashMap<String, SymbolType> mapping = null;
-		while (it.hasNext() && result == null) {
-			Class<?> clazz = it.next();
-			TypeVariable<?>[] typeParams = clazz.getTypeParameters();
-			mapping = new HashMap<String, SymbolType>();
-			if (typeParams != null) {
-
-				for (int i = 0; i < typeParams.length; i++) {
-					if (scope != null && scope.getParameterizedTypes() != null) {
-						mapping.put(typeParams[i].getName(), scope
-								.getParameterizedTypes().get(i));
-					} else {
-						mapping.put(typeParams[i].getName(), new SymbolType(
-								"java.lang.Object"));
-					}
-				}
-			}
-
-			try {
-
-				result = getMethod(clazz, methodName, typeArgs, argumentValues,
-						arg, mapping, true);
-			} catch (NoSuchMethodException e1) {
-				if (!it.hasNext()) {
-					throw e1;
-				}
-			}
-		}
-		if (result != null) {
-			typeMapping.putAll(mapping);
-		}
-		return result;
-
-	}
-
-	
-
-	private boolean isCompatible(Method method, String name,
-			Class<?>[] typeArgs, SymbolType returnType,
-			MethodCallExpr requiredMethod, FieldAccessExpr requiredField, A arg)
-			throws ClassNotFoundException {
-
-		Class<?> lastVariableTypeArg = null;
-
-		if (method.getName().equals(name)) {
-
-			int numParams = typeArgs == null ? 0 : typeArgs.length;
-
-			if ((method.getParameterTypes().length == numParams)
-					|| method.isVarArgs()) {
-				LOG.debug("The method [" + name
-						+ "] is found with the same number of params: "
-						+ numParams);
-				if (method.isVarArgs()) {
-
-					if (method.getParameterTypes().length < numParams) {
-
-						lastVariableTypeArg = method.getParameterTypes()[method
-								.getParameterTypes().length - 1];
-
-						numParams = method.getParameterTypes().length;
-					}
-					if (method.getParameterTypes().length <= numParams) {
-						// changing the last argument to an array
-						Class<?>[] newTypeArgs = new Class<?>[method
-								.getParameterTypes().length];
-
-						for (int i = 0; i < newTypeArgs.length - 1; i++) {
-							newTypeArgs[i] = typeArgs[i];
-						}
-
-						newTypeArgs[newTypeArgs.length - 1] = method
-								.getParameterTypes()[method.getParameterTypes().length - 1];
-
-						typeArgs = newTypeArgs;
-					}
-				}
-
-				boolean isCompatible = true;
-				Class<?>[] methodParameterTypes = method.getParameterTypes();
-				int i = 0;
-				for (i = 0; i < numParams && isCompatible; i++) {
-
-					isCompatible = Types.isCompatible(typeArgs[i],
-							methodParameterTypes[i]);
-				}
-				if (!isCompatible && numParams > 0) {
-					LOG.debug("The parameter of " + (i - 1) + " is an "
-							+ methodParameterTypes[i - 1].getName()
-							+ ", but expected " + typeArgs[i - 1].getName());
-				}
-
-				if (isCompatible && lastVariableTypeArg != null) {
-					int j = numParams;
-					for (; j < typeArgs.length && isCompatible; j++) {
-						isCompatible = Types.isCompatible(typeArgs[j],
-								lastVariableTypeArg);
-
-					}
-					if (!isCompatible && numParams > 0) {
-						LOG.debug("The parameter of " + (j - 1) + " is an "
-								+ lastVariableTypeArg.getName()
-								+ ", but expected " + typeArgs[j - 1].getName());
-					}
-
-				}
-
-				if (isCompatible) {
-
-					List<Class<?>> compatibleClasses = new LinkedList<Class<?>>();
-					if (returnType.hasBounds()) {
-						List<SymbolType> bounds = returnType.getBounds();
-						for (SymbolType bound : bounds) {
-							compatibleClasses.add(bound.getClass());
-						}
-
-					} else {
-						Class<?> clazz = returnType.getClazz();
-						if (clazz == null) {
-							clazz = typeTable.loadClass(returnType);
-						}
-						compatibleClasses.add(clazz);
-					}
-					if (requiredMethod != null) {
-
-						List<Method> methods = new LinkedList<Method>();
-
-						Iterator<Class<?>> itC = compatibleClasses.iterator();
-
-						boolean returnTypeCompatible = false;
-						while (itC.hasNext() && !returnTypeCompatible) {
-							Class<?> candidate = itC.next();
-							methods.addAll(Arrays.asList(candidate
-									.getDeclaredMethods()));
-
-							methods.addAll(Arrays.asList(candidate.getMethods()));
-							Iterator<Method> it = methods.iterator();
-							while (it.hasNext() && !returnTypeCompatible) {
-
-								Method currentMethod = it.next();
-
-								// checking method name
-								if (currentMethod.getName().equals(
-										requiredMethod.getName())) {
-									List<Expression> args = requiredMethod
-											.getArgs();
-									Class<?>[] parameterTypes = currentMethod
-											.getParameterTypes();
-									if (args != null) {
-										boolean compatibleArgs = true;
-										int k = 0;
-										for (Expression argExpr : args) {
-											argExpr.accept(this, arg);
-											SymbolType typeArg = (SymbolType) arg
-													.remove(TYPE_KEY);
-											if (!Types.isCompatible(typeTable
-													.loadClass(typeArg),
-													parameterTypes[k])) {
-												compatibleArgs = false;
-											}
-											k++;
-										}
-										returnTypeCompatible = compatibleArgs;
-									} else {
-										returnTypeCompatible = true;
-									}
-
-								}
-							}
-						}
-						isCompatible = returnTypeCompatible;
-					} else if (requiredField != null) {
-
-						Iterator<Class<?>> itC = compatibleClasses.iterator();
-						boolean fieldCompatible = false;
-
-						while (itC.hasNext() && !fieldCompatible) {
-							Class<?> candidate = itC.next();
-							if (candidate.isArray()
-									&& requiredField.getField()
-											.equals("length")) {
-								return true;
-							}
-							try {
-								// the return type has the required field as
-								// public?
-								candidate.getField(requiredField.getField());
-								fieldCompatible = true;
-							} catch (NoSuchFieldException e) {
-								// searching in all fields
-								Field[] fields = candidate.getDeclaredFields();
-								String fieldName = requiredField.getField();
-								fieldCompatible = false;
-								i = 0;
-								for (i = 0; i < fields.length
-										&& !fieldCompatible; i++) {
-									fieldCompatible = (fields[i].getName()
-											.equals(fieldName));
-								}
-							}
-						}
-						isCompatible = fieldCompatible;
-						// the field has been found. Then, the method is
-						// compatible
-						return true;
-					}
-				}
-
-				if (isCompatible) {
-
-					return true;
-				}
-
-			}
-		}
-		return false;
 	}
 
 	@Override
