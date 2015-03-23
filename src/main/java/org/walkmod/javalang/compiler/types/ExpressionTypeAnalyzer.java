@@ -369,55 +369,6 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	}
 
-	public Map<String, SymbolType> getSymbolsOfGenericParameterTypes(
-			Method method, List<Expression> argumentValues) {
-		Map<String, SymbolType> symbols = new HashMap<String, SymbolType>();
-
-		TypeVariable<?>[] typeVariables = method.getTypeParameters();
-
-		if (typeVariables != null) {
-
-			for (int i = 0; i < typeVariables.length; i++) {
-
-				Type[] parameterTypes = method.getGenericParameterTypes();
-
-				if (parameterTypes != null && argumentValues != null) {
-
-					for (int j = 0; j < parameterTypes.length
-							&& j < argumentValues.size(); j++) {
-
-						if (parameterTypes[j] instanceof ParameterizedType) {
-
-							String variableName = ((ParameterizedType) parameterTypes[j])
-									.getActualTypeArguments()[0].toString();
-
-							if (variableName.length() == 1) {
-								if (argumentValues.get(j) instanceof ClassExpr) {
-									Class<?> paramClass;
-									try {
-										paramClass = typeTable
-												.loadClass(((ClassExpr) argumentValues
-														.get(j)).getType());
-									} catch (ClassNotFoundException e) {
-										throw new NoSuchExpressionTypeException(
-												"Invalid class into the generics resolution",
-												e);
-									}
-
-									SymbolType auxType = new SymbolType();
-									auxType.setName(paramClass.getName());
-
-									symbols.put(variableName, auxType);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return symbols;
-	}
-
 	@Override
 	public void visit(NameExpr n, A arg) {
 
