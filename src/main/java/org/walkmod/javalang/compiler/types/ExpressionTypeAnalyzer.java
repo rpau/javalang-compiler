@@ -15,11 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.types;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -61,6 +57,7 @@ import org.walkmod.javalang.ast.expr.ThisExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
+import org.walkmod.javalang.compiler.reflection.FieldInspector;
 import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromParameterTypes;
 import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
@@ -194,11 +191,9 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				try {
 					c = typeTable.loadClass(n.toString());
 					if (c != null) {
-						String className = c.getName();
-						scopeType = new SymbolType();
-						scopeType.setName(className);
+						scopeType = new SymbolType(c);
 						symbolTable.lookUpSymbolForRead(
-								typeTable.getSimpleName(className),
+								typeTable.getSimpleName(c.getName()),
 								ReferenceType.TYPE);
 						arg.put(TYPE_KEY, scopeType);
 					} else {
@@ -208,67 +203,20 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					arg.put(TYPE_KEY, null);
 				}
 			} else {
-				c = typeTable.loadClass(scopeType);
 
-				Field field = null;
-				if (c.isArray() && n.getField().equals("length")) {
+				SymbolType fieldType = FieldInspector.findFieldType(scopeType,
+						n.getField());
 
-					arg.put(TYPE_KEY, new SymbolType("int"));
-				} else {
-					try {
-
-						field = c.getDeclaredField(n.getField());
-
-					} catch (NoSuchFieldException fe) {
-
-						try {
-							field = c.getField(n.getField());
-
-						} catch (NoSuchFieldException fe2) {
-							// it is an inner class parsed as a field
-							// declaration
-							c = typeTable.loadClass(c.getName() + "$"
-									+ n.getField());
-							scopeType.setName(c.getName());
-							arg.put(TYPE_KEY, scopeType);
-							return;
-						}
-
-					}
-
-					Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
-
-					TypeVariable<?>[] typeParams = c.getTypeParameters();
-
-					if (typeParams != null) {
-
-						for (int i = 0; i < typeParams.length; i++) {
-							if (scopeType != null
-									&& scopeType.getParameterizedTypes() != null) {
-								typeMapping.put(typeParams[i].getName(),
-										scopeType.getParameterizedTypes()
-												.get(i));
-							} else {
-								typeMapping.put(typeParams[i].getName(),
-										new SymbolType("java.lang.Object"));
-							}
-						}
-
-					}
-					SymbolType thisType = symbolTable.getType("this",
+				SymbolType thisType = symbolTable.getType("this",
+						ReferenceType.VARIABLE);
+				if (thisType != null && scopeType.isCompatible(thisType)) {
+					symbolTable.lookUpSymbolForRead(n.getField(),
 							ReferenceType.VARIABLE);
-					if (thisType != null && scopeType.isCompatible(thisType)) {
-						symbolTable.lookUpSymbolForRead(n.getField(),
-								ReferenceType.VARIABLE);
-					}
-
-					arg.put(TYPE_KEY, SymbolType.valueOf(
-							field.getGenericType(), typeMapping));
 				}
-			}
 
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
+				arg.put(TYPE_KEY, fieldType);
+
+			}
 
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException(e);

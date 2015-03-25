@@ -2,8 +2,6 @@ package org.walkmod.javalang.compiler;
 
 import java.beans.Expression;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.SourceVersion;
@@ -451,7 +449,9 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		Assert.assertNotNull(type);
 		Assert.assertEquals("void", type.getName());
 	}
-
+	
+	
+	
 	@Test
 	public void testLambdaExpressions() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
