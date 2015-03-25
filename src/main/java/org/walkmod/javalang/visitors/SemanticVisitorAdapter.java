@@ -14,9 +14,11 @@ import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
+import org.walkmod.javalang.ast.body.AnnotationMemberDeclaration;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
+import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.JavadocComment;
 import org.walkmod.javalang.ast.body.JavadocTag;
@@ -25,6 +27,7 @@ import org.walkmod.javalang.ast.body.MultiTypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
+import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.FieldAccessExpr;
@@ -36,12 +39,30 @@ import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.NormalAnnotationExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.SingleMemberAnnotationExpr;
+import org.walkmod.javalang.ast.expr.SuperExpr;
+import org.walkmod.javalang.ast.expr.ThisExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
+import org.walkmod.javalang.ast.stmt.AssertStmt;
 import org.walkmod.javalang.ast.stmt.BlockStmt;
 import org.walkmod.javalang.ast.stmt.CatchClause;
+import org.walkmod.javalang.ast.stmt.DoStmt;
+import org.walkmod.javalang.ast.stmt.ExplicitConstructorInvocationStmt;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
+import org.walkmod.javalang.ast.stmt.ForStmt;
+import org.walkmod.javalang.ast.stmt.ForeachStmt;
+import org.walkmod.javalang.ast.stmt.IfStmt;
+import org.walkmod.javalang.ast.stmt.ReturnStmt;
+import org.walkmod.javalang.ast.stmt.Statement;
+import org.walkmod.javalang.ast.stmt.SwitchEntryStmt;
+import org.walkmod.javalang.ast.stmt.SwitchStmt;
+import org.walkmod.javalang.ast.stmt.SynchronizedStmt;
+import org.walkmod.javalang.ast.stmt.ThrowStmt;
+import org.walkmod.javalang.ast.stmt.WhileStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
+import org.walkmod.javalang.ast.type.PrimitiveType;
 import org.walkmod.javalang.ast.type.Type;
+import org.walkmod.javalang.ast.type.VoidType;
+import org.walkmod.javalang.ast.type.WildcardType;
 import org.walkmod.javalang.compiler.actions.LoadEnumConstantLiteralsAction;
 import org.walkmod.javalang.compiler.actions.LoadFieldDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadMethodDeclarationsAction;
@@ -53,6 +74,7 @@ import org.walkmod.javalang.compiler.providers.SymbolActionProviderAware;
 import org.walkmod.javalang.compiler.symbols.AccessType;
 import org.walkmod.javalang.compiler.symbols.MultiTypeSymbol;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
@@ -135,20 +157,23 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	public void visit(NormalAnnotationExpr n, A arg) {
 
-		symbolTable.lookUpSymbolForRead(n.getName().toString(),
+		Symbol s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
 				ReferenceType.TYPE);
+		n.setSymbolData(s.getType());
 		super.visit(n, arg);
 	}
 
 	public void visit(MarkerAnnotationExpr n, A arg) {
-		symbolTable.lookUpSymbolForRead(n.getName().toString(),
+		Symbol s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
 				ReferenceType.TYPE);
+		n.setSymbolData(s.getType());
 		super.visit(n, arg);
 	}
 
 	public void visit(SingleMemberAnnotationExpr n, A arg) {
-		symbolTable.lookUpSymbolForRead(n.getName().toString(),
+		Symbol s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
 				ReferenceType.TYPE);
+		n.setSymbolData(s.getType());
 		super.visit(n, arg);
 	}
 
@@ -293,6 +318,11 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
 					declaration, actions);
 		}
+		if (declaration instanceof ClassOrInterfaceDeclaration) {
+			symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
+					new SymbolType(type.getClazz().getSuperclass()), null,
+					actions);
+		}
 
 	}
 
@@ -315,6 +345,9 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		type = new SymbolType(className);
 		symbolTable
 				.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
+
+		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, new SymbolType(
+				type.getClazz().getSuperclass()), n, actions);
 
 	}
 
@@ -366,6 +399,54 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	@Override
+	public void visit(EnumConstantDeclaration n, A arg) {
+		if (n.getJavaDoc() != null) {
+			n.getJavaDoc().accept(this, arg);
+		}
+		if (n.getAnnotations() != null) {
+			for (AnnotationExpr a : n.getAnnotations()) {
+				a.accept(this, arg);
+			}
+		}
+		if (n.getArgs() != null) {
+			for (Expression e : n.getArgs()) {
+				e.accept(expressionTypeAnalyzer, arg);
+			}
+		}
+		if (n.getClassBody() != null) {
+			for (BodyDeclaration member : n.getClassBody()) {
+				member.accept(this, arg);
+			}
+		}
+	}
+
+	public void visit(VariableDeclarator n, A arg) {
+		n.getId().accept(this, arg);
+		if (n.getInit() != null) {
+			n.getInit().accept(expressionTypeAnalyzer, arg);
+		}
+	}
+
+	@Override
+	public void visit(AnnotationMemberDeclaration n, A arg) {
+
+		if (n.getJavaDoc() != null) {
+			n.getJavaDoc().accept(this, arg);
+		}
+		if (n.getAnnotations() != null) {
+			for (AnnotationExpr a : n.getAnnotations()) {
+				a.accept(this, arg);
+			}
+		}
+		n.getType().accept(expressionTypeAnalyzer, arg);
+
+		Expression expr = n.getDefaultValue();
+		if (expr != null) {
+			expr.accept(expressionTypeAnalyzer, arg);
+		}
+	}
+
+	@Override
 	public void visit(LambdaExpr n, A arg) {
 		symbolTable.pushScope();
 		super.visit(n, arg);
@@ -394,22 +475,20 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(Parameter n, A arg) {
+		super.visit(n, arg);
 		Type ptype = n.getType();
 		SymbolType type = null;
 		if (ptype != null) {
-			type = typeTable.valueOf(ptype);
-		} else {
-			// TODO:entryset
-			type = ((SymbolType) arg.get(ExpressionTypeAnalyzer.TYPE_KEY))
-					.getParameterizedTypes().get(0);
+			type = (SymbolType) ptype.getSymbolData();
+
 		}
+
 		List<SymbolAction> actions = null;
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(n);
 		}
 		symbolTable.pushSymbol(n.getId().getName(), ReferenceType.VARIABLE,
 				type, n, actions);
-		super.visit(n, arg);
 	}
 
 	@Override
@@ -417,12 +496,6 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		symbolTable.pushScope();
 		super.visit(n, arg);
 		symbolTable.popScope();
-	}
-
-	@Override
-	public void visit(ClassOrInterfaceType n, A arg) {
-		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.TYPE);
-		super.visit(n, arg);
 	}
 
 	@Override
@@ -434,6 +507,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		while (it.hasNext()) {
 			Type aux = it.next();
 			SymbolType type = typeTable.valueOf(aux);
+			aux.setSymbolData(type);
 			symbolTypes.add(type);
 		}
 		List<SymbolAction> actions = null;
@@ -455,9 +529,8 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		if (n.getScope() == null) {
 			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
 		} else {
-			n.getScope().accept(expressionTypeAnalyzer, arg);
-			scopeType = (SymbolType) arg
-					.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+
+			scopeType = (SymbolType) n.getScope().getSymbolData();
 
 		}
 		List<Expression> args = n.getArgs();
@@ -468,9 +541,8 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 			int i = 0;
 			while (it.hasNext()) {
 				Expression current = it.next();
-				current.accept(expressionTypeAnalyzer, arg);
-				SymbolType argType = (SymbolType) arg
-						.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+
+				SymbolType argType = (SymbolType) current.getSymbolData();
 
 				argsType[i] = argType;
 
@@ -490,13 +562,15 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(FieldAccessExpr n, A arg) {
 
 		if (n.getScope() != null) {
-			n.getScope().accept(expressionTypeAnalyzer, arg);
-			SymbolType scopeType = (SymbolType) arg
-					.remove(ExpressionTypeAnalyzer.TYPE_KEY);
-			if (symbolTable.getType("this", ReferenceType.VARIABLE).equals(
-					scopeType)) {
+			SymbolType scopeType = (SymbolType) n.getScope().getSymbolData();
+			SymbolType thisType = symbolTable.getType("this",
+					ReferenceType.VARIABLE);
+
+			if (thisType != null && thisType.equals(scopeType)) {
 				lookupSymbol(n.getField(), ReferenceType.VARIABLE, arg);
 			}
+		} else {
+			lookupSymbol(n.getField(), ReferenceType.VARIABLE, arg);
 		}
 	}
 
@@ -505,14 +579,14 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		arg.put(AccessType.ACCESS_TYPE, AccessType.WRITE);
 		n.getTarget().accept(this, arg);
 		arg.put(AccessType.ACCESS_TYPE, AccessType.READ);
-		n.getValue().accept(this, arg);
+		n.getValue().accept(expressionTypeAnalyzer, arg);
 		arg.put(AccessType.ACCESS_TYPE, old);
 	}
 
 	public void visit(VariableDeclarationExpr n, A arg) {
 
 		Type type = n.getType();
-		SymbolType st = typeTable.valueOf(type);
+		SymbolType st = (SymbolType) type.getSymbolData();
 
 		List<SymbolAction> actions = null;
 		if (actionProvider != null) {
@@ -526,15 +600,127 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 					ReferenceType.VARIABLE, aux,
 					(Node) (arg.get(ORIGINAL_LOCATION)), actions);
 		}
-
-		super.visit(n, arg);
 	}
 
+	@Override
 	public void visit(ExpressionStmt n, A arg) {
 		Object original = arg.get(ORIGINAL_LOCATION);
 		arg.put(ORIGINAL_LOCATION, n);
-		super.visit(n, arg);
+		n.getExpression().accept(expressionTypeAnalyzer, arg);
 		arg.put(ORIGINAL_LOCATION, original);
+	}
+
+	@Override
+	public void visit(AssertStmt n, A arg) {
+		n.getCheck().accept(expressionTypeAnalyzer, arg);
+		if (n.getMessage() != null) {
+			n.getMessage().accept(this, arg);
+		}
+	}
+
+	@Override
+	public void visit(DoStmt n, A arg) {
+		n.getBody().accept(this, arg);
+		n.getCondition().accept(expressionTypeAnalyzer, arg);
+	}
+
+	@Override
+	public void visit(ExplicitConstructorInvocationStmt n, A arg) {
+		if (!n.isThis()) {
+			if (n.getExpr() != null) {
+				n.getExpr().accept(expressionTypeAnalyzer, arg);
+			}
+		}
+		if (n.getTypeArgs() != null) {
+			for (Type t : n.getTypeArgs()) {
+				t.accept(this, arg);
+			}
+		}
+		if (n.getArgs() != null) {
+			for (Expression e : n.getArgs()) {
+				e.accept(expressionTypeAnalyzer, arg);
+			}
+		}
+	}
+
+	@Override
+	public void visit(ForeachStmt n, A arg) {
+		n.getVariable().accept(expressionTypeAnalyzer, arg);
+		n.getIterable().accept(expressionTypeAnalyzer, arg);
+		n.getBody().accept(this, arg);
+	}
+
+	@Override
+	public void visit(ForStmt n, A arg) {
+		if (n.getInit() != null) {
+			for (Expression e : n.getInit()) {
+				e.accept(expressionTypeAnalyzer, arg);
+			}
+		}
+		if (n.getCompare() != null) {
+			n.getCompare().accept(expressionTypeAnalyzer, arg);
+		}
+		if (n.getUpdate() != null) {
+			for (Expression e : n.getUpdate()) {
+				e.accept(expressionTypeAnalyzer, arg);
+			}
+		}
+		n.getBody().accept(this, arg);
+	}
+
+	@Override
+	public void visit(IfStmt n, A arg) {
+		n.getCondition().accept(expressionTypeAnalyzer, arg);
+		n.getThenStmt().accept(this, arg);
+		if (n.getElseStmt() != null) {
+			n.getElseStmt().accept(this, arg);
+		}
+	}
+
+	@Override
+	public void visit(ReturnStmt n, A arg) {
+		if (n.getExpr() != null) {
+			n.getExpr().accept(expressionTypeAnalyzer, arg);
+		}
+	}
+
+	@Override
+	public void visit(SwitchEntryStmt n, A arg) {
+		if (n.getLabel() != null) {
+			n.getLabel().accept(expressionTypeAnalyzer, arg);
+		}
+		if (n.getStmts() != null) {
+			for (Statement s : n.getStmts()) {
+				s.accept(this, arg);
+			}
+		}
+	}
+
+	@Override
+	public void visit(SwitchStmt n, A arg) {
+		n.getSelector().accept(expressionTypeAnalyzer, arg);
+		if (n.getEntries() != null) {
+			for (SwitchEntryStmt e : n.getEntries()) {
+				e.accept(this, arg);
+			}
+		}
+	}
+
+	@Override
+	public void visit(SynchronizedStmt n, A arg) {
+		n.getExpr().accept(expressionTypeAnalyzer, arg);
+		n.getBlock().accept(this, arg);
+	}
+
+	@Override
+	public void visit(ThrowStmt n, A arg) {
+		n.getExpr().accept(expressionTypeAnalyzer, arg);
+	}
+
+	@Override
+	public void visit(WhileStmt n, A arg) {
+		n.getCondition().accept(expressionTypeAnalyzer, arg);
+		n.getBody().accept(this, arg);
 	}
 
 	private void lookupSymbol(String name, ReferenceType referenceType, A arg) {
@@ -552,7 +738,6 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	public void visit(NameExpr n, A arg) {
 		lookupSymbol(n.toString(), null, arg);
-
 	}
 
 	@Override
@@ -563,19 +748,10 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		if (n.getScope() == null) {
 			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
 		} else {
-			n.getScope().accept(expressionTypeAnalyzer, arg);
-			scopeType = (SymbolType) arg
-					.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+			scopeType = (SymbolType) n.getScope().getSymbolData();
+		}
 
-		}
-		List<TypeParameter> args = n.getTypeParameters();
 		SymbolType[] argsType = new SymbolType[0];
-		if (args != null) {
-			Iterator<TypeParameter> it = args.iterator();
-			while (it.hasNext()) {
-				it.next().accept(this, arg);
-			}
-		}
 
 		symbolTable.lookUpSymbolForRead(n.getIdentifier(),
 				ReferenceType.METHOD, scopeType, argsType);
@@ -584,8 +760,43 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(TypeParameter n, A arg) {
-		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.TYPE);
 		super.visit(n, arg);
+		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.TYPE);
+		
 	}
 
+	@Override
+	public void visit(SuperExpr n, A arg) {
+		symbolTable.lookUpSymbolForRead("super", ReferenceType.VARIABLE);
+	}
+
+	@Override
+	public void visit(ThisExpr n, A arg) {
+		symbolTable.lookUpSymbolForRead("this", ReferenceType.VARIABLE);
+	}
+
+	@Override
+	public void visit(WildcardType n, A arg) {
+		n.accept(expressionTypeAnalyzer, arg);
+	}
+
+	@Override
+	public void visit(VoidType n, A arg) {
+		n.accept(expressionTypeAnalyzer, arg);
+	}
+
+	@Override
+	public void visit(org.walkmod.javalang.ast.type.ReferenceType n, A arg) {
+		n.accept(expressionTypeAnalyzer, arg);
+	}
+
+	@Override
+	public void visit(PrimitiveType n, A arg) {
+		n.accept(expressionTypeAnalyzer, arg);
+	}
+
+	@Override
+	public void visit(ClassOrInterfaceType n, A arg) {
+		n.accept(expressionTypeAnalyzer, arg);
+	}
 }

@@ -59,6 +59,7 @@ public class LoadFieldDeclarationsAction implements SymbolAction {
 						SymbolType resolvedType = typeTable.valueOf(type);
 						resolvedType
 								.setClazz(typeTable.loadClass(resolvedType));
+						type.setSymbolData(resolvedType);
 
 						for (VariableDeclarator var : fd.getVariables()) {
 							SymbolType symType = resolvedType.clone();

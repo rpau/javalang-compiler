@@ -49,7 +49,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		NameExpr n = new NameExpr("a");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(n, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) n.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("int", type.getName());
 	}
@@ -66,7 +66,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.length");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("int", type.getName());
 	}
@@ -85,7 +85,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("int", type.getName());
 	}
@@ -103,7 +103,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		symTable.popScope();
 		return type;
 	}
@@ -119,7 +119,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		symTable.popScope();
 		return type;
 	}
@@ -173,7 +173,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a[0]");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("char", type.getName());
 	}
@@ -189,7 +189,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				"\"Hello\"+a");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
@@ -205,7 +205,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.name");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
@@ -221,7 +221,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "A.OPEN");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("A", type.getName());
 	}
@@ -237,7 +237,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.toString()");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
@@ -253,7 +253,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.foo(\"hello\")");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
@@ -269,7 +269,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.foo(\"hello\")");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
@@ -286,7 +286,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				"a.foo(1,\"hello\",\"hello\",\"hello\",\"hello\")");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
@@ -303,8 +303,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 					Expression.class, "a.bar");
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
 			expressionAnalyzer.visit(expr, ctx);
-			SymbolType type = (SymbolType) ctx
-					.get(ExpressionTypeAnalyzer.TYPE_KEY);
+			SymbolType type = (SymbolType) expr.getSymbolData();
 			Assert.assertNotNull(type);
 			Assert.assertEquals("java.util.List", type.getName());
 			Assert.assertNotNull(type.getParameterizedTypes());
@@ -324,7 +323,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.bar");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.util.List", type.getName());
 		Assert.assertNull(type.getParameterizedTypes());
@@ -342,7 +341,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.get()");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.Object", type.getName());
 	}
@@ -364,7 +363,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "a.set(a)");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("A", type.getName());
 
@@ -372,7 +371,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				"a.set(a).close()");
 		ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 	}
 
@@ -389,7 +388,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "A.pick(\"d\", new ArrayList<String>())");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType)expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.io.Serializable", type.getName());
 	}
@@ -408,7 +407,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				"A.<Serializable>pick(\"d\", new ArrayList<String>())");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.io.Serializable", type.getName());
 	}
@@ -424,7 +423,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "new A(a)");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("A", type.getName());
 	}
@@ -445,7 +444,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				"A.processStringList(Collections.emptyList());");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) ctx.get(ExpressionTypeAnalyzer.TYPE_KEY);
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("void", type.getName());
 	}

@@ -36,6 +36,7 @@ public class LoadTypeDeclarationsAction implements SymbolAction {
 		SymbolType st = new SymbolType();
 		st.setName(className);
 		st.setClazz(typeTable.loadClass(className));
+		node.setSymbolData(st);
 		table.pushSymbol(typeTable.getSimpleName(className), ReferenceType.TYPE, st, node, actions);
 	}
 

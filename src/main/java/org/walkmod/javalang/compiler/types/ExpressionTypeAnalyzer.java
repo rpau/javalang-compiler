@@ -18,14 +18,18 @@ package org.walkmod.javalang.compiler.types;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
+import org.walkmod.javalang.ast.expr.ArrayInitializerExpr;
+import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.BinaryExpr;
 import org.walkmod.javalang.ast.expr.BinaryExpr.Operator;
 import org.walkmod.javalang.ast.expr.BooleanLiteralExpr;
@@ -34,6 +38,7 @@ import org.walkmod.javalang.ast.expr.CharLiteralExpr;
 import org.walkmod.javalang.ast.expr.ClassExpr;
 import org.walkmod.javalang.ast.expr.ConditionalExpr;
 import org.walkmod.javalang.ast.expr.DoubleLiteralExpr;
+import org.walkmod.javalang.ast.expr.EnclosedExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.FieldAccessExpr;
 import org.walkmod.javalang.ast.expr.InstanceOfExpr;
@@ -47,15 +52,24 @@ import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.NormalAnnotationExpr;
-import org.walkmod.javalang.ast.expr.NullLiteralExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.QualifiedNameExpr;
 import org.walkmod.javalang.ast.expr.SingleMemberAnnotationExpr;
 import org.walkmod.javalang.ast.expr.StringLiteralExpr;
 import org.walkmod.javalang.ast.expr.SuperExpr;
 import org.walkmod.javalang.ast.expr.ThisExpr;
+import org.walkmod.javalang.ast.expr.TypeExpr;
+import org.walkmod.javalang.ast.expr.UnaryExpr;
+import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
+import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
+import org.walkmod.javalang.ast.type.PrimitiveType;
+import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
+import org.walkmod.javalang.ast.type.Type;
+import org.walkmod.javalang.ast.type.VoidType;
+import org.walkmod.javalang.ast.type.WildcardType;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
+import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.FieldInspector;
 import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromParameterTypes;
@@ -63,6 +77,7 @@ import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
@@ -70,8 +85,6 @@ import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 		VoidVisitorAdapter<A> {
-
-	public static final String TYPE_KEY = "type_key";
 
 	public static final String IMPLICIT_PARAM_TYPE = "implicit_param_type";
 
@@ -98,29 +111,54 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	@Override
 	public void visit(ArrayAccessExpr n, A arg) {
 		n.getName().accept(this, arg);
-		SymbolType arrayType = (SymbolType) arg.remove(TYPE_KEY);
+		SymbolType arrayType = (SymbolType) n.getName().getSymbolData();
 		SymbolType newType = new SymbolType();
 		newType.setName(arrayType.getName());
 		newType.setParameterizedTypes(arrayType.getParameterizedTypes());
 		newType.setArrayCount(arrayType.getArrayCount() - 1);
-		arg.put(TYPE_KEY, newType);
+		n.setSymbolData(newType);
 	}
 
 	@Override
 	public void visit(ArrayCreationExpr n, A arg) {
 		SymbolType arrayType = typeTable.valueOf(n.getType());
 		arrayType.setArrayCount(1);
-		arg.put(TYPE_KEY, arrayType);
+		n.setSymbolData(arrayType);
+	}
+
+	@Override
+	public void visit(ArrayInitializerExpr n, A arg) {
+
+		if (n.getValues() != null) {
+			List<Class<?>> classes = new LinkedList<Class<?>>();
+			for (Expression expr : n.getValues()) {
+				expr.accept(this, arg);
+				if (expr.getSymbolData() != null) {
+					classes.add(expr.getSymbolData().getClazz());
+				}
+			}
+			Class<?> superClass = ClassInspector
+					.getTheNearestSuperClass(classes);
+			SymbolType st = new SymbolType(superClass);
+			n.setSymbolData(st);
+		}
+	}
+
+	@Override
+	public void visit(AssignExpr n, A arg) {
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
 	}
 
 	@Override
 	public void visit(BinaryExpr n, A arg) {
 
 		n.getLeft().accept(this, arg);
-		SymbolType leftType = (SymbolType) arg.remove(TYPE_KEY);
+		SymbolType leftType = (SymbolType) n.getLeft().getSymbolData();
 
 		n.getRight().accept(this, arg);
-		SymbolType rightType = (SymbolType) arg.remove(TYPE_KEY);
+		SymbolType rightType = (SymbolType) n.getRight().getSymbolData();
 
 		SymbolType resultType = leftType;
 
@@ -142,39 +180,69 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			}
 		}
 
-		arg.put(TYPE_KEY, resultType);
+		n.setSymbolData(resultType);
 
+	}
+
+	public void visit(UnaryExpr n, A arg) {
+		super.visit(n, arg);
+		SymbolData sd = n.getExpr().getSymbolData();
+		n.setSymbolData(sd);
 	}
 
 	@Override
 	public void visit(BooleanLiteralExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("boolean"));
+		n.setSymbolData(new SymbolType("boolean"));
 	}
 
 	@Override
 	public void visit(CastExpr n, A arg) {
-		arg.put(TYPE_KEY, typeTable.valueOf(n.getType()));
+		super.visit(n, arg);
+		n.setSymbolData(n.getType().getSymbolData());
 	}
 
 	@Override
 	public void visit(CharLiteralExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("char"));
+		n.setSymbolData(new SymbolType("char"));
 	}
 
 	@Override
 	public void visit(ClassExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("java.lang.Class"));
+		n.setSymbolData(new SymbolType("java.lang.Class"));
 	}
 
 	@Override
 	public void visit(ConditionalExpr n, A arg) {
-		// then and else expression must have the same type
-		n.getThenExpr().accept(this, arg);
+
+		super.visit(n, arg);
+		SymbolData thenData = n.getThenExpr().getSymbolData();
+		SymbolData elseData = n.getElseExpr().getSymbolData();
+
+		if (elseData == null || thenData == null) {
+			if (elseData == null) {
+				n.setSymbolData(thenData);
+			} else {
+				n.setSymbolData(elseData);
+			}
+		} else {
+			Class<?> thenClass = thenData.getClazz();
+			Class<?> elseClass = elseData.getClazz();
+			Class<?> superClass = ClassInspector.getTheNearestSuperClass(
+					thenClass, elseClass);
+			n.setSymbolData(new SymbolType(superClass));
+		}
+
+	}
+
+	@Override
+	public void visit(EnclosedExpr n, A arg) {
+		super.visit(n, arg);
+		n.setSymbolData(n.getInner().getSymbolData());
 	}
 
 	@Override
 	public void visit(DoubleLiteralExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("double"));
+		n.setSymbolData(new SymbolType("double"));
 	}
 
 	@Override
@@ -182,7 +250,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 		n.getScope().accept(this, arg);
 
-		SymbolType scopeType = (SymbolType) arg.remove(TYPE_KEY);
+		SymbolType scopeType = (SymbolType) n.getScope().getSymbolData();
 
 		Class<?> c = null;
 
@@ -195,12 +263,10 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						symbolTable.lookUpSymbolForRead(
 								typeTable.getSimpleName(c.getName()),
 								ReferenceType.TYPE);
-						arg.put(TYPE_KEY, scopeType);
-					} else {
-						arg.put(TYPE_KEY, null);
+						n.setSymbolData(scopeType);
 					}
 				} catch (ClassNotFoundException e) {
-					arg.put(TYPE_KEY, null);
+
 				}
 			} else {
 
@@ -213,8 +279,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					symbolTable.lookUpSymbolForRead(n.getField(),
 							ReferenceType.VARIABLE);
 				}
-
-				arg.put(TYPE_KEY, fieldType);
+				n.setSymbolData(fieldType);
 
 			}
 
@@ -222,31 +287,35 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			throw new NoSuchExpressionTypeException(e);
 
 		}
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
 	}
 
 	@Override
 	public void visit(InstanceOfExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("boolean"));
+		super.visit(n, arg);
+		n.setSymbolData(new SymbolType("boolean"));
 	}
 
 	@Override
 	public void visit(IntegerLiteralExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("int"));
+		n.setSymbolData(new SymbolType("int"));
 	}
 
 	@Override
 	public void visit(IntegerLiteralMinValueExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("int"));
+		n.setSymbolData(new SymbolType("int"));
 	}
 
 	@Override
 	public void visit(LongLiteralExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("long"));
+		n.setSymbolData(new SymbolType("long"));
 	}
 
 	@Override
 	public void visit(LongLiteralMinValueExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("long"));
+		n.setSymbolData(new SymbolType("long"));
 	}
 
 	@Override
@@ -258,7 +327,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 				n.getScope().accept(this, arg);
 
-				scope = (SymbolType) arg.remove(TYPE_KEY);
+				scope = (SymbolType) n.getScope().getSymbolData();
 
 				LOG.debug("scope: (" + n.getScope().toString() + ")"
 						+ scope.getName() + " method " + n.toString());
@@ -277,9 +346,11 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				int i = 0;
 				for (Expression e : n.getArgs()) {
 					e.accept(this, arg);
-					SymbolType argType = (SymbolType) arg.remove(TYPE_KEY);
+					SymbolType argType = (SymbolType) e.getSymbolData();
 					symbolTypes[i] = argType;
-					typeArgs[i] = typeTable.loadClass(argType);
+					if (argType != null) {
+						typeArgs[i] = argType.getClazz();
+					}
 					i++;
 				}
 			}
@@ -290,23 +361,34 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				symbolTable.lookUpSymbolForRead(n.getName(),
 						ReferenceType.METHOD, scope, symbolTypes);
 			}
-			Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
-			// it should be initialized after resolving the method
 
-			ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
+			// for static imports
+			Symbol s = symbolTable.findSymbol(n.getName(),
+					ReferenceType.METHOD, scope, symbolTypes);
 
-			filter.appendPredicate(new MethodsByNamePredicate(n.getName()))
-					.appendPredicate(new InvokableMethodsPredicate())
-					.appendPredicate(new CompatibleArgsPredicate(typeArgs));
+			if (s != null) {
+				n.setSymbolData(s.getType());
+			} else {
+				Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+				// it should be initialized after resolving the method
 
-			CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
-			builder.appendBuilder(new GenericsBuilderFromParameterTypes(
-					typeMapping, n.getArgs(), typeArgs));
+				ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
 
-			SymbolType st = MethodInspector.findMethodType(scope, filter,
-					builder, typeMapping);
+				filter.appendPredicate(new MethodsByNamePredicate(n.getName()))
+						.appendPredicate(new InvokableMethodsPredicate())
+						.appendPredicate(new CompatibleArgsPredicate(typeArgs));
 
-			arg.put(TYPE_KEY, st);
+				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
+				builder.appendBuilder(new GenericsBuilderFromParameterTypes(
+						typeMapping, n.getArgs(), typeArgs));
+
+				SymbolType st = MethodInspector.findMethodType(scope, filter,
+						builder, typeMapping);
+				n.setSymbolData(st);
+			}
+			if (semanticVisitor != null) {
+				n.accept(semanticVisitor, arg);
+			}
 
 		} catch (ClassNotFoundException e) {
 			throw new NoSuchExpressionTypeException(e);
@@ -331,28 +413,24 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					type.setName(className);
 				}
 			} catch (ClassNotFoundException e) {
-				throw new NoSuchExpressionTypeException(e);
+				// a name expression could be "org.walkmod.A" and this node
+				// could be "org.walkmod"
 			}
-		} else {
-			symbolTable.lookUpSymbolForRead(n.getName(), null);
 		}
-		arg.put(TYPE_KEY, type);
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
+		n.setSymbolData(type);
 
-	}
-
-	@Override
-	public void visit(NullLiteralExpr n, A arg) {
-		arg.put(TYPE_KEY, null);
 	}
 
 	@Override
 	public void visit(ObjectCreationExpr n, A arg) {
-
+		super.visit(n, arg);
+		n.setSymbolData(n.getType().getSymbolData());
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
-		arg.put(TYPE_KEY, typeTable.valueOf(n.getType()));
-
 	}
 
 	@Override
@@ -367,27 +445,37 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				aux = null;
 			}
 		}
-		arg.put(TYPE_KEY, type);
+		n.setSymbolData(type);
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
 	}
 
 	@Override
 	public void visit(StringLiteralExpr n, A arg) {
-		arg.put(TYPE_KEY, new SymbolType("java.lang.String"));
+		n.setSymbolData(new SymbolType("java.lang.String"));
 	}
 
 	@Override
 	public void visit(SuperExpr n, A arg) {
-		arg.put(TYPE_KEY,
-				symbolTable
-						.lookUpSymbolForRead("super", ReferenceType.VARIABLE)
-						.getType());
+		n.setSymbolData(symbolTable.getType("super", ReferenceType.VARIABLE));
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
 	}
 
 	@Override
 	public void visit(ThisExpr n, A arg) {
-		arg.put(TYPE_KEY,
-				symbolTable.lookUpSymbolForRead("this", ReferenceType.VARIABLE)
-						.getType());
+		n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
+	}
+
+	@Override
+	public void visit(TypeExpr n, A arg) {
+		super.visit(n, arg);
+		n.setSymbolData(n.getType().getSymbolData());
 	}
 
 	@Override
@@ -399,8 +487,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
 		} else {
 			n.getScope().accept(this, arg);
-			scopeType = (SymbolType) arg
-					.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+			scopeType = (SymbolType) n.getScope().getSymbolData();
 			try {
 				Class<?> clazz = typeTable.loadClass(scopeType);
 				scopeType.setClazz(clazz);
@@ -411,8 +498,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 		}
 		try {
 			Method m = scopeType.getClazz().getMethod(n.getIdentifier());
-			SymbolType st = new SymbolType(m.getReturnType());
-			arg.put(TYPE_KEY, st);
+			n.setSymbolData(SymbolType.valueOf(m, null));
 
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException("Error resolving "
@@ -425,6 +511,10 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			while (it.hasNext()) {
 				it.next().accept(this, arg);
 			}
+		}
+
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
 		}
 
 	}
@@ -455,6 +545,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 		super.visit(n, arg);
 	}
 
+	@Override
 	public void visit(LambdaExpr n, A arg) {
 		if (semanticVisitor != null) {
 			symbolTable.pushScope();
@@ -467,5 +558,123 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			n.getBody().accept(semanticVisitor, arg);
 			symbolTable.popScope();
 		}
+	}
+
+	@Override
+	public void visit(ClassOrInterfaceType n, A arg) {
+		super.visit(n, arg);
+		String typeName = n.getName();
+		ClassOrInterfaceType scope = n.getScope();
+		Class<?> clazz = null;
+		SymbolType type = null;
+		if (scope != null) {
+			SymbolData data = scope.getSymbolData();
+			if (data == null) {
+				typeName = scope.toString() + "." + typeName;
+				try {
+					clazz = typeTable.loadClass(typeName);
+				} catch (ClassNotFoundException e) {
+					// we are the parents of another class or interface type
+				}
+			} else {
+				typeName = data.getName() + "$" + typeName;
+				try {
+					clazz = typeTable.loadClass(typeName);
+				} catch (ClassNotFoundException e) {
+					throw new NoSuchExpressionTypeException("Ops! The class "
+							+ n.toString() + " can't be resolved", null);
+				}
+			}
+			if (clazz != null) {
+				type = new SymbolType(clazz);
+			}
+		} else {
+			Symbol s = symbolTable.lookUpSymbolForRead(typeName,
+					ReferenceType.TYPE);
+			if (s != null) {
+				type = s.getType().clone();
+			} else {
+				String fullName = typeTable.getFullName(n);
+				if (fullName != null) {
+					type = new SymbolType(fullName);
+				}
+			}
+		}
+		if (type != null) {
+			List<Type> args = n.getTypeArgs();
+
+			if (args != null) {
+				List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+				for (Type currentArg : args) {
+					parameterizedTypes.add((SymbolType) currentArg
+							.getSymbolData());
+				}
+				type.setParameterizedTypes(parameterizedTypes);
+			}
+			n.setSymbolData(type);
+		}
+	}
+
+	@Override
+	public void visit(PrimitiveType n, A arg) {
+		super.visit(n, arg);
+		Primitive type = n.getType();
+		if (type.equals(Primitive.Boolean)) {
+			n.setSymbolData(new SymbolType("boolean"));
+		} else if (type.equals(Primitive.Byte)) {
+			n.setSymbolData(new SymbolType("byte"));
+		} else if (type.equals(Primitive.Char)) {
+			n.setSymbolData(new SymbolType("char"));
+		} else if (type.equals(Primitive.Double)) {
+			n.setSymbolData(new SymbolType("double"));
+		} else if (type.equals(Primitive.Float)) {
+			n.setSymbolData(new SymbolType("float"));
+		} else if (type.equals(Primitive.Int)) {
+			n.setSymbolData(new SymbolType("int"));
+		} else if (type.equals(Primitive.Long)) {
+			n.setSymbolData(new SymbolType("long"));
+		} else if (type.equals(Primitive.Short)) {
+			n.setSymbolData(new SymbolType("short"));
+		}
+	}
+
+	@Override
+	public void visit(org.walkmod.javalang.ast.type.ReferenceType n, A arg) {
+		super.visit(n, arg);
+		SymbolType newType = null;
+		SymbolType st = (SymbolType) n.getType().getSymbolData();
+		if (st != null) {
+			newType = st.clone();
+			newType.setArrayCount(n.getArrayCount());
+		}
+		n.setSymbolData(newType);
+	}
+
+	@Override
+	public void visit(VoidType n, A arg) {
+		super.visit(n, arg);
+		n.setSymbolData(new SymbolType(void.class));
+	}
+
+	@Override
+	public void visit(WildcardType n, A arg) {
+		super.visit(n, arg);
+		Type superType = n.getSuper();
+		if (superType != null) {
+			n.setSymbolData(superType.getSymbolData());
+		} else {
+			Type extendsType = n.getExtends();
+			if (extendsType != null) {
+				n.setSymbolData(extendsType.getSymbolData());
+			}
+		}
+	}
+
+	public void visit(VariableDeclarationExpr n, A arg) {
+		super.visit(n, arg);
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
+
 	}
 }

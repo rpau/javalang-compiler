@@ -42,6 +42,11 @@ public class ClassInspector {
 		}
 		return parent;
 	}
+
+	public static Class<?> getTheNearestSuperClass(List<Class<?>> classes) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 	
 	
 }

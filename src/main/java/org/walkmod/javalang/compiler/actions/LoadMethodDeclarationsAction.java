@@ -37,12 +37,15 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 		Type type = md.getType();
 		SymbolType resolvedType = typeTable.valueOf(type);
 		resolvedType.setClazz(typeTable.loadClass(resolvedType));
+		type.setSymbolData(resolvedType);
+		
 		List<Parameter> params = md.getParameters();
 		SymbolType[] args = null;
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
 				args[i] = typeTable.valueOf(params.get(i).getType());
+				params.get(i).getType().setSymbolData(args[i]);
 			}
 		}
 		List<SymbolAction> actions = null;
@@ -58,6 +61,7 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 			ConstructorDeclaration md) throws Exception {
 		Type type = new ClassOrInterfaceType(md.getName());
 		SymbolType resolvedType = typeTable.valueOf(type);
+		type.setSymbolData(resolvedType);
 		resolvedType.setClazz(typeTable.loadClass(resolvedType));
 		List<Parameter> params = md.getParameters();
 		SymbolType[] args = null;
@@ -65,6 +69,7 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
 				args[i] = typeTable.valueOf(params.get(i).getType());
+				params.get(i).getType().setSymbolData(args[i]);
 			}
 		}
 		List<SymbolAction> actions = null;

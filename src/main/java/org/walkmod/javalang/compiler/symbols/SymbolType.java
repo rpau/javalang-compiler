@@ -15,21 +15,27 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.walkmod.javalang.ast.FieldSymbolData;
+import org.walkmod.javalang.ast.MethodSymbolData;
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.types.TypeTable;
 import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 
-public class SymbolType {
+public class SymbolType implements SymbolData, MethodSymbolData,
+		FieldSymbolData {
 
 	private String name;
 
@@ -42,8 +48,10 @@ public class SymbolType {
 	private boolean isTemplateVariable = false;
 
 	private Class<?> clazz;
-	
+
 	private Method method = null;
+
+	private Field field = null;
 
 	public SymbolType() {
 	}
@@ -53,6 +61,17 @@ public class SymbolType {
 		if (!bounds.isEmpty()) {
 			name = bounds.get(0).getName();
 			clazz = bounds.get(0).getClazz();
+		}
+	}
+
+	public SymbolType(String name, List<SymbolType> bounds) {
+
+		this.name = name;
+		if (bounds != null) {
+			this.bounds = bounds;
+			if (!bounds.isEmpty()) {
+				clazz = bounds.get(0).getClazz();
+			}
 		}
 	}
 
@@ -86,9 +105,11 @@ public class SymbolType {
 			result = new LinkedList<SymbolType>();
 			for (TypeVariable<?> td : typeParams) {
 				Type[] bounds = td.getBounds();
-				if (bounds.length == 1 && bounds[0] instanceof Class) {
-					SymbolType st = new SymbolType((Class<?>) bounds[0]);
-					result.add(st);
+				if (bounds.length == 1) {
+					if (bounds[0] instanceof Class) {
+						SymbolType st = new SymbolType((Class<?>) bounds[0]);
+						result.add(st);
+					}
 				} else {
 					throw new RuntimeException("Multiple bounds not supported");
 				}
@@ -113,6 +134,8 @@ public class SymbolType {
 		this.name = name;
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
 	public List<SymbolType> getParameterizedTypes() {
 		return parameterizedTypes;
 	}
@@ -193,9 +216,9 @@ public class SymbolType {
 		result.append(name);
 		if (parameterizedTypes != null) {
 			result.append("<");
-			Iterator<SymbolType> it = parameterizedTypes.iterator();
+			Iterator<? extends SymbolData> it = parameterizedTypes.iterator();
 			while (it.hasNext()) {
-				SymbolType next = it.next();
+				SymbolType next = (SymbolType) it.next();
 				result.append(next.toString());
 				if (it.hasNext()) {
 					result.append(", ");
@@ -213,11 +236,13 @@ public class SymbolType {
 		SymbolType result = new SymbolType();
 		result.setName(name);
 		result.setClazz(clazz);
+		result.setArrayCount(arrayCount);
 		result.isTemplateVariable = isTemplateVariable;
 		if (parameterizedTypes != null) {
 			List<SymbolType> list = new LinkedList<SymbolType>();
-			for (SymbolType type : parameterizedTypes) {
-				list.add(type.clone());
+
+			for (SymbolData type : parameterizedTypes) {
+				list.add(((SymbolType) type).clone());
 			}
 			result.setParameterizedTypes(list);
 		}
@@ -294,32 +319,37 @@ public class SymbolType {
 		return returnType;
 
 	}
-	
-	public Method getMethod(){
+
+	public Method getMethod() {
 		return method;
 	}
-	
+
 	public static SymbolType valueOf(Method method,
 			Map<String, SymbolType> typeMapping) throws ClassNotFoundException,
 			InvalidTypeException {
+		java.lang.reflect.Type type = null;
+		if (typeMapping == null) {
+			typeMapping = new HashMap<String, SymbolType>();
+			type = method.getReturnType();
+		} else {
+			TypeVariable<Method>[] tvs = method.getTypeParameters();
+			type = method.getGenericReturnType();
+			if (tvs.length > 0) {
+				for (TypeVariable<Method> tv : tvs) {
+					Type[] bounds = tv.getBounds();
+					List<SymbolType> boundsList = new LinkedList<SymbolType>();
+					for (int i = 0; i < bounds.length; i++) {
+						boundsList.add(new SymbolType((Class<?>) bounds[i]));
+					}
+					SymbolType st = typeMapping.get(tv.getName());
+					if (st == null) {
+						if (boundsList.size() == 1) {
+							typeMapping.put(tv.getName(), boundsList.get(0));
 
-		TypeVariable<Method>[] tvs = method.getTypeParameters();
-		java.lang.reflect.Type type = method.getGenericReturnType();
-		if (tvs.length > 0) {
-			for (TypeVariable<Method> tv : tvs) {
-				Type[] bounds = tv.getBounds();
-				List<SymbolType> boundsList = new LinkedList<SymbolType>();
-				for (int i = 0; i < bounds.length; i++) {
-					boundsList.add(new SymbolType((Class<?>) bounds[i]));
-				}
-				SymbolType st = typeMapping.get(tv.getName());
-				if (st == null) {
-					if (boundsList.size() == 1) {
-						typeMapping.put(tv.getName(), boundsList.get(0));
-
-					} else {
-						typeMapping.put(tv.getName(),
-								new SymbolType(boundsList));
+						} else {
+							typeMapping.put(tv.getName(), new SymbolType(
+									boundsList));
+						}
 					}
 				}
 			}
@@ -327,6 +357,15 @@ public class SymbolType {
 		SymbolType st = SymbolType.valueOf(type, typeMapping);
 		st.method = method;
 		return st;
+	}
+
+	public void setField(Field field) {
+		this.field = field;
+	}
+
+	@Override
+	public Field getField() {
+		return field;
 	}
 
 }

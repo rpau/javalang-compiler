@@ -56,8 +56,7 @@ public class RequiredMethodPredicate<A extends Map<String, Object>> implements
 
 					for (Expression argExpr : args) {
 						argExpr.accept(visitor, ctx);
-						SymbolType typeArg = (SymbolType) ctx
-								.remove(ExpressionTypeAnalyzer.TYPE_KEY);
+						SymbolType typeArg = (SymbolType) argExpr.getSymbolData();
 						if (!Types.isCompatible(typeArg.getClazz(),
 								parameterTypes[k])) {
 							compatibleArgs = false;
