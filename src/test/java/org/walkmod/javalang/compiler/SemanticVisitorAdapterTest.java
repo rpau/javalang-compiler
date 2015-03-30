@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.lang.model.SourceVersion;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -224,7 +226,11 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testLambdaExpressions() throws Exception {
-
+		String code ="public class A{ private interface C{ public int get(int c); } public void run(){ C a = (b)->b; } }";
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			CompilationUnit cu = runRemoveUnusedMembers(code);
+			Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
+		}
 	}
 
 	@Test

@@ -30,6 +30,7 @@ import java.util.Map;
 import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
+import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.types.TypeTable;
 import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
@@ -179,7 +180,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 			return isCompatible;
 		}
-		return Types.isCompatible(other.clazz, clazz);
+		return Types.isCompatible(other.getClazz(), getClazz());
 	}
 
 	public Class<?> getClazz() {
@@ -190,6 +191,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				throw new RuntimeException("Error resolving the class for "
 						+ name, e.getCause());
 			}
+
 		}
 		return clazz;
 	}
@@ -204,8 +206,9 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 		} else {
 			Class<?> clazz = getClazz();
-
-			compatibleClasses.add(clazz);
+			if (clazz != null) {
+				compatibleClasses.add(clazz);
+			}
 		}
 		return compatibleClasses;
 	}
@@ -366,6 +369,28 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	@Override
 	public Field getField() {
 		return field;
+	}
+
+	@Override
+	public SymbolData merge(SymbolData other) {
+		if (other == null) {
+			return this;
+		}
+		List<Class<?>> bounds = ClassInspector.getTheNearestSuperClasses(
+				getBoundClasses(), other.getBoundClasses());
+		if(bounds.isEmpty()){
+			return null;
+		}
+		else if (bounds.size() == 1) {
+			return new SymbolType(bounds.get(0));
+		} else {
+			List<SymbolType> boundsList = new LinkedList<SymbolType>();
+			for (Class<?> bound : bounds) {
+				boundsList.add(new SymbolType(bound));
+			}
+			return new SymbolType(boundsList);
+		}
+
 	}
 
 }

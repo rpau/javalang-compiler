@@ -2,6 +2,8 @@ package org.walkmod.javalang.compiler;
 
 import java.beans.Expression;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.SourceVersion;
@@ -31,11 +33,11 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 	@Override
 	public CompilationUnit compile(String code) throws Exception {
 		CompilationUnit cu = super.compile(code);
-		SemanticVisitorAdapter<Map<String, Object>> semanticVisitor = 
-				new SemanticVisitorAdapter<Map<String, Object>>();
+		SemanticVisitorAdapter<Map<String, Object>> semanticVisitor = new SemanticVisitorAdapter<Map<String, Object>>();
 		semanticVisitor.setSymbolTable(getSymbolTable());
 		expressionAnalyzer = new ExpressionTypeAnalyzer<Map<String, Object>>(
 				getTypeTable(), getSymbolTable(), semanticVisitor);
+		semanticVisitor.setExpressionTypeAnalyzer(expressionAnalyzer);
 		return cu;
 	}
 
@@ -388,7 +390,7 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 				Expression.class, "A.pick(\"d\", new ArrayList<String>())");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType)expr.getSymbolData();
+		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.io.Serializable", type.getName());
 	}
@@ -448,13 +450,40 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		Assert.assertNotNull(type);
 		Assert.assertEquals("void", type.getName());
 	}
-	
-	
-	
+
+	// TODO4: Las declaraciones no tienen su tipo (metodos y campos)
+
 	@Test
-	public void testLambdaExpressions() throws Exception {
+	public void testComplexArrayContent() throws Exception {
+		compile("public class A {}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(char.class);
+		st.setArrayCount(2);
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		ArrayAccessExpr expr = (ArrayAccessExpr) ASTManager.parse(
+				Expression.class, "a[0]");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals("char", type.getName());
+		Assert.assertEquals(1, type.getArrayCount());
+
+		expr = (ArrayAccessExpr) ASTManager.parse(Expression.class, "a[0][0]");
+
+		ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals("char", type.getName());
+		Assert.assertEquals(0, type.getArrayCount());
+	}
+
+	@Test
+	public void testSimpleLambdaExpressions() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			/*
+
 			compile("import java.util.LinkedList; public class A{ public String getName() { return \"hello\"; }}");
 			SymbolType st = new SymbolType(getClassLoader().loadClass(
 					"java.util.LinkedList"));
@@ -470,10 +499,156 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 					"a.stream().filter(p->p.getName().equals(\"hello\"))");
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
 			expressionAnalyzer.visit(expr, ctx);
-			SymbolType type = (SymbolType) ctx
-					.get(ExpressionTypeAnalyzer.TYPE_KEY);
-			Assert.assertNotNull(type);*/
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("java.util.stream.Stream", type.getName());
+			Assert.assertEquals("A", type.getParameterizedTypes().get(0)
+					.getName());
 		}
+	}
+
+	@Test
+	public void testAmbiguousLambdaExpressions() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String BCode = "public interface B { public String execute(); } ";
+			String CCode = "public interface C { public int execute(); }";
+
+			compile("public class A{ public void run(B b){} public void run(C c){} "
+					+ BCode + CCode + "}");
+			SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("a", ReferenceType.TYPE, st, null);
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "a.run(()->1+2)");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$C",
+					type.getMethod().getParameterTypes()[0].getName());
+		}
+	}
+
+	@Test
+	public void testLambdaExpressionsWithExplicitArgs() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String BCode = "public interface B { public int execute(int c); } ";
+
+			compile("public class A{ public void run(B b){} " + BCode + "}");
+			SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("a", ReferenceType.TYPE, st, null);
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "a.run((int d)->d+1)");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$B",
+					type.getMethod().getParameterTypes()[0].getName());
+		}
+	}
+
+	@Test
+	public void testMethodCallWithMultipleLambdaArgs() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String BCode = "public interface B { public int execute(int c); } ";
+
+			compile("public class A{ public void run(B b, B c){} " + BCode
+					+ "}");
+			SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("a", ReferenceType.TYPE, st, null);
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "a.run((int d)->d+1, d->d)");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$B",
+					type.getMethod().getParameterTypes()[0].getName());
+		}
+	}
+
+	@Test
+	public void testLambdaExpressionsWithBody() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String BCode = "public interface B { public int execute(int c); } ";
+
+			compile("public class A{ public void run(B b){} " + BCode + "}");
+			SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("a", ReferenceType.TYPE, st, null);
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "a.run((int d)->{ return d+1; })");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$B",
+					type.getMethod().getParameterTypes()[0].getName());
+
+			expr = (MethodCallExpr) ASTManager
+					.parse(Expression.class,
+							"a.run((int d)->{ if(d > 0) {return 1;} else {return 0;} })");
+			ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$B",
+					type.getMethod().getParameterTypes()[0].getName());
+
+			expr = (MethodCallExpr) ASTManager
+					.parse(Expression.class,
+							"a.run((int d)->{  if (true) return 12; else { int result = 15;for (int i = 1; i < 10; i++) result *= i; return result;}})");
+			ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$B",
+					type.getMethod().getParameterTypes()[0].getName());
+		}
+	}
+
+	@Test
+	public void testLambdaExpressionsWithVoidResult() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String BCode = "public interface B { public void execute(int c); } ";
+
+			compile("public class A{ public void run(B b){} " + BCode + "}");
+			SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("a", ReferenceType.TYPE, st, null);
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "a.run((int d)->{ return; })");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$B",
+					type.getMethod().getParameterTypes()[0].getName());
+			
+			expr = (MethodCallExpr) ASTManager
+					.parse(Expression.class,
+							"a.run((int d)->{ System.out.println(\"hello\"); })");
+			ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("A$B",
+					type.getMethod().getParameterTypes()[0].getName());
+		}
+
 	}
 
 }

@@ -26,6 +26,7 @@ import org.apache.log4j.Logger;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
+import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.ArrayInitializerExpr;
@@ -61,6 +62,8 @@ import org.walkmod.javalang.ast.expr.ThisExpr;
 import org.walkmod.javalang.ast.expr.TypeExpr;
 import org.walkmod.javalang.ast.expr.UnaryExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
+import org.walkmod.javalang.ast.stmt.ExpressionStmt;
+import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
 import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
@@ -71,6 +74,7 @@ import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
+import org.walkmod.javalang.compiler.reflection.CompatibleLambdasPredicate;
 import org.walkmod.javalang.compiler.reflection.FieldInspector;
 import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromParameterTypes;
 import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
@@ -272,13 +276,6 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 				SymbolType fieldType = FieldInspector.findFieldType(scopeType,
 						n.getField());
-
-				SymbolType thisType = symbolTable.getType("this",
-						ReferenceType.VARIABLE);
-				if (thisType != null && scopeType.isCompatible(thisType)) {
-					symbolTable.lookUpSymbolForRead(n.getField(),
-							ReferenceType.VARIABLE);
-				}
 				n.setSymbolData(fieldType);
 
 			}
@@ -340,26 +337,26 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 			Class<?>[] typeArgs = null;
 			SymbolType[] symbolTypes = null;
+			boolean hasLambda = false;
 			if (n.getArgs() != null) {
 				typeArgs = new Class[n.getArgs().size()];
 				symbolTypes = new SymbolType[n.getArgs().size()];
 				int i = 0;
+
 				for (Expression e : n.getArgs()) {
-					e.accept(this, arg);
-					SymbolType argType = (SymbolType) e.getSymbolData();
-					symbolTypes[i] = argType;
-					if (argType != null) {
-						typeArgs[i] = argType.getClazz();
+					if (!(e instanceof LambdaExpr)) {
+						e.accept(this, arg);
+						SymbolType argType = (SymbolType) e.getSymbolData();
+						symbolTypes[i] = argType;
+						if (argType != null) {
+							typeArgs[i] = argType.getClazz();
+
+						}
+					} else {
+						hasLambda = true;
 					}
 					i++;
 				}
-			}
-
-			SymbolType thisType = symbolTable.getType("this",
-					ReferenceType.VARIABLE);
-			if (thisType != null && scope.isCompatible(thisType)) {
-				symbolTable.lookUpSymbolForRead(n.getName(),
-						ReferenceType.METHOD, scope, symbolTypes);
 			}
 
 			// for static imports
@@ -377,7 +374,10 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				filter.appendPredicate(new MethodsByNamePredicate(n.getName()))
 						.appendPredicate(new InvokableMethodsPredicate())
 						.appendPredicate(new CompatibleArgsPredicate(typeArgs));
-
+				if (hasLambda) {
+					filter.appendPredicate(new CompatibleLambdasPredicate<A>(
+							scope, this, n.getArgs(), arg));
+				}
 				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
 				builder.appendBuilder(new GenericsBuilderFromParameterTypes(
 						typeMapping, n.getArgs(), typeArgs));
@@ -555,7 +555,12 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 					p.accept(semanticVisitor, arg);
 				}
 			}
-			n.getBody().accept(semanticVisitor, arg);
+			Statement stmt = n.getBody();
+			stmt.accept(semanticVisitor, arg);
+			if (stmt instanceof ExpressionStmt) {
+				stmt.setSymbolData(((ExpressionStmt) stmt).getExpression()
+						.getSymbolData());
+			}
 			symbolTable.popScope();
 		}
 	}
@@ -671,10 +676,34 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	}
 
 	public void visit(VariableDeclarationExpr n, A arg) {
-		super.visit(n, arg);
+
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
-
+		super.visit(n, arg);
 	}
+
+	@Override
+	public void visit(VariableDeclarator n, A arg) {
+		n.getId().accept(this, arg);
+		Expression init = n.getInit();
+		if (init != null) {
+			if (init instanceof LambdaExpr) {
+				ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
+				SymbolType scope = symbolTable.getType(n.getId().getName(),
+						ReferenceType.VARIABLE);
+				filter.appendPredicate(new CompatibleLambdasPredicate<A>(scope,
+						this, null, arg));
+				try {
+					init.setSymbolData(MethodInspector.findMethodType(scope,
+							filter, null, null));
+				} catch (Exception e) {
+					throw new NoSuchExpressionTypeException(e);
+				}
+			} else {
+				init.accept(this, arg);
+			}
+		}
+	}
+
 }

@@ -7,7 +7,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.Predicate;

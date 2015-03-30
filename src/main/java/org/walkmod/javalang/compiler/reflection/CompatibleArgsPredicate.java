@@ -8,13 +8,22 @@ import org.walkmod.javalang.compiler.types.Types;
 public class CompatibleArgsPredicate implements Predicate<Method> {
 
 	private Class<?>[] typeArgs;
+	
+	public CompatibleArgsPredicate(){
+		
+	}
 
 	public CompatibleArgsPredicate(Class<?>[] typeArgs) {
+		this.typeArgs = typeArgs;
+
+	}
+	
+	public void setTypeArgs(Class<?>[] typeArgs){
 		this.typeArgs = typeArgs;
 	}
 
 	@Override
-	public boolean filter(Method method) {
+	public boolean filter(Method method) throws Exception {
 		int numParams = typeArgs == null ? 0 : typeArgs.length;
 		Class<?> lastVariableTypeArg = null;
 		boolean isCompatible = true;
@@ -51,6 +60,7 @@ public class CompatibleArgsPredicate implements Predicate<Method> {
 
 				isCompatible = Types.isCompatible(typeArgs[i],
 						methodParameterTypes[i]);
+
 			}
 
 			if (isCompatible && lastVariableTypeArg != null) {
