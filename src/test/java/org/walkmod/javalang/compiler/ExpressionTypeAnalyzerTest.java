@@ -637,10 +637,9 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 			Assert.assertNotNull(type);
 			Assert.assertEquals("A$B",
 					type.getMethod().getParameterTypes()[0].getName());
-			
-			expr = (MethodCallExpr) ASTManager
-					.parse(Expression.class,
-							"a.run((int d)->{ System.out.println(\"hello\"); })");
+
+			expr = (MethodCallExpr) ASTManager.parse(Expression.class,
+					"a.run((int d)->{ System.out.println(\"hello\"); })");
 			ctx = new HashMap<String, Object>();
 			expressionAnalyzer.visit(expr, ctx);
 			type = (SymbolType) expr.getSymbolData();
@@ -650,5 +649,200 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		}
 
 	}
+
+	@Test
+	public void testMethodReferenceWithStaticMethod() throws Exception {
+
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String codeBase = "public class Person{ int age; public static int compareByAge(Person p1, Person p2){ return p2.age -p1.age; }}";
+			String codeMain = "import java.util.Arrays; " + codeBase;
+			compile(codeMain);
+			SymbolType st = new SymbolType(getClassLoader().loadClass("Person"));
+			st.setArrayCount(1);
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("rosterAsArray", ReferenceType.TYPE, st, null);
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class,
+					"Arrays.sort(rosterAsArray, Person::compareByAge)");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("sort", type.getMethod().getName());
+			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
+					.getSymbolData();
+			Assert.assertNotNull(methodType);
+			Assert.assertEquals("compare", methodType.getMethod().getName());
+		}
+		// https://docs.oracle.com/javase/tutorial/java/javaOO/methodreferences.html
+	}
+
+	@Test
+	public void testMethodReferenceOfAParticularObject() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String comparator = "public class ComparisonProvider { public int compareByAge(Person p1, Person p2) { return p2.age -p1.age;}}";
+
+			String codeBase = "public class Person{ int age; " + comparator
+					+ " }";
+
+			String codeMain = "import java.util.Arrays; " + codeBase;
+			compile(codeMain);
+			SymbolType st = new SymbolType(getClassLoader().loadClass("Person"));
+			st.setArrayCount(1);
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("rosterAsArray", ReferenceType.TYPE, st, null);
+
+			st = new SymbolType(getClassLoader().loadClass(
+					"Person$ComparisonProvider"));
+
+			symTable.pushSymbol("myComparisonProvider", ReferenceType.TYPE, st,
+					null);
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager
+					.parse(Expression.class,
+							"Arrays.sort(rosterAsArray, myComparisonProvider::compareByAge)");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("sort", type.getMethod().getName());
+			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
+					.getSymbolData();
+			Assert.assertNotNull(methodType);
+			Assert.assertEquals("compare", methodType.getMethod().getName());
+		}
+	}
+
+	@Test
+	public void testMethodReferencesToAnArrayItem() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			compile("import java.util.Arrays; public class A{}");
+			SymbolType st = new SymbolType(String.class);
+			st.setArrayCount(1);
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			symTable.pushSymbol("stringArray", ReferenceType.TYPE, st, null);
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class,
+					"Arrays.sort(stringArray, String::compareToIgnoreCase)");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("sort", type.getMethod().getName());
+			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
+					.getSymbolData();
+			Assert.assertNotNull(methodType);
+			Assert.assertEquals("compare", methodType.getMethod().getName());
+		}
+	}
+
+	@Test
+	public void testMethodReferencesToConstructors() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			compile("import java.util.HashSet; public class A{ public static void foo(B b) {} public interface B{ public Object get();}}");
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "A.foo(HashSet::new)");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("foo", type.getMethod().getName());
+			SymbolType methodType = (SymbolType) expr.getArgs().get(0)
+					.getSymbolData();
+			Assert.assertNotNull(methodType);
+			Assert.assertEquals("get", methodType.getMethod().getName());
+		}
+	}
+
+	@Test
+	public void testMethodReferencesToConstructors2() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			
+			String method = "public static "
+					+ "<T, SOURCE extends Collection<T>, DEST extends Collection<T>>"
+					+ " DEST transferElements( SOURCE sourceCollection, Supplier<DEST> collectionFactory)"+
+					" { return collectionFactory.get(); } ";
+			
+			String interfaceSupplier = "public interface Supplier<T>{ public T get(); }";
+			
+			compile("import java.util.*; public class A{ "+method+ interfaceSupplier+"}");
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "A.transferElements(roster, HashSet::new)");
+			
+			SymbolType st = new SymbolType(java.util.Collection.class);
+			List<SymbolType> paramTypes = new LinkedList<SymbolType>();
+			paramTypes.add(new SymbolType(String.class));
+			st.setParameterizedTypes(paramTypes);
+			
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			//roster is a Collection<String>
+			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
+			
+			
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("transferElements", type.getMethod().getName());
+			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
+					.getSymbolData();
+			Assert.assertNotNull(methodType);
+			Assert.assertEquals("get", methodType.getMethod().getName());
+			Assert.assertEquals("A$Supplier", methodType.getName());
+			
+		}
+	}
+	
+	@Test
+	public void testMethodReferencesToConstructors3() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			
+			String method = "public static "
+					+ "<T, SOURCE extends Collection<T>, DEST extends Collection<T>>"
+					+ " DEST transferElements( SOURCE sourceCollection, Supplier<DEST> collectionFactory)"+
+					" { return collectionFactory.get(); } ";
+			
+			String interfaceSupplier = "public interface Supplier<T>{ public T get(); }";
+			
+			compile("import java.util.*; public class A{ "+method+ interfaceSupplier+"}");
+
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class, "A.transferElements(roster, HashSet<Person>::new)");
+			
+			SymbolType st = new SymbolType(java.util.Collection.class);
+			List<SymbolType> paramTypes = new LinkedList<SymbolType>();
+			paramTypes.add(new SymbolType(String.class));
+			st.setParameterizedTypes(paramTypes);
+			
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushScope();
+			//roster is a Collection<String>
+			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
+			
+			
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("transferElements", type.getMethod().getName());
+			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
+					.getSymbolData();
+			Assert.assertNotNull(methodType);
+			Assert.assertEquals("get", methodType.getMethod().getName());
+			Assert.assertEquals("A$Supplier", methodType.getName());
+		}
+	}
+
+	// TODO: asignación de method references a variables.
+	// TODO: dynamic args without arguments
+	// TODO: Method and fields inheritance (overwrite result types)
+	// TODO: Test multicatch
 
 }

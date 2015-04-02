@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.types;
 
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -74,7 +75,7 @@ import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
-import org.walkmod.javalang.compiler.reflection.CompatibleLambdasPredicate;
+import org.walkmod.javalang.compiler.reflection.CompatibleFunctionalPredicate;
 import org.walkmod.javalang.compiler.reflection.FieldInspector;
 import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromParameterTypes;
 import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
@@ -335,25 +336,22 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						+ n.toString());
 			}
 
-			Class<?>[] typeArgs = null;
 			SymbolType[] symbolTypes = null;
-			boolean hasLambda = false;
+			boolean hasFunctionalExpressions = false;
 			if (n.getArgs() != null) {
-				typeArgs = new Class[n.getArgs().size()];
+
 				symbolTypes = new SymbolType[n.getArgs().size()];
 				int i = 0;
 
 				for (Expression e : n.getArgs()) {
-					if (!(e instanceof LambdaExpr)) {
+					if (!(e instanceof LambdaExpr)
+							&& !(e instanceof MethodReferenceExpr)) {
 						e.accept(this, arg);
 						SymbolType argType = (SymbolType) e.getSymbolData();
 						symbolTypes[i] = argType;
-						if (argType != null) {
-							typeArgs[i] = argType.getClazz();
 
-						}
 					} else {
-						hasLambda = true;
+						hasFunctionalExpressions = true;
 					}
 					i++;
 				}
@@ -373,17 +371,52 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 				filter.appendPredicate(new MethodsByNamePredicate(n.getName()))
 						.appendPredicate(new InvokableMethodsPredicate())
-						.appendPredicate(new CompatibleArgsPredicate(typeArgs));
-				if (hasLambda) {
-					filter.appendPredicate(new CompatibleLambdasPredicate<A>(
+						.appendPredicate(
+								new CompatibleArgsPredicate(symbolTypes));
+				if (hasFunctionalExpressions) {
+					filter.appendPredicate(new CompatibleFunctionalPredicate<A>(
 							scope, this, n.getArgs(), arg));
 				}
 				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
 				builder.appendBuilder(new GenericsBuilderFromParameterTypes(
-						typeMapping, n.getArgs(), typeArgs));
+						typeMapping, n.getArgs(), symbolTypes));
 
 				SymbolType st = MethodInspector.findMethodType(scope, filter,
 						builder, typeMapping);
+
+				List<Expression> args = n.getArgs();
+				if (args != null) {
+					int i = 0;
+					java.lang.reflect.Type[] argClasses = st.getMethod()
+							.getGenericParameterTypes();
+					for (Expression argument : args) {
+						if (argument instanceof MethodReferenceExpr) {
+							SymbolType starg = (SymbolType) argument
+									.getSymbolData();
+							SymbolType aux = null;
+							if (i < st.getMethod().getParameterCount()) {
+								aux = SymbolType.valueOf(argClasses[i],
+										typeMapping);
+
+							} else {
+								java.lang.reflect.Type componentType = null;
+								java.lang.reflect.Type lastArg = argClasses[argClasses.length - 1];
+								if (lastArg instanceof Class<?>) {
+									componentType = ((Class<?>) lastArg)
+											.getComponentType();
+								} else if (lastArg instanceof GenericArrayType) {
+									componentType = ((GenericArrayType) lastArg)
+											.getGenericComponentType();
+								}
+								aux = SymbolType.valueOf(componentType,
+										typeMapping);
+							}
+							aux.setMethod(starg.getMethod());
+							argument.setSymbolData(aux);
+						}
+						i++;
+					}
+				}
 				n.setSymbolData(st);
 			}
 			if (semanticVisitor != null) {
@@ -692,8 +725,8 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
 				SymbolType scope = symbolTable.getType(n.getId().getName(),
 						ReferenceType.VARIABLE);
-				filter.appendPredicate(new CompatibleLambdasPredicate<A>(scope,
-						this, null, arg));
+				filter.appendPredicate(new CompatibleFunctionalPredicate<A>(
+						scope, this, null, arg));
 				try {
 					init.setSymbolData(MethodInspector.findMethodType(scope,
 							filter, null, null));

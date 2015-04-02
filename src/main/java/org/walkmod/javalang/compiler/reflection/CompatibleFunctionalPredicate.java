@@ -1,0 +1,142 @@
+package org.walkmod.javalang.compiler.reflection;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.TypeVariable;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.walkmod.javalang.ast.expr.Expression;
+import org.walkmod.javalang.ast.expr.LambdaExpr;
+import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
+import org.walkmod.javalang.compiler.ArrayFilter;
+import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.visitors.VoidVisitor;
+
+public class CompatibleFunctionalPredicate<T> implements
+		TypeMappingPredicate<Method> {
+
+	private VoidVisitor<T> typeResolver;
+	private List<Expression> args;
+	private T ctx = null;
+	private SymbolType scope;
+	private Map<String, SymbolType> typeMapping;
+
+	public CompatibleFunctionalPredicate(SymbolType scope,
+			VoidVisitor<T> typeResolver, List<Expression> args, T ctx) {
+		this.typeResolver = typeResolver;
+		this.args = args;
+		this.ctx = ctx;
+		this.scope = scope;
+	}
+
+	public Map<String, SymbolType> createMapping(Class<?> interfaceToInspect) {
+		Map<String, SymbolType> mapping = new HashMap<String, SymbolType>();
+		TypeVariable<?>[] generics = interfaceToInspect.getTypeParameters();
+
+		List<SymbolType> parameterizedTypes = scope.getParameterizedTypes();
+		if (parameterizedTypes != null) {
+			for (int j = 0; j < generics.length; j++) {
+				mapping.put(generics[j].getName(), parameterizedTypes.get(j));
+			}
+		}
+		return mapping;
+	}
+
+	public boolean filter(LambdaExpr lambda, Class<?> interfaceToInspect)
+			throws Exception {
+
+		boolean found = false;
+
+		Method[] methods = interfaceToInspect.getMethods();
+
+		ArrayFilter<Method> filter = new ArrayFilter<Method>(methods);
+		CompatibleLambdaArgsPredicate predArgs = new CompatibleLambdaArgsPredicate(
+				lambda);
+		predArgs.setTypeMapping(typeMapping);
+
+		filter.appendPredicate(
+				new LambdaParamsTypeResolver(lambda, typeResolver,
+						createMapping(interfaceToInspect)))
+				.appendPredicate(new AbstractMethodsPredicate())
+				.appendPredicate(predArgs)
+				.appendPredicate(
+						new CompatibleLambdaResultPredicate<T>(lambda,
+								typeResolver, ctx));
+		found = filter.filterOne() != null;
+		return found;
+	}
+
+	public boolean filter(MethodReferenceExpr methodRef,
+			Class<?> interfaceToInspect) throws Exception {
+
+		boolean found = false;
+		Map<String, SymbolType> aux = createMapping(interfaceToInspect);
+		aux.putAll(typeMapping);
+		CompatibleMethodReferencePredicate<T> predArgs = new CompatibleMethodReferencePredicate<T>(
+				methodRef, typeResolver, ctx, aux);
+
+		Method[] methods = interfaceToInspect.getMethods();
+		ArrayFilter<Method> filter = new ArrayFilter<Method>(methods);
+		filter.appendPredicate(new AbstractMethodsPredicate());
+		filter.appendPredicate(predArgs);
+		found = filter.filterOne() != null;
+
+		return found;
+	}
+
+	@Override
+	public boolean filter(Method elem) throws Exception {
+
+		Class<?>[] params = elem.getParameterTypes();
+
+		boolean found = false;
+		boolean containsLambda = false;
+		if (args != null && !args.isEmpty()) {
+			Iterator<Expression> it = args.iterator();
+			int i = 0;
+			while (it.hasNext() && !found) {
+				Expression current = it.next();
+				if (current instanceof LambdaExpr
+						|| current instanceof MethodReferenceExpr) {
+
+					containsLambda = true;
+					Class<?> interfaceToInspect = null;
+
+					if (params[i].isInterface()) {
+						interfaceToInspect = params[i];
+
+					} else if (elem.isVarArgs() && i == params.length - 1) {
+						Class<?> componentType = params[i].getComponentType();
+						if (componentType.isInterface()) {
+							interfaceToInspect = componentType;
+						}
+					}
+					if (interfaceToInspect != null) {
+						if (current instanceof LambdaExpr) {
+							found = filter((LambdaExpr) current,
+									interfaceToInspect);
+						} else {
+							found = filter((MethodReferenceExpr) current,
+									interfaceToInspect);
+						}
+					}
+
+				}
+				if (i < params.length - 1) {
+					i++;
+				}
+
+			}
+		}
+
+		return (found && containsLambda) || !containsLambda;
+	}
+
+	@Override
+	public void setTypeMapping(Map<String, SymbolType> typeMapping) {
+		this.typeMapping = typeMapping;
+	}
+
+}

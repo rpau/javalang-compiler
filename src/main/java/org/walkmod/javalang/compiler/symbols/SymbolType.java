@@ -252,11 +252,19 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return result;
 	}
 
-	public static SymbolType valueOf(Type type,
-			Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+	/**
+	 * Builds a symbol type from a Java type.
+	 * @param type type to convert
+	 * @param arg reference class to take into account if the type is a generic variable.
+	 * @param updatedTypeMapping place to put the resolved generic variables.
+	 * @param typeMapping reference type mapping for generic variables.
+	 * @return the representative symbol type
+	 */
+	public static SymbolType valueOf(Type type, SymbolType arg,
+			Map<String, SymbolType> updatedTypeMapping,
+			Map<String, SymbolType> typeMapping) {
 
 		SymbolType returnType = null;
-
 		if (type instanceof Class<?>) {
 			Class<?> aux = ((Class<?>) type);
 			returnType = new SymbolType(aux.getName());
@@ -264,15 +272,55 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				returnType.setArrayCount(1);
 				returnType.setName(aux.getComponentType().getName());
 			}
-
 		} else if (type instanceof TypeVariable) {
 
 			String variableName = ((TypeVariable<?>) type).getName();
 			SymbolType aux = typeMapping.get(variableName);
 
 			if (aux == null) {
-				aux = new SymbolType(Object.class.getName());
-				return aux;
+				Type[] bounds = ((TypeVariable<?>) type).getBounds();
+
+				if (arg != null) {
+
+					for (Type bound : bounds) {
+						valueOf(bound, arg, updatedTypeMapping, typeMapping);
+					}
+					returnType = new SymbolType(arg.getName());
+					returnType.setParameterizedTypes(arg
+							.getParameterizedTypes());
+
+				} else {
+					if (bounds.length == 0) {
+						returnType = new SymbolType("java.lang.Object");
+					} else {
+						List<SymbolType> boundsList = new LinkedList<SymbolType>();
+						for (Type bound : bounds) {
+							boundsList.add(valueOf(bound, null,
+									updatedTypeMapping, typeMapping));
+						}
+						if (boundsList.size() == 1) {
+							returnType = boundsList.get(0);
+						} else {
+							returnType = new SymbolType(boundsList);
+						}
+					}
+				}
+				if (!updatedTypeMapping.containsKey(variableName)) {
+
+					updatedTypeMapping.put(variableName, returnType);
+					return returnType;
+				} else {
+					SymbolType previousSymbol = updatedTypeMapping
+							.get(variableName);
+					if (!returnType.getName().equals("java.lang.Object")) {
+						returnType = (SymbolType) previousSymbol
+								.merge(returnType);
+						previousSymbol.setClazz(returnType.getClazz());
+						updatedTypeMapping.put(variableName, previousSymbol);
+					}
+					return updatedTypeMapping.get(variableName);
+				}
+
 			} else {
 				return aux;
 			}
@@ -288,20 +336,27 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			if (types != null) {
 				List<SymbolType> params = new LinkedList<SymbolType>();
 				returnType.setParameterizedTypes(params);
+				List<SymbolType> paramTypes = null;
+				if (arg != null) {
+					paramTypes = arg.getParameterizedTypes();
+				}
+				int i = 0;
 				for (Type t : types) {
 					SymbolType param = typeMapping.get(t.toString());
 					if (param != null) {
 						params.add(param);
 					} else {
-						try {
-							SymbolType st = valueOf(t, typeMapping);
-							if (st != null) {
-								params.add(st);
-							}
-						} catch (InvalidTypeException e) {
-							// LOG.warn("Unmappeable type " + t.toString());
+						SymbolType argToAnalyze = null;
+						if (paramTypes != null && paramTypes.size() > i) {
+							argToAnalyze = paramTypes.get(i);
+						}
+						SymbolType st = valueOf(t, argToAnalyze,
+								updatedTypeMapping, typeMapping);
+						if (st != null) {
+							params.add(st);
 						}
 					}
+					i++;
 				}
 				if (params.isEmpty()) {
 					returnType.setParameterizedTypes(null);
@@ -309,22 +364,28 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 
 		} else if (type instanceof GenericArrayType) {
-			// method.getReturnType();(
 			returnType = new SymbolType(valueOf(
-					((GenericArrayType) type).getGenericComponentType(),
-					typeMapping).getName());
+					((GenericArrayType) type).getGenericComponentType(), arg,
+					updatedTypeMapping, typeMapping).getName());
 
 			returnType.setArrayCount(1);
-
-		} else {
-			throw new InvalidTypeException(type);
 		}
 		return returnType;
+	}
+
+	public static SymbolType valueOf(Type type,
+			Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+
+		return valueOf(type, null, null, typeMapping);
 
 	}
 
 	public Method getMethod() {
 		return method;
+	}
+	
+	public void setMethod(Method method){
+		this.method = method;
 	}
 
 	public static SymbolType valueOf(Method method,
@@ -342,7 +403,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					Type[] bounds = tv.getBounds();
 					List<SymbolType> boundsList = new LinkedList<SymbolType>();
 					for (int i = 0; i < bounds.length; i++) {
-						boundsList.add(new SymbolType((Class<?>) bounds[i]));
+						boundsList.add(valueOf(bounds[i], typeMapping));
 					}
 					SymbolType st = typeMapping.get(tv.getName());
 					if (st == null) {
@@ -378,10 +439,9 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		}
 		List<Class<?>> bounds = ClassInspector.getTheNearestSuperClasses(
 				getBoundClasses(), other.getBoundClasses());
-		if(bounds.isEmpty()){
+		if (bounds.isEmpty()) {
 			return null;
-		}
-		else if (bounds.size() == 1) {
+		} else if (bounds.size() == 1) {
 			return new SymbolType(bounds.get(0));
 		} else {
 			List<SymbolType> boundsList = new LinkedList<SymbolType>();

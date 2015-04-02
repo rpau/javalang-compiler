@@ -1,8 +1,6 @@
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.TypeVariable;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.walkmod.javalang.ast.expr.LambdaExpr;

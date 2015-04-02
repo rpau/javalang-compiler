@@ -400,11 +400,6 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 				&& !type.getName().startsWith("[")
 				&& !type.isTemplateVariable()) {
 			String clazzName = type.getName();
-			if (type.getArrayCount() > 0) {
-				Class<?> aux = loadClass(clazzName);
-				return Array.newInstance(aux, 1).getClass();
-			}
-
 			return loadClass(clazzName);
 
 		} else {

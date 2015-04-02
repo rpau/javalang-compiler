@@ -19,11 +19,11 @@ public class GenericsBuilderFromParameterTypes implements
 
 	private List<Expression> args;
 
-	private Class<?>[] typeArgs;
+	private SymbolType[] typeArgs;
 
 	public GenericsBuilderFromParameterTypes(
 			Map<String, SymbolType> typeMapping, List<Expression> args,
-			Class<?>[] typeArgs) {
+			SymbolType[] typeArgs) {
 		this.typeMapping = typeMapping;
 		this.args = args;
 		this.typeArgs = typeArgs;
@@ -36,7 +36,7 @@ public class GenericsBuilderFromParameterTypes implements
 		this.args = args;
 	}
 
-	public void setTypeArgs(Class<?>[] typeArgs) {
+	public void setTypeArgs(SymbolType[] typeArgs) {
 		this.typeArgs = typeArgs;
 	}
 
@@ -78,11 +78,9 @@ public class GenericsBuilderFromParameterTypes implements
 				String name = ((TypeVariable<?>) type).getName();
 				SymbolType st = typeMapping.get(name);
 				if (st == null) {
-					typeMapping.put(name, new SymbolType(typeArgs[pos]));
+					typeMapping.put(name, typeArgs[pos]);
 				} else {
-					Class<?> common = ClassInspector.getTheNearestSuperClass(
-							st.getClazz(), typeArgs[pos]);
-					typeMapping.put(name, new SymbolType(common));
+					typeMapping.put(name, (SymbolType) st.merge(typeArgs[pos]));
 				}
 			}
 			pos++;

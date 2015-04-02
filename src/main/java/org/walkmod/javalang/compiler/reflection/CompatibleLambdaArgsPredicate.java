@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.expr.LambdaExpr;
+import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 public class CompatibleLambdaArgsPredicate extends CompatibleArgsPredicate{
 
@@ -18,13 +19,15 @@ public class CompatibleLambdaArgsPredicate extends CompatibleArgsPredicate{
 	@Override
 	public boolean filter(Method method) throws Exception {
 		List<Parameter> lambdaParams = lambda.getParameters();
-		Class<?>[] typeArgs = null;
+
 		if (lambdaParams != null) {
-			typeArgs = new Class<?>[lambdaParams.size()];
-			ClassArrayFromSymTypeListBuilder<Parameter> typeArgsBuilder = 
-					new ClassArrayFromSymTypeListBuilder<Parameter>(
-					lambdaParams);
-			typeArgsBuilder.build(typeArgs);
+			
+			SymbolType[] typeArgs = new SymbolType[lambdaParams.size()];
+			int i = 0;
+			for(Parameter param: lambdaParams){
+				typeArgs[i] = (SymbolType)param.getSymbolData();
+			}
+			
 			setTypeArgs(typeArgs);
 			return super.filter(method);
 		}

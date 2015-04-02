@@ -9,34 +9,27 @@ import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.expr.LambdaExpr;
 import org.walkmod.javalang.ast.type.Type;
-import org.walkmod.javalang.compiler.Builder;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
-public class LambdaParamsSymbolDataBuilder implements Builder<LambdaExpr> {
-
-	private SymbolType[] args;
-
-	private VoidVisitor<?> typeResolver;
+public class LambdaParamsSymbolDataBuilder extends
+		FunctionalGenericsBuilder<LambdaExpr> {
 
 	public LambdaParamsSymbolDataBuilder(Method method,
 			VoidVisitor<?> typeResolver, Map<String, SymbolType> mapping)
 			throws Exception {
-		java.lang.reflect.Type[] generics = method.getGenericParameterTypes();
-		args = new SymbolType[generics.length];
-		for (int i = 0; i < generics.length; i++) {
-			args[i] = SymbolType.valueOf(generics[i], mapping);
-		}
-
-		this.typeResolver = typeResolver;
+		super(method, typeResolver, mapping);
 	}
 
 	@Override
 	public LambdaExpr build(LambdaExpr lambda) throws Exception {
+		super.build(lambda);
 		List<Parameter> lambdaParams = lambda.getParameters();
 		if (lambdaParams != null) {
 			Iterator<Parameter> lambdaIt = lambdaParams.iterator();
 			int k = 0;
+			SymbolType[] args = getArgs();
+			VoidVisitor<?> typeResolver = getTypeResolver();
 			while (lambdaIt.hasNext()) {
 				Parameter p = lambdaIt.next();
 				Type type = p.getType();
