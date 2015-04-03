@@ -32,7 +32,6 @@ import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.FieldAccessExpr;
-import org.walkmod.javalang.ast.expr.LambdaExpr;
 import org.walkmod.javalang.ast.expr.MarkerAnnotationExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
@@ -606,9 +605,9 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 		Type type = n.getType();
 		SymbolType st = (SymbolType) type.getSymbolData();
-		if(st == null){
+		if (st == null) {
 			type.accept(expressionTypeAnalyzer, arg);
-			st = (SymbolType)type.getSymbolData();
+			st = (SymbolType) type.getSymbolData();
 		}
 		List<SymbolAction> actions = null;
 		if (actionProvider != null) {
@@ -721,8 +720,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		if (n.getExpr() != null) {
 			n.getExpr().accept(expressionTypeAnalyzer, arg);
 			n.setSymbolData(n.getExpr().getSymbolData());
-		}
-		else{
+		} else {
 			n.setSymbolData(new SymbolType(void.class));
 		}
 	}
@@ -809,8 +807,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		} else {
 			scopeType = (SymbolType) n.getScope().getSymbolData();
 		}
-
-		SymbolType[] argsType = new SymbolType[0];
+		SymbolType[] argsType = (SymbolType[]) n.getReferencedArgsSymbolData();
 
 		symbolTable.lookUpSymbolForRead(n.getIdentifier(),
 				ReferenceType.METHOD, scopeType, argsType);
@@ -858,4 +855,5 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ClassOrInterfaceType n, A arg) {
 		n.accept(expressionTypeAnalyzer, arg);
 	}
+
 }

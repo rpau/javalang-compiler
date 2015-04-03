@@ -15,7 +15,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.types;
 
-import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -81,6 +80,7 @@ import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromParameterType
 import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
+import org.walkmod.javalang.compiler.reflection.SymbolDataOfMethodReferenceBuilder;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -383,41 +383,12 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 				SymbolType st = MethodInspector.findMethodType(scope, filter,
 						builder, typeMapping);
-
-				List<Expression> args = n.getArgs();
-				if (args != null) {
-					int i = 0;
-					java.lang.reflect.Type[] argClasses = st.getMethod()
-							.getGenericParameterTypes();
-					for (Expression argument : args) {
-						if (argument instanceof MethodReferenceExpr) {
-							SymbolType starg = (SymbolType) argument
-									.getSymbolData();
-							SymbolType aux = null;
-							if (i < st.getMethod().getParameterCount()) {
-								aux = SymbolType.valueOf(argClasses[i],
-										typeMapping);
-
-							} else {
-								java.lang.reflect.Type componentType = null;
-								java.lang.reflect.Type lastArg = argClasses[argClasses.length - 1];
-								if (lastArg instanceof Class<?>) {
-									componentType = ((Class<?>) lastArg)
-											.getComponentType();
-								} else if (lastArg instanceof GenericArrayType) {
-									componentType = ((GenericArrayType) lastArg)
-											.getGenericComponentType();
-								}
-								aux = SymbolType.valueOf(componentType,
-										typeMapping);
-							}
-							aux.setMethod(starg.getMethod());
-							argument.setSymbolData(aux);
-						}
-						i++;
-					}
-				}
 				n.setSymbolData(st);
+
+				SymbolDataOfMethodReferenceBuilder<A> typeBuilder = new SymbolDataOfMethodReferenceBuilder<A>(
+						typeMapping, this, arg);
+				typeBuilder.build(n);
+
 			}
 			if (semanticVisitor != null) {
 				n.accept(semanticVisitor, arg);
@@ -513,38 +484,6 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(MethodReferenceExpr n, A arg) {
-
-		SymbolType scopeType = null;
-
-		if (n.getScope() == null) {
-			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
-		} else {
-			n.getScope().accept(this, arg);
-			scopeType = (SymbolType) n.getScope().getSymbolData();
-			try {
-				Class<?> clazz = typeTable.loadClass(scopeType);
-				scopeType.setClazz(clazz);
-			} catch (ClassNotFoundException e) {
-				new NoSuchExpressionTypeException("Error resolving "
-						+ scopeType + " as scope type of " + n.toString(), e);
-			}
-		}
-		try {
-			Method m = scopeType.getClazz().getMethod(n.getIdentifier());
-			n.setSymbolData(SymbolType.valueOf(m, null));
-
-		} catch (Exception e) {
-			throw new NoSuchExpressionTypeException("Error resolving "
-					+ n.toString(), e);
-		}
-		List<TypeParameter> args = n.getTypeParameters();
-
-		if (args != null) {
-			Iterator<TypeParameter> it = args.iterator();
-			while (it.hasNext()) {
-				it.next().accept(this, arg);
-			}
-		}
 
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
@@ -721,17 +660,27 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 		n.getId().accept(this, arg);
 		Expression init = n.getInit();
 		if (init != null) {
-			if (init instanceof LambdaExpr) {
+			if (init instanceof LambdaExpr
+					|| init instanceof MethodReferenceExpr) {
 				ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
 				SymbolType scope = symbolTable.getType(n.getId().getName(),
 						ReferenceType.VARIABLE);
 				filter.appendPredicate(new CompatibleFunctionalPredicate<A>(
 						scope, this, null, arg));
+				SymbolData sd = null; 
 				try {
-					init.setSymbolData(MethodInspector.findMethodType(scope,
-							filter, null, null));
+					sd = MethodInspector.findMethodType(scope,
+							filter, null, null);
 				} catch (Exception e) {
 					throw new NoSuchExpressionTypeException(e);
+				}
+				if(init instanceof LambdaExpr){
+					init.setSymbolData(sd);
+				}
+				else{
+					init.setSymbolData(scope);
+					MethodReferenceExpr methodRef = (MethodReferenceExpr) init;
+					methodRef.accept(this, arg);
 				}
 			} else {
 				init.accept(this, arg);

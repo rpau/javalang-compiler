@@ -221,7 +221,14 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testMethodReferences() throws Exception {
-
+		String consumerCode="private interface Consumer{ public void accept(String t); } ";
+		String methodToReferece ="private static void printNames(String name) {System.out.println(name);}";
+		String methodCode="public void run(){ Consumer consumer = A::printNames; }";
+		String code ="public class A{ "+consumerCode+methodToReferece+methodCode+"}";
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			CompilationUnit cu = runRemoveUnusedMembers(code);
+			Assert.assertEquals(3, cu.getTypes().get(0).getMembers().size());
+		}
 	}
 
 	@Test

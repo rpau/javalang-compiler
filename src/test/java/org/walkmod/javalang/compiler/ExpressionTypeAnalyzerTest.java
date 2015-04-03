@@ -17,6 +17,7 @@ import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
 import org.walkmod.javalang.ast.expr.BinaryExpr;
 import org.walkmod.javalang.ast.expr.FieldAccessExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
+import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.UnaryExpr;
@@ -671,8 +672,12 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 			SymbolType type = (SymbolType) expr.getSymbolData();
 			Assert.assertNotNull(type);
 			Assert.assertEquals("sort", type.getMethod().getName());
-			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
-					.getSymbolData();
+			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+					.get(1);
+
+			SymbolType methodType = (SymbolType) arg1
+					.getReferencedMethodSymbolData();
+
 			Assert.assertNotNull(methodType);
 			Assert.assertEquals("compare", methodType.getMethod().getName());
 		}
@@ -709,8 +714,11 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 			SymbolType type = (SymbolType) expr.getSymbolData();
 			Assert.assertNotNull(type);
 			Assert.assertEquals("sort", type.getMethod().getName());
-			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
-					.getSymbolData();
+			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+					.get(1);
+
+			SymbolType methodType = (SymbolType) arg1
+					.getReferencedMethodSymbolData();
 			Assert.assertNotNull(methodType);
 			Assert.assertEquals("compare", methodType.getMethod().getName());
 		}
@@ -733,8 +741,11 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 			SymbolType type = (SymbolType) expr.getSymbolData();
 			Assert.assertNotNull(type);
 			Assert.assertEquals("sort", type.getMethod().getName());
-			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
-					.getSymbolData();
+			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+					.get(1);
+
+			SymbolType methodType = (SymbolType) arg1
+					.getReferencedMethodSymbolData();
 			Assert.assertNotNull(methodType);
 			Assert.assertEquals("compare", methodType.getMethod().getName());
 		}
@@ -752,8 +763,11 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 			SymbolType type = (SymbolType) expr.getSymbolData();
 			Assert.assertNotNull(type);
 			Assert.assertEquals("foo", type.getMethod().getName());
-			SymbolType methodType = (SymbolType) expr.getArgs().get(0)
-					.getSymbolData();
+			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+					.get(0);
+
+			SymbolType methodType = (SymbolType) arg1
+					.getReferencedMethodSymbolData();
 			Assert.assertNotNull(methodType);
 			Assert.assertEquals("get", methodType.getMethod().getName());
 		}
@@ -762,85 +776,94 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 	@Test
 	public void testMethodReferencesToConstructors2() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			
+
 			String method = "public static "
 					+ "<T, SOURCE extends Collection<T>, DEST extends Collection<T>>"
-					+ " DEST transferElements( SOURCE sourceCollection, Supplier<DEST> collectionFactory)"+
-					" { return collectionFactory.get(); } ";
-			
+					+ " DEST transferElements( SOURCE sourceCollection, Supplier<DEST> collectionFactory)"
+					+ " { return collectionFactory.get(); } ";
+
 			String interfaceSupplier = "public interface Supplier<T>{ public T get(); }";
-			
-			compile("import java.util.*; public class A{ "+method+ interfaceSupplier+"}");
+
+			compile("import java.util.*; public class A{ " + method
+					+ interfaceSupplier + "}");
 
 			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
-					Expression.class, "A.transferElements(roster, HashSet::new)");
-			
+					Expression.class,
+					"A.transferElements(roster, HashSet::new)");
+
 			SymbolType st = new SymbolType(java.util.Collection.class);
 			List<SymbolType> paramTypes = new LinkedList<SymbolType>();
 			paramTypes.add(new SymbolType(String.class));
 			st.setParameterizedTypes(paramTypes);
-			
+
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
-			//roster is a Collection<String>
+			// roster is a Collection<String>
 			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
-			
-			
+
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
 			expressionAnalyzer.visit(expr, ctx);
 			SymbolType type = (SymbolType) expr.getSymbolData();
 			Assert.assertNotNull(type);
 			Assert.assertEquals("transferElements", type.getMethod().getName());
-			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
-					.getSymbolData();
+			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+					.get(1);
+
+			SymbolType methodType = (SymbolType) arg1
+					.getReferencedMethodSymbolData();
 			Assert.assertNotNull(methodType);
 			Assert.assertEquals("get", methodType.getMethod().getName());
-			Assert.assertEquals("A$Supplier", methodType.getName());
-			
+			Assert.assertEquals("A$Supplier", arg1.getSymbolData().getName());
+
 		}
 	}
-	
+
 	@Test
 	public void testMethodReferencesToConstructors3() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			
+
 			String method = "public static "
 					+ "<T, SOURCE extends Collection<T>, DEST extends Collection<T>>"
-					+ " DEST transferElements( SOURCE sourceCollection, Supplier<DEST> collectionFactory)"+
-					" { return collectionFactory.get(); } ";
-			
+					+ " DEST transferElements( SOURCE sourceCollection, Supplier<DEST> collectionFactory)"
+					+ " { return collectionFactory.get(); } ";
+
 			String interfaceSupplier = "public interface Supplier<T>{ public T get(); }";
-			
-			compile("import java.util.*; public class A{ "+method+ interfaceSupplier+"}");
+
+			compile("import java.util.*; public class A{ " + method
+					+ interfaceSupplier + "}");
 
 			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
-					Expression.class, "A.transferElements(roster, HashSet<Person>::new)");
-			
+					Expression.class,
+					"A.transferElements(roster, HashSet<Person>::new)");
+
 			SymbolType st = new SymbolType(java.util.Collection.class);
 			List<SymbolType> paramTypes = new LinkedList<SymbolType>();
 			paramTypes.add(new SymbolType(String.class));
 			st.setParameterizedTypes(paramTypes);
-			
+
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
-			//roster is a Collection<String>
+			// roster is a Collection<String>
 			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
-			
-			
+
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
 			expressionAnalyzer.visit(expr, ctx);
 			SymbolType type = (SymbolType) expr.getSymbolData();
 			Assert.assertNotNull(type);
 			Assert.assertEquals("transferElements", type.getMethod().getName());
-			SymbolType methodType = (SymbolType) expr.getArgs().get(1)
-					.getSymbolData();
+			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+					.get(1);
+			SymbolType methodType = (SymbolType) arg1.getSymbolData();
 			Assert.assertNotNull(methodType);
-			Assert.assertEquals("get", methodType.getMethod().getName());
+			Assert.assertEquals("get", arg1.getReferencedMethodSymbolData()
+					.getMethod().getName());
+			Assert.assertEquals("java.lang.String", arg1
+					.getReferencedMethodSymbolData().getName());
+
 			Assert.assertEquals("A$Supplier", methodType.getName());
 		}
 	}
 
-	// TODO: asignación de method references a variables.
 	// TODO: dynamic args without arguments
 	// TODO: Method and fields inheritance (overwrite result types)
 	// TODO: Test multicatch

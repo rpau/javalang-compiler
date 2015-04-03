@@ -115,7 +115,8 @@ public class CompatibleMethodReferencePredicate<A> extends
 		}
 		if (found) {
 			SymbolType st = SymbolType.valueOf(elem, getTypeMapping());
-			expression.setSymbolData(st);
+			expression.setReferencedMethodSymbolData(st);
+			expression.setReferencedArgsSymbolData(getTypeArgs());
 		}
 		return found;
 	}
