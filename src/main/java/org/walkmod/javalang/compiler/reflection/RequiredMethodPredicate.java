@@ -11,7 +11,7 @@ import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.ExpressionTypeAnalyzer;
+import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 import org.walkmod.javalang.compiler.types.Types;
 
 public class RequiredMethodPredicate<A extends Map<String, Object>> implements
@@ -19,12 +19,12 @@ public class RequiredMethodPredicate<A extends Map<String, Object>> implements
 
 	private MethodCallExpr requiredMethod;
 
-	private ExpressionTypeAnalyzer<A> visitor;
+	private TypeVisitorAdapter<A> visitor;
 
 	private A ctx;
 
 	public RequiredMethodPredicate(MethodCallExpr requiredMethod,
-			ExpressionTypeAnalyzer<A> visitor, A ctx) {
+			TypeVisitorAdapter<A> visitor, A ctx) {
 		this.requiredMethod = requiredMethod;
 		this.visitor = visitor;
 		this.ctx = ctx;

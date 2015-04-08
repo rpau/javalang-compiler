@@ -22,21 +22,21 @@ import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.UnaryExpr;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.ExpressionTypeAnalyzer;
-import org.walkmod.javalang.visitors.SemanticVisitorAdapter;
+import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 
-public class ExpressionTypeAnalyzerTest extends SemanticTest {
+public class TypeVisitorAdapterTest extends SemanticTest {
 
-	private ExpressionTypeAnalyzer<Map<String, Object>> expressionAnalyzer;
+	private TypeVisitorAdapter<Map<String, Object>> expressionAnalyzer;
 
 	@Override
 	public CompilationUnit compile(String code) throws Exception {
 		CompilationUnit cu = super.compile(code);
-		SemanticVisitorAdapter<Map<String, Object>> semanticVisitor = new SemanticVisitorAdapter<Map<String, Object>>();
+		SymbolVisitorAdapter<Map<String, Object>> semanticVisitor = new SymbolVisitorAdapter<Map<String, Object>>();
 		semanticVisitor.setSymbolTable(getSymbolTable());
-		expressionAnalyzer = new ExpressionTypeAnalyzer<Map<String, Object>>(
+		expressionAnalyzer = new TypeVisitorAdapter<Map<String, Object>>(
 				getTypeTable(), getSymbolTable(), semanticVisitor);
 		semanticVisitor.setExpressionTypeAnalyzer(expressionAnalyzer);
 		return cu;

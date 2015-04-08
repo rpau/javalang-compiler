@@ -15,6 +15,7 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
@@ -27,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.walkmod.javalang.ast.ConstructorSymbolData;
 import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
@@ -36,7 +38,7 @@ import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class SymbolType implements SymbolData, MethodSymbolData,
-		FieldSymbolData {
+		FieldSymbolData, ConstructorSymbolData {
 
 	private String name;
 
@@ -53,6 +55,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	private Method method = null;
 
 	private Field field = null;
+	
+	private Constructor<?> constructor = null;
 
 	public SymbolType() {
 	}
@@ -463,6 +467,15 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			return new SymbolType(boundsList);
 		}
 
+	}
+	
+	public void setConstructor(Constructor<?> constructor){
+		this.constructor = constructor;
+	}
+
+	@Override
+	public Constructor<?> getConstructor() {
+		return constructor;
 	}
 
 }

@@ -1,6 +1,5 @@
 package org.walkmod.javalang.compiler.reflection;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -12,16 +11,16 @@ import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.TypeTable;
 
-public class GenericsBuilderFromParameterTypes implements
-		TypeMappingBuilder<Method> {
-
+public abstract class AbstractGenericsBuilderFromParameterTypes {
 	private Map<String, SymbolType> typeMapping;
 
 	private List<Expression> args;
 
 	private SymbolType[] typeArgs;
+	
+	private Type[] types;
 
-	public GenericsBuilderFromParameterTypes(
+	public AbstractGenericsBuilderFromParameterTypes(
 			Map<String, SymbolType> typeMapping, List<Expression> args,
 			SymbolType[] typeArgs) {
 		this.typeMapping = typeMapping;
@@ -29,7 +28,7 @@ public class GenericsBuilderFromParameterTypes implements
 		this.typeArgs = typeArgs;
 	}
 
-	public GenericsBuilderFromParameterTypes() {
+	public AbstractGenericsBuilderFromParameterTypes() {
 	}
 
 	public void setArgs(List<Expression> args) {
@@ -40,9 +39,7 @@ public class GenericsBuilderFromParameterTypes implements
 		this.typeArgs = typeArgs;
 	}
 
-	@Override
-	public Method build(Method method) throws Exception {
-		Type[] types = method.getGenericParameterTypes();
+	public void build() throws Exception {
 		int pos = 0;
 		boolean hasGenerics = false;
 
@@ -86,12 +83,16 @@ public class GenericsBuilderFromParameterTypes implements
 			pos++;
 		}
 
-		return method;
+		
 	}
 
-	@Override
 	public void setTypeMapping(Map<String, SymbolType> typeMapping) {
 		this.typeMapping = typeMapping;
 	}
 
+	public void setTypes(Type[] types) {
+		this.types = types;
+	}
+
+	
 }

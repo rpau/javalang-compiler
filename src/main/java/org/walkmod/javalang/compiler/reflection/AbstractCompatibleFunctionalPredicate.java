@@ -14,8 +14,7 @@ import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
-public class CompatibleFunctionalPredicate<T> implements
-		TypeMappingPredicate<Method> {
+public abstract class AbstractCompatibleFunctionalPredicate<T> {
 
 	private VoidVisitor<T> typeResolver;
 	private List<Expression> args;
@@ -23,7 +22,10 @@ public class CompatibleFunctionalPredicate<T> implements
 	private SymbolType scope;
 	private Map<String, SymbolType> typeMapping;
 
-	public CompatibleFunctionalPredicate(SymbolType scope,
+	private Class<?>[] params;
+	private boolean isVarArgs;
+
+	public AbstractCompatibleFunctionalPredicate(SymbolType scope,
 			VoidVisitor<T> typeResolver, List<Expression> args, T ctx) {
 		this.typeResolver = typeResolver;
 		this.args = args;
@@ -86,10 +88,7 @@ public class CompatibleFunctionalPredicate<T> implements
 		return found;
 	}
 
-	@Override
-	public boolean filter(Method elem) throws Exception {
-
-		Class<?>[] params = elem.getParameterTypes();
+	public boolean filter() throws Exception {
 
 		boolean found = false;
 		boolean containsLambda = false;
@@ -107,7 +106,7 @@ public class CompatibleFunctionalPredicate<T> implements
 					if (params[i].isInterface()) {
 						interfaceToInspect = params[i];
 
-					} else if (elem.isVarArgs() && i == params.length - 1) {
+					} else if (isVarArgs && i == params.length - 1) {
 						Class<?> componentType = params[i].getComponentType();
 						if (componentType.isInterface()) {
 							interfaceToInspect = componentType;
@@ -134,9 +133,24 @@ public class CompatibleFunctionalPredicate<T> implements
 		return (found && containsLambda) || !containsLambda;
 	}
 
-	@Override
 	public void setTypeMapping(Map<String, SymbolType> typeMapping) {
 		this.typeMapping = typeMapping;
+	}
+
+	public Class<?>[] getParams() {
+		return params;
+	}
+
+	public void setParams(Class<?>[] params) {
+		this.params = params;
+	}
+
+	public boolean isVarArgs() {
+		return isVarArgs;
+	}
+
+	public void setVarArgs(boolean isVarArgs) {
+		this.isVarArgs = isVarArgs;
 	}
 
 }

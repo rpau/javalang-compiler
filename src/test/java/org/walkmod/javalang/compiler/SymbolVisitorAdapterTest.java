@@ -14,8 +14,11 @@ import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.body.ConstructorDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
+import org.walkmod.javalang.ast.body.TypeDeclaration;
+import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
@@ -24,19 +27,19 @@ import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
-import org.walkmod.javalang.visitors.SemanticVisitorAdapter;
+import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 
-public class SemanticVisitorAdapterTest extends SemanticTest {
+public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testNoActions() throws Exception {
 
-		SemanticVisitorAdapter<HashMap<String, Object>> visitor = new SemanticVisitorAdapter<HashMap<String, Object>>();
+		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 		visitor.setClassLoader(Thread.currentThread().getContextClassLoader());
 		visitor.setSymbolActions(new LinkedList<SymbolAction>());
 
 		File aux = new File(new File("src/main/java"),
-				"org/walkmod/javalang/visitors/SemanticVisitorAdapter.java");
+				"org/walkmod/javalang/compiler/symbols/SymbolVisitorAdapter.java");
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(aux);
 
 		visitor.visit(cu, new HashMap<String, Object>());
@@ -45,7 +48,7 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testReferencesCounterAction() throws Exception {
-		SemanticVisitorAdapter<HashMap<String, Object>> visitor = new SemanticVisitorAdapter<HashMap<String, Object>>();
+		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 
 		visitor.setClassLoader(Thread.currentThread().getContextClassLoader());
 		visitor.setSymbolActions(new LinkedList<SymbolAction>());
@@ -56,7 +59,7 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 		visitor.setSymbolActions(actions);
 
 		File aux = new File(new File("src/main/java"),
-				"org/walkmod/javalang/visitors/SemanticVisitorAdapter.java");
+				"org/walkmod/javalang/compiler/symbols/SymbolVisitorAdapter.java");
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(aux);
 
 		visitor.visit(cu, new HashMap<String, Object>());
@@ -67,7 +70,7 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 			throws Exception {
 
 		CompilationUnit cu = compile(code);
-		SemanticVisitorAdapter<HashMap<String, Object>> visitor = new SemanticVisitorAdapter<HashMap<String, Object>>();
+		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 		RemoveUnusedSymbolsProvider provider = new RemoveUnusedSymbolsProvider();
 
 		visitor.setClassLoader(getClassLoader());
@@ -78,7 +81,7 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 
 	private CompilationUnit run(String code) throws Exception {
 		CompilationUnit cu = compile(code);
-		SemanticVisitorAdapter<HashMap<String, Object>> visitor = new SemanticVisitorAdapter<HashMap<String, Object>>();
+		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 		visitor.setClassLoader(getClassLoader());
 
 		visitor.visit(cu, new HashMap<String, Object>());
@@ -94,17 +97,31 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 		 */
 		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(){} }");
 		Assert.assertTrue(cu.getTypes().get(0).getMembers().isEmpty());
+	}
 
-		cu = runRemoveUnusedMembers("public class Foo { private void bar(){} private String getName() { return \"name\";}}");
+	@Test
+	public void testRemoveUnusedMethods1() throws Exception {
+
+		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(){} private String getName() { return \"name\";}}");
 		Assert.assertTrue(cu.getTypes().get(0).getMembers().isEmpty());
+	}
 
-		cu = runRemoveUnusedMembers("public class Foo { private void bar(){} public String getName() { return \"name\";}}");
+	@Test
+	public void testRemoveUnusedMethods2() throws Exception {
+
+		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(){} public String getName() { return \"name\";}}");
 		Assert.assertEquals(1, cu.getTypes().get(0).getMembers().size());
+	}
 
-		cu = runRemoveUnusedMembers("public class Foo { private void bar(){} public String getName() { bar(); return \"name\";}}");
+	@Test
+	public void testRemoveUnusedMethods3() throws Exception {
+		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(){} public String getName() { bar(); return \"name\";}}");
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
+	}
 
-		cu = runRemoveUnusedMembers("public class Foo { private void bar(String s){} public String getName() { bar(null); return \"name\";}}");
+	@Test
+	public void testRemoveUnusedMethods4() throws Exception {
+		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(String s){} public String getName() { bar(null); return \"name\";}}");
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
 	}
 
@@ -112,8 +129,10 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 	public void testRemoveUnusedFields() throws Exception {
 		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private String bar; }");
 		Assert.assertTrue(cu.getTypes().get(0).getMembers().isEmpty());
+	}
 
-		cu = runRemoveUnusedMembers("public class Foo { private String bar; public String getBar(){ return bar; }}");
+	public void testRemoveUnusedFields1() throws Exception {
+		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private String bar; public String getBar(){ return bar; }}");
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
 	}
 
@@ -341,13 +360,14 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals(true, sd.isTemplateVariable());
 		Assert.assertEquals("java.lang.Object", sd.getName());
 	}
-	
+
 	@Test
-	public void testGenericClassesWithBounds() throws Exception{
-		CompilationUnit cu = run("import java.util.*;import java.io.*; "+
-				"public class Foo<A extends Map<String, Object>>"+
-				" extends LinkedList<A> implements Serializable{}");
-		ClassOrInterfaceDeclaration declaration = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
+	public void testGenericClassesWithBounds() throws Exception {
+		CompilationUnit cu = run("import java.util.*;import java.io.*; "
+				+ "public class Foo<A extends Map<String, Object>>"
+				+ " extends LinkedList<A> implements Serializable{}");
+		ClassOrInterfaceDeclaration declaration = (ClassOrInterfaceDeclaration) cu
+				.getTypes().get(0);
 		List<ClassOrInterfaceType> implementsList = declaration.getImplements();
 		SymbolData serializable = implementsList.get(0).getSymbolData();
 		Assert.assertNotNull(serializable);
@@ -363,5 +383,47 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals(2, params.size());
 		Assert.assertEquals("java.lang.String", params.get(0).getName());
 		Assert.assertEquals("java.lang.Object", params.get(1).getName());
+	}
+	
+	@Test
+	public void testMethodResolution() throws Exception{
+		CompilationUnit cu = run("public class A { public String getName() { return \"hello\"; }}");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		Assert.assertNotNull(md.getSymbolData().getMethod());
+		Assert.assertEquals("getName", md.getSymbolData().getMethod().getName());
+	}
+	
+	@Test
+	public void testConstructorResolution() throws Exception{
+		CompilationUnit cu = run("public class A { private String name; public A(String name){this.name = name;}}");
+		ConstructorDeclaration cd = (ConstructorDeclaration) cu.getTypes().get(0).getMembers().get(1);
+		Assert.assertNotNull(cd.getSymbolData().getConstructor());
+		Assert.assertEquals(1, cd.getSymbolData().getConstructor().getParameterTypes().length);
+	}
+	
+	@Test
+	public void testFieldResolution() throws Exception{
+		CompilationUnit cu = run("public class A { private String name; }");
+		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		Assert.assertNotNull(fd.getFieldsSymbolData());
+		Assert.assertEquals(1, fd.getFieldsSymbolData().size());
+		Assert.assertEquals("name", fd.getFieldsSymbolData().get(0).getField().getName());
+	}
+	
+	@Test
+	public void testTypeResolution() throws Exception{
+		CompilationUnit cu = run("public class A {}");
+		TypeDeclaration td = (TypeDeclaration)cu.getTypes().get(0);
+		Assert.assertNotNull(td.getSymbolData());
+		Assert.assertEquals("A", td.getSymbolData().getName());
+	}
+	
+	@Test
+	public void testAnnotationResolution() throws Exception{
+		CompilationUnit cu = run("public class A { @Override public String toString(){ return \"A\"; }}");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		AnnotationExpr ann = md.getAnnotations().get(0);
+		Assert.assertNotNull(ann.getSymbolData());
+		Assert.assertEquals("java.lang.Override", ann.getSymbolData().getName());
 	}
 }

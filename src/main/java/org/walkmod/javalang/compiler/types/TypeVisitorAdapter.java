@@ -15,15 +15,21 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.types;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.TypeParameter;
+import org.walkmod.javalang.ast.body.ConstructorDeclaration;
+import org.walkmod.javalang.ast.body.FieldDeclaration;
+import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
@@ -73,9 +79,13 @@ import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
-import org.walkmod.javalang.compiler.reflection.CompatibleFunctionalPredicate;
+import org.walkmod.javalang.compiler.reflection.CompatibleConstructorArgsPredicate;
+import org.walkmod.javalang.compiler.reflection.CompatibleFunctionalConstructorPredicate;
+import org.walkmod.javalang.compiler.reflection.CompatibleFunctionalMethodPredicate;
+import org.walkmod.javalang.compiler.reflection.ConstructorInspector;
 import org.walkmod.javalang.compiler.reflection.FieldInspector;
-import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromParameterTypes;
+import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromConstructorParameterTypes;
+import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromMethodParameterTypes;
 import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
@@ -87,7 +97,7 @@ import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
-public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
+public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		VoidVisitorAdapter<A> {
 
 	public static final String IMPLICIT_PARAM_TYPE = "implicit_param_type";
@@ -96,17 +106,16 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	private SymbolTable symbolTable;
 
-	private static Logger LOG = Logger.getLogger(ExpressionTypeAnalyzer.class);
+	private static Logger LOG = Logger.getLogger(TypeVisitorAdapter.class);
 
 	private VoidVisitorAdapter<A> semanticVisitor;
 
-	public ExpressionTypeAnalyzer(TypeTable<?> typeTable,
-			SymbolTable symbolTable) {
+	public TypeVisitorAdapter(TypeTable<?> typeTable, SymbolTable symbolTable) {
 		this(typeTable, symbolTable, null);
 	}
 
-	public ExpressionTypeAnalyzer(TypeTable<?> typeTable,
-			SymbolTable symbolTable, VoidVisitorAdapter<A> semanticVisitor) {
+	public TypeVisitorAdapter(TypeTable<?> typeTable, SymbolTable symbolTable,
+			VoidVisitorAdapter<A> semanticVisitor) {
 		this.typeTable = typeTable;
 		this.symbolTable = symbolTable;
 		this.semanticVisitor = semanticVisitor;
@@ -327,6 +336,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	public void visit(LongLiteralMinValueExpr n, A arg) {
 		n.setSymbolData(new SymbolType("long"));
 	}
+	
 
 	@Override
 	public void visit(MethodCallExpr n, A arg) {
@@ -386,11 +396,11 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						.appendPredicate(
 								new CompatibleArgsPredicate(symbolTypes));
 				if (hasFunctionalExpressions) {
-					filter.appendPredicate(new CompatibleFunctionalPredicate<A>(
+					filter.appendPredicate(new CompatibleFunctionalMethodPredicate<A>(
 							scope, this, n.getArgs(), arg));
 				}
 				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
-				builder.appendBuilder(new GenericsBuilderFromParameterTypes(
+				builder.appendBuilder(new GenericsBuilderFromMethodParameterTypes(
 						typeMapping, n.getArgs(), symbolTypes));
 
 				SymbolType st = MethodInspector.findMethodType(scope, filter,
@@ -453,12 +463,50 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 			}
 		}
 		n.getType().accept(this, arg);
+		boolean hasFunctionalExpressions = false;
+		SymbolType[] symbolTypes = null;
 		if (n.getArgs() != null) {
+
+			symbolTypes = new SymbolType[n.getArgs().size()];
+			int i = 0;
+
 			for (Expression e : n.getArgs()) {
-				e.accept(this, arg);
+				if (!(e instanceof LambdaExpr)
+						&& !(e instanceof MethodReferenceExpr)) {
+					e.accept(this, arg);
+					SymbolType argType = (SymbolType) e.getSymbolData();
+					symbolTypes[i] = argType;
+
+				} else {
+					hasFunctionalExpressions = true;
+				}
+				i++;
 			}
 		}
-		n.setSymbolData(n.getType().getSymbolData());
+		SymbolType st = (SymbolType)n.getType().getSymbolData();
+		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+		ArrayFilter<Constructor<?>> filter = new ArrayFilter<Constructor<?>>(
+				null);
+		filter.appendPredicate(new CompatibleConstructorArgsPredicate(symbolTypes));
+		
+		if (hasFunctionalExpressions) {
+			filter.appendPredicate(new CompatibleFunctionalConstructorPredicate<A>(
+					st, this, n.getArgs(), arg));
+		}
+		CompositeBuilder<Constructor<?>> builder = new CompositeBuilder<Constructor<?>>();
+		builder.appendBuilder(new GenericsBuilderFromConstructorParameterTypes(
+				typeMapping, n.getArgs(), symbolTypes));
+		
+		try {
+			SymbolType aux = ConstructorInspector
+					.findConstructor(
+							st,
+							filter,
+							builder, typeMapping);
+			n.setSymbolData(aux);
+		} catch (Exception e) {
+			throw new NoSuchExpressionTypeException(e);
+		}
 		if (isAnnonymousClass) {
 			// we need to update the symbol table
 			if (semanticVisitor != null) {
@@ -526,18 +574,24 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
+		n.getName().accept(this, arg);
+		n.setSymbolData(n.getSymbolData());
 	}
 
 	public void visit(MarkerAnnotationExpr n, A arg) {
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
+		n.getName().accept(this, arg);
+		n.setSymbolData(n.getSymbolData());
 	}
 
 	public void visit(SingleMemberAnnotationExpr n, A arg) {
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
+		n.getName().accept(this, arg);
+		n.setSymbolData(n.getSymbolData());
 	}
 
 	@Override
@@ -696,7 +750,7 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
 				SymbolType scope = symbolTable.getType(n.getId().getName(),
 						ReferenceType.VARIABLE);
-				filter.appendPredicate(new CompatibleFunctionalPredicate<A>(
+				filter.appendPredicate(new CompatibleFunctionalMethodPredicate<A>(
 						scope, this, null, arg));
 				SymbolData sd = null;
 				try {
@@ -716,6 +770,81 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 				init.accept(this, arg);
 			}
 		}
+	}
+
+	private SymbolType[] transformParams(List<Parameter> params) {
+		int argsSize = 0;
+
+		if (params != null) {
+			argsSize = params.size();
+		}
+		SymbolType[] typeArgs = null;
+		if (params != null) {
+			typeArgs = new SymbolType[argsSize];
+			Iterator<Parameter> it = params.iterator();
+			for (int i = 0; i < typeArgs.length; i++) {
+				typeArgs[i] = (SymbolType) it.next().getSymbolData();
+			}
+		}
+		return typeArgs;
+	}
+
+	@Override
+	public void visit(MethodDeclaration n, A arg) {
+
+		SymbolType[] typeArgs = transformParams(n.getParameters());
+
+		ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
+		filter.appendPredicate(new MethodsByNamePredicate(n.getName()))
+				.appendPredicate(new InvokableMethodsPredicate())
+				.appendPredicate(new CompatibleArgsPredicate(typeArgs));
+		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+		try {
+			SymbolType st = MethodInspector.findMethodType(
+					symbolTable.getType("this", ReferenceType.VARIABLE),
+					filter, null, typeMapping);
+			n.setSymbolData(st);
+		} catch (Exception e) {
+			throw new NoSuchExpressionTypeException(e);
+		}
+
+	}
+
+	@Override
+	public void visit(ConstructorDeclaration n, A arg) {
+		SymbolType[] typeArgs = transformParams(n.getParameters());
+		ArrayFilter<Constructor<?>> filter = new ArrayFilter<Constructor<?>>(
+				null);
+		filter.appendPredicate(new CompatibleConstructorArgsPredicate(typeArgs));
+		try {
+			SymbolType st = ConstructorInspector
+					.findConstructor(
+							symbolTable.getType("this", ReferenceType.VARIABLE),
+							filter);
+			n.setSymbolData(st);
+		} catch (Exception e) {
+			throw new NoSuchExpressionTypeException(e);
+		}
+	}
+
+	@Override
+	public void visit(FieldDeclaration n, A arg) {
+		List<VariableDeclarator> vds = n.getVariables();
+		List<FieldSymbolData> result = new LinkedList<FieldSymbolData>();
+		SymbolType thisType = symbolTable.getType("this",
+				ReferenceType.VARIABLE);
+		for (VariableDeclarator vd : vds) {
+			String name = vd.getId().getName();
+			SymbolType st = symbolTable.getType(name, ReferenceType.VARIABLE)
+					.clone();
+			try {
+				st.setField(thisType.getClazz().getDeclaredField(name));
+			} catch (Exception e) {
+				throw new NoSuchExpressionTypeException(e);
+			}
+			result.add(st);
+		}
+		n.setFieldsSymbolData(result);
 	}
 
 }
