@@ -912,8 +912,5 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
 	
-	
-	
-	// TODO: Test multicatch
 
 }

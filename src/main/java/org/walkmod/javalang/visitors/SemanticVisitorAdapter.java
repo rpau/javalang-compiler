@@ -552,7 +552,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		MultiTypeSymbol symbol = new MultiTypeSymbol(n.getId().getName(),
 				symbolTypes, n, actions);
 		symbolTable.pushSymbol(symbol);
-		n.setSymbolData(symbol.getType());
+		n.setSymbolData(new SymbolType(symbolTypes));
 
 	}
 

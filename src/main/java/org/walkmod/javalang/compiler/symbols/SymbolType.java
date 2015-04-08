@@ -201,7 +201,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		if (hasBounds()) {
 			List<SymbolType> bounds = getBounds();
 			for (SymbolType bound : bounds) {
-				compatibleClasses.add(bound.getClass());
+				compatibleClasses.add(bound.getClazz());
 			}
 
 		} else {

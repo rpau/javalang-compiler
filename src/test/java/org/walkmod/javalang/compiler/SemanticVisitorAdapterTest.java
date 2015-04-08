@@ -18,6 +18,7 @@ import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
+import org.walkmod.javalang.ast.stmt.TryStmt;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
@@ -295,7 +296,8 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testAnonymousArrayExpressions() throws Exception {
 		CompilationUnit cu = run("public class A{ Integer v[][] = { new Integer[] {3} }; Integer a[] = v[0]; }");
-		FieldDeclaration fd = (FieldDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
 		SymbolData sd = fd.getType().getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals(Integer.class.getName(), sd.getName());
@@ -303,5 +305,22 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(sd2);
 		Assert.assertEquals(Integer.class.getName(), sd2.getName());
 		Assert.assertEquals(2, sd2.getArrayCount());
+	}
+
+	@Test
+	public void testMulticatchStatements() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			CompilationUnit cu = run("import java.io.*; public class A { "
+					+ "void test() throws FileNotFoundException, ClassNotFoundException {} "
+					+ "public void run (){ try{ test(); }catch(FileNotFoundException|ClassNotFoundException e){}}}");
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(1);
+			TryStmt stmt = (TryStmt)md.getBody().getStmts().get(0);
+			SymbolData sd = stmt.getCatchs().get(0).getExcept().getSymbolData();
+			Assert.assertNotNull(sd);
+			List<Class<?>> bounds = sd.getBoundClasses();
+			Assert.assertEquals("java.io.FileNotFoundException", bounds.get(0).getName());
+			Assert.assertEquals("java.lang.ClassNotFoundException", bounds.get(1).getName());
+		}
 	}
 }
