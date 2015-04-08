@@ -13,12 +13,14 @@ import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
+import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.ast.stmt.TryStmt;
+import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
@@ -315,12 +317,51 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 					+ "public void run (){ try{ test(); }catch(FileNotFoundException|ClassNotFoundException e){}}}");
 			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
 					.getMembers().get(1);
-			TryStmt stmt = (TryStmt)md.getBody().getStmts().get(0);
+			TryStmt stmt = (TryStmt) md.getBody().getStmts().get(0);
 			SymbolData sd = stmt.getCatchs().get(0).getExcept().getSymbolData();
 			Assert.assertNotNull(sd);
 			List<Class<?>> bounds = sd.getBoundClasses();
-			Assert.assertEquals("java.io.FileNotFoundException", bounds.get(0).getName());
-			Assert.assertEquals("java.lang.ClassNotFoundException", bounds.get(1).getName());
+			Assert.assertEquals("java.io.FileNotFoundException", bounds.get(0)
+					.getName());
+			Assert.assertEquals("java.lang.ClassNotFoundException",
+					bounds.get(1).getName());
 		}
+	}
+
+	@Test
+	public void testGenericClasses() throws Exception {
+		CompilationUnit cu = run("public class Box<T> {" + "private T t;"
+				+ "public T get() {return t;}"
+				+ "public void set(T t) { this.t = t;}" + "}");
+
+		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		SymbolData sd = fd.getType().getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals(true, sd.isTemplateVariable());
+		Assert.assertEquals("java.lang.Object", sd.getName());
+	}
+	
+	@Test
+	public void testGenericClassesWithBounds() throws Exception{
+		CompilationUnit cu = run("import java.util.*;import java.io.*; "+
+				"public class Foo<A extends Map<String, Object>>"+
+				" extends LinkedList<A> implements Serializable{}");
+		ClassOrInterfaceDeclaration declaration = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
+		List<ClassOrInterfaceType> implementsList = declaration.getImplements();
+		SymbolData serializable = implementsList.get(0).getSymbolData();
+		Assert.assertNotNull(serializable);
+		Assert.assertEquals("java.io.Serializable", serializable.getName());
+		List<ClassOrInterfaceType> extendsList = declaration.getExtends();
+		SymbolData sd = extendsList.get(0).getSymbolData();
+		Assert.assertEquals(false, sd.isTemplateVariable());
+		Assert.assertEquals("java.util.LinkedList", sd.getName());
+		List<SymbolData> params = sd.getParameterizedTypes();
+		Assert.assertEquals(1, params.size());
+		Assert.assertEquals("java.util.Map", params.get(0).getName());
+		params = params.get(0).getParameterizedTypes();
+		Assert.assertEquals(2, params.size());
+		Assert.assertEquals("java.lang.String", params.get(0).getName());
+		Assert.assertEquals("java.lang.Object", params.get(1).getName());
 	}
 }

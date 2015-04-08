@@ -138,6 +138,11 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	@SuppressWarnings("unchecked")
 	@Override
 	public List<SymbolType> getParameterizedTypes() {
+		if(parameterizedTypes == null){
+			if(bounds != null && !bounds.isEmpty()){
+				return bounds.get(0).getParameterizedTypes();
+			}
+		}
 		return parameterizedTypes;
 	}
 
@@ -248,6 +253,13 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				list.add(((SymbolType) type).clone());
 			}
 			result.setParameterizedTypes(list);
+		}
+		if(bounds != null){
+			List<SymbolType> list = new LinkedList<SymbolType>();
+			for (SymbolData type : bounds) {
+				list.add(((SymbolType) type).clone());
+			}
+			result.bounds = list;
 		}
 		return result;
 	}

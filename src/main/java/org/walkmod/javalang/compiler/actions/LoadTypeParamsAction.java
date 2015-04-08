@@ -42,12 +42,12 @@ public class LoadTypeParamsAction implements SymbolAction {
 											type));
 								}
 								st = new SymbolType(bounds);
-								table.pushSymbol(tp.getName(),
-										ReferenceType.TYPE, st, tp);
+
 							} else {
 								st = new SymbolType(Object.class);
 							}
-
+							table.pushSymbol(tp.getName(), ReferenceType.TYPE,
+									st, tp);
 							st.setTemplateVariable(true);
 							parameterizedTypes.add(st);
 						}

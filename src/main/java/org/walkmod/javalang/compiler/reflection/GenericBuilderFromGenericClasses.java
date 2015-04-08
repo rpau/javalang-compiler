@@ -9,8 +9,9 @@ import org.walkmod.javalang.compiler.Builder;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 /**
- * For a given generic letter (K, M, T,..) resolves if the contained 
- * class has a value for that letter
+ * For a given generic letter (K, M, T,..) resolves if the contained class has a
+ * value for that letter
+ * 
  * @author rpau
  *
  */
@@ -26,12 +27,10 @@ public class GenericBuilderFromGenericClasses implements
 		this.clazz = clazz;
 		this.parameterizedTypes = parameterizedTypes;
 	}
-	
-	public GenericBuilderFromGenericClasses(){
-		
+
+	public GenericBuilderFromGenericClasses() {
+
 	}
-	
-	
 
 	public void setClazz(Class<?> clazz) {
 		this.clazz = clazz;
@@ -51,10 +50,13 @@ public class GenericBuilderFromGenericClasses implements
 		if (typeParams != null) {
 
 			for (int i = 0; i < typeParams.length; i++) {
-				if (parameterizedTypes != null) {
+				if (parameterizedTypes != null
+						&& !parameterizedTypes.get(i).getName()
+								.equals("java.lang.Object")) {
 					obj.put(typeParams[i].getName(), parameterizedTypes.get(i));
 				} else {
-					obj.put(typeParams[i].getName(), new SymbolType("java.lang.Object"));
+					obj.put(typeParams[i].getName(), new SymbolType(
+							"java.lang.Object"));
 				}
 			}
 		}
