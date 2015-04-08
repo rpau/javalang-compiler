@@ -912,5 +912,21 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
 	
+	@Test
+	public void testReferencesToInnerClasses() throws Exception{
+		compile("public class OuterClass { public class InnerClass { } }");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("OuterClass"));
+		symTable.pushSymbol("outerObject", ReferenceType.VARIABLE, st, null);
+		org.walkmod.javalang.ast.expr.Expression expr = (org.walkmod.javalang.ast.expr.Expression) ASTManager.parse(
+				Expression.class, "outerObject.new InnerClass()");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expr.accept(expressionAnalyzer, ctx);
+		SymbolType type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals("OuterClass$InnerClass", type.getName());
+	}
+	
 
 }
