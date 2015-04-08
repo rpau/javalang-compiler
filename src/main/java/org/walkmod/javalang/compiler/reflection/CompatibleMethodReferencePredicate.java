@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.Predicate;
@@ -62,7 +61,9 @@ public class CompatibleMethodReferencePredicate<A> extends
 			while (it.hasNext() && !found) {
 
 				Method md = it.next();
-
+				int mdParameterCount = md.getParameters().length;
+				int elemParameterCount = elem.getParameters().length;
+				
 				FunctionalGenericsBuilder<MethodReferenceExpr> builder = new FunctionalGenericsBuilder<MethodReferenceExpr>(
 						md, typeResolver, getTypeMapping());
 				builder.build(expression);
@@ -70,7 +71,8 @@ public class CompatibleMethodReferencePredicate<A> extends
 				if (!Modifier.isStatic(md.getModifiers())) {
 					// the implicit parameter is an argument of the invisible
 					// lambda
-					if (md.getParameterCount() == elem.getParameterCount() - 1) {
+					
+					if (mdParameterCount == elemParameterCount - 1) {
 						SymbolType[] staticArgs = new SymbolType[args.length + 1];
 						for (int i = 0; i < args.length; i++) {
 							staticArgs[i+1] = args[i];
@@ -85,14 +87,13 @@ public class CompatibleMethodReferencePredicate<A> extends
 						String fullName = TypeTable.getInstance().getTypeTable().get(typeName);
 						// it is a variable
 						if (fullName == null
-								&& md.getParameterCount() == elem
-										.getParameterCount()) {
+								&& mdParameterCount == elemParameterCount) {
 							setTypeArgs(args);
 							found = super.filter(elem);
 						}
 					}
 
-				} else if (md.getParameterCount() == elem.getParameterCount()) {
+				} else if (mdParameterCount == elemParameterCount) {
 					setTypeArgs(args);
 					found = super.filter(elem);
 				}

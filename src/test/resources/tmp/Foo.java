@@ -1,1 +1,0 @@
-public class Foo{ public void bar() { Foo o = new Foo() { private String name; public void bar() { System.out.println("hello"); }};}}

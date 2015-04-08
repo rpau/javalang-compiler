@@ -33,10 +33,11 @@ public class SymbolDataOfMethodReferenceBuilder<T> implements TypeMappingBuilder
 			int i = 0;
 			java.lang.reflect.Type[] argClasses = st.getMethod()
 					.getGenericParameterTypes();
+			int paramCount = st.getMethod().getParameters().length;
 			for (Expression argument : args) {
 				if (argument instanceof MethodReferenceExpr) {
 					SymbolType aux = null;
-					if (i < st.getMethod().getParameterCount()) {
+					if (i < paramCount) {
 						aux = SymbolType.valueOf(argClasses[i],
 								typeMapping);
 
