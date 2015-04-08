@@ -11,6 +11,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.ast.body.BodyDeclaration;
+import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
@@ -221,10 +223,11 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testMethodReferences() throws Exception {
-		String consumerCode="private interface Consumer{ public void accept(String t); } ";
-		String methodToReferece ="private static void printNames(String name) {System.out.println(name);}";
-		String methodCode="public void run(){ Consumer consumer = A::printNames; }";
-		String code ="public class A{ "+consumerCode+methodToReferece+methodCode+"}";
+		String consumerCode = "private interface Consumer{ public void accept(String t); } ";
+		String methodToReferece = "private static void printNames(String name) {System.out.println(name);}";
+		String methodCode = "public void run(){ Consumer consumer = A::printNames; }";
+		String code = "public class A{ " + consumerCode + methodToReferece
+				+ methodCode + "}";
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			CompilationUnit cu = runRemoveUnusedMembers(code);
 			Assert.assertEquals(3, cu.getTypes().get(0).getMembers().size());
@@ -233,7 +236,7 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testLambdaExpressions() throws Exception {
-		String code ="public class A{ private interface C{ public int get(int c); } public void run(){ C a = (b)->b; } }";
+		String code = "public class A{ private interface C{ public int get(int c); } public void run(){ C a = (b)->b; } }";
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			CompilationUnit cu = runRemoveUnusedMembers(code);
 			Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
@@ -268,4 +271,14 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals(1, oce.getAnonymousClassBody().size());
 	}
 
+	@Test
+	public void testMethodsOverwritingInAnnonymousClasses() throws Exception {
+		String code = "public class A{ public Object get() { return null; } public A foo = new A() { public String get(){ return name();} private String name(){ return \"hello\"; }};}";
+		CompilationUnit cu = runRemoveUnusedMembers(code);
+		BodyDeclaration bd = cu.getTypes().get(0).getMembers().get(1);
+		FieldDeclaration aux = (FieldDeclaration) bd;
+		ObjectCreationExpr expr = (ObjectCreationExpr) aux.getVariables()
+				.get(0).getInit();
+		Assert.assertEquals(2, expr.getAnonymousClassBody().size());
+	}
 }

@@ -99,6 +99,8 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 
 	private static final String ORIGINAL_LOCATION = "SemanticVisitorAdapter_original_location";
 
+	private int innerAnonymousClassCounter = 1;
+
 	public SymbolTable getSymbolTable() {
 		return symbolTable;
 	}
@@ -140,7 +142,7 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		typeTable.setClassLoader(classLoader);
 		typeTable.visit(unit, arg);
 		symbolTable.pushScope();
-
+		innerAnonymousClassCounter = 1;
 		expressionTypeAnalyzer = new ExpressionTypeAnalyzer<A>(typeTable,
 				symbolTable, this);
 		Set<String> langImports = typeTable.findTypesByPrefix("java.lang");
@@ -314,6 +316,8 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 					ReferenceType.TYPE, type, declaration);
 			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
 					declaration, actions);
+			symbolTable.pushSymbol("this", ReferenceType.TYPE, type,
+					declaration, (List<SymbolAction>)null);
 
 		} else {
 			type = new SymbolType(lastScope.getName() + "$"
@@ -322,6 +326,8 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 					ReferenceType.TYPE, type, declaration);
 			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
 					declaration, actions);
+			symbolTable.pushSymbol("this", ReferenceType.TYPE, type,
+					declaration, (List<SymbolAction>)null);
 		}
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
@@ -336,26 +342,37 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 	private void loadThisSymbol(ObjectCreationExpr n, A arg)
 			throws ClassNotFoundException {
 
-		String className = typeTable.getFullName(n.getType());
-		List<SymbolAction> actions = new LinkedList<SymbolAction>();
-		actions.add(new LoadTypeParamsAction());
-		actions.add(new LoadFieldDeclarationsAction(typeTable, actionProvider));
-		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider));
-		actions.add(new LoadTypeDeclarationsAction(typeTable, actionProvider));
-		actions.add(new LoadEnumConstantLiteralsAction());
+		boolean anonymousClass = n.getAnonymousClassBody() != null;
+		if (anonymousClass) {
+			String className = symbolTable.findSymbol("this",
+					ReferenceType.TYPE).getType().getName();
+			className = className.replace('$', '.');
+			
+			List<SymbolAction> actions = new LinkedList<SymbolAction>();
+			actions.add(new LoadTypeParamsAction());
+			actions.add(new LoadFieldDeclarationsAction(typeTable,
+					actionProvider));
+			actions.add(new LoadMethodDeclarationsAction(typeTable,
+					actionProvider));
+			actions.add(new LoadTypeDeclarationsAction(typeTable,
+					actionProvider));
+			actions.add(new LoadEnumConstantLiteralsAction());
 
-		if (actionProvider != null) {
-			actions.addAll(actionProvider.getActions(n));
+			if (actionProvider != null) {
+				actions.addAll(actionProvider.getActions(n));
+			}
+
+			SymbolType type = null;
+			type = new SymbolType(className + "$" + innerAnonymousClassCounter);
+			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type, n,
+					actions);
+
+			symbolTable
+					.pushSymbol("super", ReferenceType.VARIABLE,
+							new SymbolType(type.getClazz().getSuperclass()), n,
+							actions);
+			innerAnonymousClassCounter++;
 		}
-
-		SymbolType type = null;
-		type = new SymbolType(className);
-		symbolTable
-				.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
-
-		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, new SymbolType(
-				type.getClazz().getSuperclass()), n, actions);
-
 	}
 
 	@Override

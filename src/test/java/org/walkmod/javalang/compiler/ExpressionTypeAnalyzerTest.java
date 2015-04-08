@@ -863,17 +863,16 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 			Assert.assertEquals("A$Supplier", methodType.getName());
 		}
 	}
-	
+
 	@Test
-	public void testDynamicArgsWithoutArguments() throws Exception{
+	public void testDynamicArgsWithoutArguments() throws Exception {
 		compile("public class A { public String foo(String... others) {return \"hello+\";} }");
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
 		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
 		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
-				Expression.class,
-				"a.foo()");
+				Expression.class, "a.foo()");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) expr.getSymbolData();
@@ -881,7 +880,38 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
 
-	// TODO: Method and fields inheritance (overwrite result types)
+	@Test
+	public void testMethodsOverwriting() throws Exception {
+		compile("public class A{ public Object get() { return null; } public class B extends A{ public String get(){ return \"hello\"; }}}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A$B"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class, "a.get()");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.lang.String", type.getName());
+	}
+	
+	@Test
+	public void testFieldsOverwriting() throws Exception{
+		compile("public class A { private Object name; public class B{ private String name; }}");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A$B"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		org.walkmod.javalang.ast.expr.Expression expr = (org.walkmod.javalang.ast.expr.Expression) ASTManager.parse(
+				Expression.class, "a.name");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expr.accept(expressionAnalyzer, ctx);
+		SymbolType type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.lang.String", type.getName());
+	}
+	
 	// TODO: Test multicatch
 
 }

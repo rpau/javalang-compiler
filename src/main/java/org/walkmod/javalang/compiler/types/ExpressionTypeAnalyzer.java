@@ -17,7 +17,6 @@ package org.walkmod.javalang.compiler.types;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -430,11 +429,30 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ObjectCreationExpr n, A arg) {
-		super.visit(n, arg);
-		n.setSymbolData(n.getType().getSymbolData());
-		if (semanticVisitor != null) {
-			n.accept(semanticVisitor, arg);
+		boolean isAnnonymousClass = n.getAnonymousClassBody() != null
+				&& !n.getAnonymousClassBody().isEmpty();
+		if (n.getScope() != null) {
+			n.getScope().accept(this, arg);
 		}
+		if (n.getTypeArgs() != null) {
+			for (Type t : n.getTypeArgs()) {
+				t.accept(this, arg);
+			}
+		}
+		n.getType().accept(this, arg);
+		if (n.getArgs() != null) {
+			for (Expression e : n.getArgs()) {
+				e.accept(this, arg);
+			}
+		}
+		n.setSymbolData(n.getType().getSymbolData());
+		if (isAnnonymousClass) {
+			// we need to update the symbol table
+			if (semanticVisitor != null) {
+				n.accept(semanticVisitor, arg);
+			}
+		}
+
 	}
 
 	@Override
@@ -667,17 +685,16 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 						ReferenceType.VARIABLE);
 				filter.appendPredicate(new CompatibleFunctionalPredicate<A>(
 						scope, this, null, arg));
-				SymbolData sd = null; 
+				SymbolData sd = null;
 				try {
-					sd = MethodInspector.findMethodType(scope,
-							filter, null, null);
+					sd = MethodInspector.findMethodType(scope, filter, null,
+							null);
 				} catch (Exception e) {
 					throw new NoSuchExpressionTypeException(e);
 				}
-				if(init instanceof LambdaExpr){
+				if (init instanceof LambdaExpr) {
 					init.setSymbolData(sd);
-				}
-				else{
+				} else {
 					init.setSymbolData(scope);
 					MethodReferenceExpr methodRef = (MethodReferenceExpr) init;
 					methodRef.accept(this, arg);
