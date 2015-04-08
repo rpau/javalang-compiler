@@ -52,8 +52,8 @@ public class CompatibleArgsPredicate implements TypeMappingPredicate<Method> {
 			Type[] methodParameterTypes = method.getGenericParameterTypes();
 			SymbolType[] methodArgs = new SymbolType[methodParameterTypes.length];
 
-			for (int i = 0; i < methodParameterTypes.length; i++) {
-
+			for (int i = 0; i < methodParameterTypes.length
+					&& i < numParams; i++) {
 				methodArgs[i] = SymbolType.valueOf(methodParameterTypes[i],
 						typeArgs[i], methodArgsMapping, typeMapping);
 
@@ -100,7 +100,7 @@ public class CompatibleArgsPredicate implements TypeMappingPredicate<Method> {
 				}
 
 			}
-		}else{
+		} else {
 			isCompatible = false;
 		}
 		if (isCompatible && methodArgsMapping != null) {
@@ -109,8 +109,6 @@ public class CompatibleArgsPredicate implements TypeMappingPredicate<Method> {
 
 		return isCompatible;
 	}
-
-	
 
 	@Override
 	public void setTypeMapping(Map<String, SymbolType> typeMapping) {

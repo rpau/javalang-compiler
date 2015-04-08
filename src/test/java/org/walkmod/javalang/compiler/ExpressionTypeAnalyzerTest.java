@@ -863,8 +863,24 @@ public class ExpressionTypeAnalyzerTest extends SemanticTest {
 			Assert.assertEquals("A$Supplier", methodType.getName());
 		}
 	}
+	
+	@Test
+	public void testDynamicArgsWithoutArguments() throws Exception{
+		compile("public class A { public String foo(String... others) {return \"hello+\";} }");
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class,
+				"a.foo()");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals("java.lang.String", type.getName());
+	}
 
-	// TODO: dynamic args without arguments
 	// TODO: Method and fields inheritance (overwrite result types)
 	// TODO: Test multicatch
 
