@@ -61,8 +61,8 @@ public class CompatibleMethodReferencePredicate<A> extends
 			while (it.hasNext() && !found) {
 
 				Method md = it.next();
-				int mdParameterCount = md.getParameters().length;
-				int elemParameterCount = elem.getParameters().length;
+				int mdParameterCount = md.getParameterTypes().length;
+				int elemParameterCount = elem.getParameterTypes().length;
 				
 				FunctionalGenericsBuilder<MethodReferenceExpr> builder = new FunctionalGenericsBuilder<MethodReferenceExpr>(
 						md, typeResolver, getTypeMapping());
