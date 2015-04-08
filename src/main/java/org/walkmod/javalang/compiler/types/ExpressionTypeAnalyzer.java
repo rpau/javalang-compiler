@@ -134,16 +134,29 @@ public class ExpressionTypeAnalyzer<A extends Map<String, Object>> extends
 	public void visit(ArrayInitializerExpr n, A arg) {
 
 		if (n.getValues() != null) {
+			int arrayCount = 1;
 			List<Class<?>> classes = new LinkedList<Class<?>>();
-			for (Expression expr : n.getValues()) {
+			Integer minArrayCount = null;
+			List<Expression> values = n.getValues();
+			for (Expression expr : values) {
 				expr.accept(this, arg);
-				if (expr.getSymbolData() != null) {
-					classes.add(expr.getSymbolData().getClazz());
+				SymbolData sd = expr.getSymbolData();
+
+				if (sd != null) {
+					if (minArrayCount == null
+							|| sd.getArrayCount() < minArrayCount) {
+						minArrayCount = sd.getArrayCount();
+					}
+					classes.add(sd.getClazz());
 				}
+			}
+			if (values != null && !values.isEmpty() && minArrayCount != null) {
+				arrayCount = minArrayCount + 1;
 			}
 			Class<?> superClass = ClassInspector
 					.getTheNearestSuperClass(classes);
 			SymbolType st = new SymbolType(superClass);
+			st.setArrayCount(arrayCount);
 			n.setSymbolData(st);
 		}
 	}

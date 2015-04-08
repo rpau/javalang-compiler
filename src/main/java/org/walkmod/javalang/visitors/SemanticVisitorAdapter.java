@@ -633,7 +633,9 @@ public class SemanticVisitorAdapter<A extends Map<String, Object>> extends
 		List<VariableDeclarator> vars = n.getVars();
 		for (VariableDeclarator vd : vars) {
 			SymbolType aux = st.clone();
-
+			if(vd.getId().getArrayCount() > 0){
+				aux.setArrayCount(vd.getId().getArrayCount());
+			}
 			symbolTable.pushSymbol(vd.getId().getName(),
 					ReferenceType.VARIABLE, aux,
 					(Node) (arg.get(ORIGINAL_LOCATION)), actions);

@@ -11,6 +11,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
@@ -68,6 +69,15 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 
 		visitor.setClassLoader(getClassLoader());
 		visitor.setActionProvider(provider);
+		visitor.visit(cu, new HashMap<String, Object>());
+		return cu;
+	}
+
+	private CompilationUnit run(String code) throws Exception {
+		CompilationUnit cu = compile(code);
+		SemanticVisitorAdapter<HashMap<String, Object>> visitor = new SemanticVisitorAdapter<HashMap<String, Object>>();
+		visitor.setClassLoader(getClassLoader());
+
 		visitor.visit(cu, new HashMap<String, Object>());
 		return cu;
 	}
@@ -280,5 +290,18 @@ public class SemanticVisitorAdapterTest extends SemanticTest {
 		ObjectCreationExpr expr = (ObjectCreationExpr) aux.getVariables()
 				.get(0).getInit();
 		Assert.assertEquals(2, expr.getAnonymousClassBody().size());
+	}
+
+	@Test
+	public void testAnonymousArrayExpressions() throws Exception {
+		CompilationUnit cu = run("public class A{ Integer v[][] = { new Integer[] {3} }; Integer a[] = v[0]; }");
+		FieldDeclaration fd = (FieldDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		SymbolData sd = fd.getType().getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals(Integer.class.getName(), sd.getName());
+		SymbolData sd2 = fd.getVariables().get(0).getInit().getSymbolData();
+		Assert.assertNotNull(sd2);
+		Assert.assertEquals(Integer.class.getName(), sd2.getName());
+		Assert.assertEquals(2, sd2.getArrayCount());
 	}
 }
