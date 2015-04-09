@@ -1,6 +1,8 @@
 package org.walkmod.javalang.compiler;
 
 import java.io.File;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,7 +37,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testNoActions() throws Exception {
 
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
-		visitor.setClassLoader(Thread.currentThread().getContextClassLoader());
+		String[] classpathEntries = System.getProperty("java.class.path").split(File.pathSeparator);
+		URL[] classpath = new URL[classpathEntries.length];
+		int i = 0;
+		for(String entry: classpathEntries){
+			classpath[i] = new File(entry).toURI().toURL();
+			i++;
+		}
+		visitor.setClassLoader(new URLClassLoader(classpath));
 		visitor.setSymbolActions(new LinkedList<SymbolAction>());
 
 		File aux = new File(new File("src/main/java"),
@@ -49,8 +58,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testReferencesCounterAction() throws Exception {
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
-
-		visitor.setClassLoader(Thread.currentThread().getContextClassLoader());
+		
+		String[] classpathEntries = System.getProperty("java.class.path").split(File.pathSeparator);
+		URL[] classpath = new URL[classpathEntries.length];
+		int i = 0;
+		for(String entry: classpathEntries){
+			classpath[i] = new File(entry).toURI().toURL();
+			i++;
+		}
+		visitor.setClassLoader(new URLClassLoader(classpath));
 		visitor.setSymbolActions(new LinkedList<SymbolAction>());
 
 		ReferencesCounterAction counter = new ReferencesCounterAction();
