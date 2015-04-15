@@ -9,6 +9,7 @@ import java.util.Map;
 import javax.lang.model.SourceVersion;
 
 import junit.framework.Assert;
+import og.walkmod.javalang.test.SemanticTest;
 
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -31,6 +32,9 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 	private TypeVisitorAdapter<Map<String, Object>> expressionAnalyzer;
 
+	public void populateSemantics() throws Exception{}
+	
+	
 	@Override
 	public CompilationUnit compile(String code) throws Exception {
 		CompilationUnit cu = super.compile(code);

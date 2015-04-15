@@ -9,6 +9,8 @@ import java.util.List;
 
 import javax.lang.model.SourceVersion;
 
+import og.walkmod.javalang.test.SemanticTest;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -94,12 +96,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		visitor.visit(cu, new HashMap<String, Object>());
 		return cu;
 	}
+	
+	public void populateSemantics() throws Exception{}
 
 	private CompilationUnit run(String code) throws Exception {
 		CompilationUnit cu = compile(code);
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 		visitor.setClassLoader(getClassLoader());
-
 		visitor.visit(cu, new HashMap<String, Object>());
 		return cu;
 	}

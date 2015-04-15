@@ -11,8 +11,8 @@ import java.util.Set;
 import org.walkmod.javalang.JavadocManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
-import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolData;
+import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.AnnotationMemberDeclaration;
@@ -70,10 +70,11 @@ import org.walkmod.javalang.compiler.actions.LoadMethodDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadStaticImportsAction;
 import org.walkmod.javalang.compiler.actions.LoadTypeDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadTypeParamsAction;
+import org.walkmod.javalang.compiler.actions.ReferencesUpdaterAction;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.providers.SymbolActionProviderAware;
-import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
@@ -91,8 +92,6 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	private List<SymbolAction> actions = null;
 
 	private SymbolActionProvider actionProvider = null;
-
-	private static final String ORIGINAL_LOCATION = "SemanticVisitorAdapter_original_location";
 
 	private int innerAnonymousClassCounter = 1;
 
@@ -129,7 +128,13 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(CompilationUnit unit, A arg) {
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(unit);
+		} else {
+			if (actions == null) {
+				actions = new LinkedList<SymbolAction>();
+			}
+			actions.add(new ReferencesUpdaterAction());
 		}
+
 		symbolTable = new SymbolTable();
 		symbolTable.setActions(actions);
 		typeTable = TypeTable.getInstance();
@@ -159,32 +164,33 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	public void visit(NormalAnnotationExpr n, A arg) {
 
-		Symbol s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
-				ReferenceType.TYPE);
+		Symbol<?> s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
+				ReferenceType.TYPE, n);
 		n.setSymbolData(s.getType());
 		super.visit(n, arg);
 	}
 
 	public void visit(MarkerAnnotationExpr n, A arg) {
-		Symbol s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
-				ReferenceType.TYPE);
+		Symbol<?> s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
+				ReferenceType.TYPE, n);
 		n.setSymbolData(s.getType());
 		super.visit(n, arg);
 	}
 
 	public void visit(SingleMemberAnnotationExpr n, A arg) {
-		Symbol s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
-				ReferenceType.TYPE);
+		Symbol<?> s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
+				ReferenceType.TYPE, n);
 		n.setSymbolData(s.getType());
 		super.visit(n, arg);
 	}
 
-	private void processJavadocTypeReference(String type) {
+	private void processJavadocTypeReference(String type, JavadocTag n) {
 		if (type != null) {
 			String[] split = type.split("#");
 			String typeName = split[0];
 			if (!"".equals(typeName)) {
-				symbolTable.lookUpSymbolForRead(typeName, ReferenceType.TYPE);
+				symbolTable
+						.lookUpSymbolForRead(typeName, ReferenceType.TYPE, n);
 			}
 			if (split.length == 2) {
 				String signature = split[1];
@@ -201,7 +207,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 											param.length() - 2);
 								}
 								symbolTable.lookUpSymbolForRead(param.trim(),
-										ReferenceType.TYPE);
+										ReferenceType.TYPE, n);
 							}
 						}
 					}
@@ -225,7 +231,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 					List<String> values = tag.getValues();
 					if (values != null) {
 						String type = values.get(0);
-						processJavadocTypeReference(type);
+						processJavadocTypeReference(type, tag);
 
 					}
 				} else if ("@see".equals(name)) {
@@ -234,7 +240,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 						String type = values.get(0);
 						if (type != null && !type.startsWith("<")
 								&& !type.startsWith("\"")) {
-							processJavadocTypeReference(type);
+							processJavadocTypeReference(type, tag);
 
 						}
 					}
@@ -245,7 +251,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	public void visit(EnumDeclaration n, A arg) {
 		try {
-			symbolTable.pushScope();
+			symbolTable.pushScope(n);
 			loadThisSymbol(n, arg);
 			super.visit(n, arg);
 			symbolTable.popScope();
@@ -372,7 +378,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ConstructorDeclaration n, A arg) {
-		symbolTable.pushScope();
+		symbolTable.pushScope(n);
 		super.visit(n, arg);
 		n.accept(expressionTypeAnalyzer, arg);
 		symbolTable.popScope();
@@ -397,11 +403,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ClassOrInterfaceDeclaration n, A arg) {
 
 		try {
-			symbolTable.pushScope();
+			symbolTable.pushScope(n);
 			loadThisSymbol(n, arg);
 			super.visit(n, arg);
-			n.setSymbolData(symbolTable.getType("this",
-					ReferenceType.VARIABLE));
+			n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
 			symbolTable.popScope();
 		} catch (ClassNotFoundException e) {
 			throw new NoSuchExpressionTypeException(e);
@@ -411,11 +416,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(AnnotationDeclaration n, A arg) {
 		try {
-			symbolTable.pushScope();
+			symbolTable.pushScope(n);
 			loadThisSymbol(n, arg);
 			super.visit(n, arg);
-			n.setSymbolData(symbolTable.getType("this",
-					ReferenceType.VARIABLE));
+			n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
 			symbolTable.popScope();
 		} catch (ClassNotFoundException e) {
 			throw new NoSuchExpressionTypeException(e);
@@ -445,9 +449,11 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	public void visit(VariableDeclarator n, A arg) {
-		n.getId().accept(this, arg);
+
 		if (n.getInit() != null) {
+			symbolTable.pushScope(n);
 			n.getInit().accept(expressionTypeAnalyzer, arg);
+			symbolTable.popScope();
 		}
 	}
 
@@ -499,7 +505,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(MethodDeclaration n, A arg) {
-		symbolTable.pushScope();
+		symbolTable.pushScope(n);
 		super.visit(n, arg);
 		n.accept(expressionTypeAnalyzer, arg);
 		symbolTable.popScope();
@@ -588,7 +594,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			argsType = new SymbolType[0];
 		}
 
-		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.METHOD,
+		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.METHOD, n,
 				scopeType, argsType);
 
 	}
@@ -602,10 +608,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 					ReferenceType.VARIABLE);
 
 			if (thisType != null && thisType.equals(scopeType)) {
-				lookupSymbol(n.getField(), ReferenceType.VARIABLE, arg);
+				lookupSymbol(n.getField(), ReferenceType.VARIABLE, arg, n);
 			}
 		} else {
-			lookupSymbol(n.getField(), ReferenceType.VARIABLE, arg);
+			lookupSymbol(n.getField(), ReferenceType.VARIABLE, arg, n);
 		}
 	}
 
@@ -637,17 +643,13 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 				aux.setArrayCount(vd.getId().getArrayCount());
 			}
 			symbolTable.pushSymbol(vd.getId().getName(),
-					ReferenceType.VARIABLE, aux,
-					(Node) (arg.get(ORIGINAL_LOCATION)), actions);
+					ReferenceType.VARIABLE, aux, vd, actions);
 		}
 	}
 
 	@Override
 	public void visit(ExpressionStmt n, A arg) {
-		Object original = arg.get(ORIGINAL_LOCATION);
-		arg.put(ORIGINAL_LOCATION, n);
 		n.getExpression().accept(expressionTypeAnalyzer, arg);
-		arg.put(ORIGINAL_LOCATION, original);
 	}
 
 	@Override
@@ -799,21 +801,22 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		n.setSymbolData(n.getBody().getSymbolData());
 	}
 
-	private void lookupSymbol(String name, ReferenceType referenceType, A arg) {
+	private void lookupSymbol(String name, ReferenceType referenceType, A arg,
+			SymbolReference n) {
 		AccessType atype = (AccessType) arg.get(AccessType.ACCESS_TYPE);
 		if (atype != null) {
 			if (atype.equals(AccessType.WRITE)) {
-				symbolTable.lookUpSymbolForWrite(name);
+				symbolTable.lookUpSymbolForWrite(name, n);
 			} else {
-				symbolTable.lookUpSymbolForRead(name, referenceType);
+				symbolTable.lookUpSymbolForRead(name, referenceType, n);
 			}
 		} else {
-			symbolTable.lookUpSymbolForRead(name, referenceType);
+			symbolTable.lookUpSymbolForRead(name, referenceType, n);
 		}
 	}
 
 	public void visit(NameExpr n, A arg) {
-		lookupSymbol(n.toString(), null, arg);
+		lookupSymbol(n.toString(), null, arg, n);
 	}
 
 	@Override
@@ -829,25 +832,25 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		SymbolType[] argsType = (SymbolType[]) n.getReferencedArgsSymbolData();
 
 		symbolTable.lookUpSymbolForRead(n.getIdentifier(),
-				ReferenceType.METHOD, scopeType, argsType);
+				ReferenceType.METHOD, n, scopeType, argsType);
 
 	}
 
 	@Override
 	public void visit(TypeParameter n, A arg) {
 		super.visit(n, arg);
-		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.TYPE);
+		symbolTable.lookUpSymbolForRead(n.getName(), ReferenceType.TYPE, null);
 
 	}
 
 	@Override
 	public void visit(SuperExpr n, A arg) {
-		symbolTable.lookUpSymbolForRead("super", ReferenceType.VARIABLE);
+		symbolTable.lookUpSymbolForRead("super", ReferenceType.VARIABLE, null);
 	}
 
 	@Override
 	public void visit(ThisExpr n, A arg) {
-		symbolTable.lookUpSymbolForRead("this", ReferenceType.VARIABLE);
+		symbolTable.lookUpSymbolForRead("this", ReferenceType.VARIABLE, null);
 	}
 
 	@Override
@@ -874,9 +877,9 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ClassOrInterfaceType n, A arg) {
 		n.accept(expressionTypeAnalyzer, arg);
 	}
-	
+
 	@Override
-	public void visit(FieldDeclaration n, A arg){
+	public void visit(FieldDeclaration n, A arg) {
 		super.visit(n, arg);
 		n.accept(expressionTypeAnalyzer, arg);
 	}

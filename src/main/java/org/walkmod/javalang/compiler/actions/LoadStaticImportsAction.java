@@ -11,61 +11,59 @@ import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
-import org.walkmod.javalang.compiler.symbols.SymbolEvent;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
-public class LoadStaticImportsAction implements SymbolAction {
+public class LoadStaticImportsAction extends SymbolAction {
 
 	@Override
-	public void execute(Symbol symbol, SymbolTable table, SymbolEvent event)
-			throws Exception {
-		if (event.equals(SymbolEvent.PUSH)) {
-			Node n = symbol.getLocation();
-			if (n instanceof ImportDeclaration) {
-				ImportDeclaration id = (ImportDeclaration) n;
-				if (id.isStatic()) {
-					Class<?> clazz = symbol.getType().getClazz();
-					Method[] methods = clazz.getMethods();
-					for (Method m : methods) {
-						if (id.isAsterisk() || id.getName().getName().equals(m.getName())) {
-							if (Modifier.isStatic(m.getModifiers())
-									&& Modifier.isPublic(m.getModifiers())) {
-								Class<?> returnClass = m.getReturnType();
-								Class<?>[] params = m.getParameterTypes();
-								SymbolType[] args = null;
-								if (params.length > 0) {
-									args = new SymbolType[params.length];
-									int i = 0;
-									for (Class<?> param : params) {
-										args[i] = new SymbolType(param);
-										i++;
-									}
+	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
+		Node n = symbol.getLocation();
+		if (n instanceof ImportDeclaration) {
+			ImportDeclaration id = (ImportDeclaration) n;
+			if (id.isStatic()) {
+				Class<?> clazz = symbol.getType().getClazz();
+				Method[] methods = clazz.getMethods();
+				for (Method m : methods) {
+					if (id.isAsterisk()
+							|| id.getName().getName().equals(m.getName())) {
+						if (Modifier.isStatic(m.getModifiers())
+								&& Modifier.isPublic(m.getModifiers())) {
+							Class<?> returnClass = m.getReturnType();
+							Class<?>[] params = m.getParameterTypes();
+							SymbolType[] args = null;
+							if (params.length > 0) {
+								args = new SymbolType[params.length];
+								int i = 0;
+								for (Class<?> param : params) {
+									args[i] = new SymbolType(param);
+									i++;
 								}
-
-								SymbolType st = new SymbolType(returnClass);
-								MethodSymbol method = new MethodSymbol(
-										m.getName(), st, n, symbol.getType(),
-										args, true, (List<SymbolAction>) null);
-								table.pushSymbol(method);
 							}
+
+							SymbolType st = new SymbolType(returnClass);
+							MethodSymbol method = new MethodSymbol(m.getName(),
+									st, n, symbol.getType(), args, true,
+									(List<SymbolAction>) null);
+							table.pushSymbol(method);
 						}
 					}
-					Field[] fields = clazz.getFields();
-					for (Field field : fields) {
-						if (id.isAsterisk()
-								|| id.getName().getName().equals(field.getName())) {
-							if (Modifier.isStatic(field.getModifiers())
-									&& Modifier.isPublic(field.getModifiers())) {
-								Class<?> type = field.getType();
-								SymbolType st = new SymbolType(type);
-								table.pushSymbol(field.getName(),
-										ReferenceType.VARIABLE, st, n);
-							}
+				}
+				Field[] fields = clazz.getFields();
+				for (Field field : fields) {
+					if (id.isAsterisk()
+							|| id.getName().getName().equals(field.getName())) {
+						if (Modifier.isStatic(field.getModifiers())
+								&& Modifier.isPublic(field.getModifiers())) {
+							Class<?> type = field.getType();
+							SymbolType st = new SymbolType(type);
+							table.pushSymbol(field.getName(),
+									ReferenceType.VARIABLE, st, n);
 						}
 					}
 				}
 			}
 		}
+
 	}
 }

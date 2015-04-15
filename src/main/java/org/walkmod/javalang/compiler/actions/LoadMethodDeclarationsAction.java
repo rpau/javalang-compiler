@@ -15,12 +15,11 @@ import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
-import org.walkmod.javalang.compiler.symbols.SymbolEvent;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.TypeTable;
 
-public class LoadMethodDeclarationsAction implements SymbolAction {
+public class LoadMethodDeclarationsAction extends SymbolAction {
 
 	private TypeTable<?> typeTable;
 	private SymbolActionProvider actionProvider;
@@ -31,14 +30,14 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 		this.actionProvider = actionProvider;
 	}
 
-	private void pushMethod(Symbol symbol, SymbolTable table,
+	private void pushMethod(Symbol<?> symbol, SymbolTable table,
 			MethodDeclaration md) throws Exception {
 
 		Type type = md.getType();
 		SymbolType resolvedType = typeTable.valueOf(type);
 		resolvedType.setClazz(typeTable.loadClass(resolvedType));
 		type.setSymbolData(resolvedType);
-		
+
 		List<Parameter> params = md.getParameters();
 		SymbolType[] args = null;
 		if (params != null) {
@@ -57,7 +56,7 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 		table.pushSymbol(method);
 	}
 
-	private void pushConstructor(Symbol symbol, SymbolTable table,
+	private void pushConstructor(Symbol<?> symbol, SymbolTable table,
 			ConstructorDeclaration md) throws Exception {
 		Type type = new ClassOrInterfaceType(md.getName());
 		SymbolType resolvedType = typeTable.valueOf(type);
@@ -82,33 +81,30 @@ public class LoadMethodDeclarationsAction implements SymbolAction {
 	}
 
 	@Override
-	public void execute(Symbol symbol, SymbolTable table, SymbolEvent event)
-			throws Exception {
-		if (event.equals(SymbolEvent.PUSH)) {
-			Node node = symbol.getLocation();
-			List<BodyDeclaration> members = null;
+	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
+		Node node = symbol.getLocation();
+		List<BodyDeclaration> members = null;
 
-			if (node instanceof TypeDeclaration) {
-				TypeDeclaration n = (TypeDeclaration) node;
-				members = n.getMembers();
-			} else if (node instanceof ObjectCreationExpr) {
-				members = ((ObjectCreationExpr) node).getAnonymousClassBody();
-			}
+		if (node instanceof TypeDeclaration) {
+			TypeDeclaration n = (TypeDeclaration) node;
+			members = n.getMembers();
+		} else if (node instanceof ObjectCreationExpr) {
+			members = ((ObjectCreationExpr) node).getAnonymousClassBody();
+		}
 
-			if (members != null) {
+		if (members != null) {
 
-				for (BodyDeclaration member : members) {
-					if (member instanceof MethodDeclaration) {
-						MethodDeclaration md = (MethodDeclaration) member;
-						pushMethod(symbol, table, md);
+			for (BodyDeclaration member : members) {
+				if (member instanceof MethodDeclaration) {
+					MethodDeclaration md = (MethodDeclaration) member;
+					pushMethod(symbol, table, md);
 
-					} else if (member instanceof ConstructorDeclaration) {
-						ConstructorDeclaration cd = (ConstructorDeclaration) member;
-						pushConstructor(symbol, table, cd);
-					}
+				} else if (member instanceof ConstructorDeclaration) {
+					ConstructorDeclaration cd = (ConstructorDeclaration) member;
+					pushConstructor(symbol, table, cd);
 				}
 			}
-
 		}
+
 	}
 }

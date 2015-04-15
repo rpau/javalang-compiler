@@ -9,12 +9,11 @@ import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
-import org.walkmod.javalang.compiler.symbols.SymbolEvent;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.TypeTable;
 
-public class LoadTypeDeclarationsAction implements SymbolAction {
+public class LoadTypeDeclarationsAction extends SymbolAction {
 
 	private TypeTable<?> typeTable;
 
@@ -37,28 +36,27 @@ public class LoadTypeDeclarationsAction implements SymbolAction {
 		st.setName(className);
 		st.setClazz(typeTable.loadClass(className));
 		node.setSymbolData(st);
-		table.pushSymbol(typeTable.getSimpleName(className), ReferenceType.TYPE, st, node, actions);
+		table.pushSymbol(typeTable.getSimpleName(className),
+				ReferenceType.TYPE, st, node, actions);
 	}
 
 	@Override
-	public void execute(Symbol symbol, SymbolTable table, SymbolEvent event)
-			throws Exception {
-		if (event.equals(SymbolEvent.PUSH)) {
-			Node node = symbol.getLocation();
+	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
+		Node node = symbol.getLocation();
 
-			if (node instanceof TypeDeclaration) {
+		if (node instanceof TypeDeclaration) {
 
-				TypeDeclaration n = (TypeDeclaration) node;
+			TypeDeclaration n = (TypeDeclaration) node;
 
-				if (n.getMembers() != null) {
+			if (n.getMembers() != null) {
 
-					for (BodyDeclaration member : n.getMembers()) {
-						if (member instanceof TypeDeclaration) {
-							update((TypeDeclaration) member, table);
-						}
+				for (BodyDeclaration member : n.getMembers()) {
+					if (member instanceof TypeDeclaration) {
+						update((TypeDeclaration) member, table);
 					}
 				}
 			}
 		}
+
 	}
 }

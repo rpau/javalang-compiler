@@ -58,13 +58,13 @@
 		<dependency>
 			<groupId>org.walkmod</groupId>
 			<artifactId>javalang</artifactId>
-			<version>[4.0.0, 5.0.0)</version>
+			<version>[4.1.0, 5.0.0)</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.5</version>
-			<scope>test</scope>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>log4j</groupId>

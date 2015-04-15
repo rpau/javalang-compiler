@@ -15,14 +15,12 @@ import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.LiteralExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
-import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
-import org.walkmod.javalang.compiler.symbols.SymbolEvent;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 
-public class RemoveUnusedSymbolsAction implements SymbolAction {
+public class RemoveUnusedSymbolsAction extends SymbolAction {
 
 	private List<? extends Node> siblings;
 
@@ -31,35 +29,40 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 	}
 
 	@Override
-	public void execute(Symbol symbol, SymbolTable table, SymbolEvent event) {
-		if (event.equals(SymbolEvent.POP)) {
-			Node n = symbol.getLocation();
-			if (n != null) {
-				Map<String, Object> attrs = symbol.getAttributes();
+	public void doPop(Symbol<?> symbol, SymbolTable table) {
 
-				Object reads = attrs.get(ReferencesCounterAction.READS);
+		Node n = symbol.getLocation();
+		if (n != null) {
+			Map<String, Object> attrs = symbol.getAttributes();
 
-				Object writes = attrs.get(ReferencesCounterAction.WRITES);
+			Object reads = attrs.get(ReferencesCounterAction.READS);
 
-				if (reads == null && writes == null) {
-					if (n instanceof MethodDeclaration) {
-						removeMethod(symbol, table);
-					} else if (n instanceof FieldDeclaration) {
-						removeField(symbol, table);
-					} else if (n instanceof TypeDeclaration) {
-						Symbol thisSymbol = table.findSymbol("this",
-								ReferenceType.VARIABLE);
-						if (symbol.getReferenceType()
-								.equals(ReferenceType.TYPE)
-								&& !thisSymbol.getType().equals(
-										symbol.getType())) {
-							removeType(symbol, table);
+			Object writes = attrs.get(ReferencesCounterAction.WRITES);
+
+			if (reads == null && writes == null) {
+				if (n instanceof MethodDeclaration) {
+					removeMethod(symbol, table);
+				} else if (n instanceof VariableDeclarator) {
+					Node parentNode = n.getParentNode();
+					if (parentNode != null) {
+						if (parentNode instanceof FieldDeclaration) {
+							removeField(symbol, table,
+									(FieldDeclaration) parentNode);
+						} else {
+							removeVariable(symbol, table,
+									(VariableDeclarationExpr) parentNode);
 						}
-					} else if (n instanceof ExpressionStmt) {
-						removeVariable(symbol, table);
-					} else if (n instanceof ImportDeclaration) {
-						removeImport(symbol, table);
 					}
+
+				} else if (n instanceof TypeDeclaration) {
+					Symbol<?> thisSymbol = table.findSymbol("this",
+							ReferenceType.VARIABLE);
+					if (symbol.getReferenceType().equals(ReferenceType.TYPE)
+							&& !thisSymbol.getType().equals(symbol.getType())) {
+						removeType(symbol, table);
+					}
+				} else if (n instanceof ImportDeclaration) {
+					removeImport(symbol, table);
 				}
 			}
 		}
@@ -69,7 +72,7 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 		return siblings;
 	}
 
-	public void removeImport(Symbol symbol, SymbolTable table) {
+	public void removeImport(Symbol<?> symbol, SymbolTable table) {
 		ImportDeclaration id = (ImportDeclaration) symbol.getLocation();
 		if (id.isAsterisk() || id.isStatic()) {
 
@@ -78,22 +81,22 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 				int pos = type.lastIndexOf('.');
 				type = type.substring(0, pos);
 			}
-			List<Symbol> symbols = table.findSymbolsByType(type,
+			List<Symbol<?>> symbols = table.findSymbolsByType(type,
 					ReferenceType.TYPE);
 			boolean used = false;
-			List<Symbol> staticElems = null;
+			List<Symbol<?>> staticElems = null;
 			if (id.isStatic()) {
 				staticElems = table.findSymbolsByLocation(id);
 			}
-			Iterator<Symbol> it = symbols.iterator();
+			Iterator<Symbol<?>> it = symbols.iterator();
 			while (it.hasNext() && !used) {
-				Symbol candidate = it.next();
+				Symbol<?> candidate = it.next();
 
 				if (id.isStatic()) {
 
-					Iterator<Symbol> itStatic = staticElems.iterator();
+					Iterator<Symbol<?>> itStatic = staticElems.iterator();
 					while (itStatic.hasNext() && !used) {
-						Symbol staticElem = itStatic.next();
+						Symbol<?> staticElem = itStatic.next();
 
 						ReferenceType rt = staticElem.getReferenceType();
 						if (rt.equals(ReferenceType.METHOD)
@@ -122,12 +125,12 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 		} else {
 			String type = id.getName().toString();
 			// internal classes
-			List<Symbol> symbols = table.findSymbolsByType(type,
+			List<Symbol<?>> symbols = table.findSymbolsByType(type,
 					ReferenceType.TYPE);
 			boolean used = false;
-			Iterator<Symbol> it = symbols.iterator();
+			Iterator<Symbol<?>> it = symbols.iterator();
 			while (it.hasNext() && !used) {
-				Symbol next = it.next();
+				Symbol<?> next = it.next();
 				Map<String, Object> attrs = next.getAttributes();
 				Object reads = attrs.get(ReferencesCounterAction.READS);
 				Object writes = attrs.get(ReferencesCounterAction.WRITES);
@@ -151,7 +154,7 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 		}
 	}
 
-	public void removeMethod(Symbol symbol, SymbolTable table) {
+	public void removeMethod(Symbol<?> symbol, SymbolTable table) {
 		MethodDeclaration md = (MethodDeclaration) symbol.getLocation();
 
 		int modifiers = md.getModifiers();
@@ -160,7 +163,7 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 		}
 	}
 
-	public void removeType(Symbol symbol, SymbolTable table) {
+	public void removeType(Symbol<?> symbol, SymbolTable table) {
 		TypeDeclaration td = (TypeDeclaration) symbol.getLocation();
 		int modifiers = td.getModifiers();
 		if (ModifierSet.isPrivate(modifiers)) {
@@ -168,15 +171,14 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 		}
 	}
 
-	public void removeVariable(Symbol symbol, SymbolTable table) {
-		ExpressionStmt original = (ExpressionStmt) symbol.getLocation();
-		VariableDeclarationExpr vd = (VariableDeclarationExpr) original
-				.getExpression();
+	public void removeVariable(Symbol<?> symbol, SymbolTable table,
+			VariableDeclarationExpr vd) {
+
 		List<VariableDeclarator> vds = vd.getVars();
 		if (vds.size() == 1) {
 			Expression init = vds.get(0).getInit();
 			if (isReadOnlyExpression(init)) {
-				remove(original);
+				remove(vd.getParentNode());
 			}
 		} else {
 			Iterator<VariableDeclarator> it = vds.iterator();
@@ -197,8 +199,9 @@ public class RemoveUnusedSymbolsAction implements SymbolAction {
 		return (init == null || init instanceof LiteralExpr || init instanceof NameExpr);
 	}
 
-	public void removeField(Symbol symbol, SymbolTable table) {
-		FieldDeclaration fd = (FieldDeclaration) symbol.getLocation();
+	public void removeField(Symbol<?> symbol, SymbolTable table,
+			FieldDeclaration fd) {
+
 		int modifiers = fd.getModifiers();
 		if (ModifierSet.isPrivate(modifiers)) {
 			List<VariableDeclarator> vds = fd.getVariables();

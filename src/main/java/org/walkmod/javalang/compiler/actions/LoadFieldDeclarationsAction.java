@@ -13,12 +13,11 @@ import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
-import org.walkmod.javalang.compiler.symbols.SymbolEvent;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.TypeTable;
 
-public class LoadFieldDeclarationsAction implements SymbolAction {
+public class LoadFieldDeclarationsAction extends SymbolAction {
 
 	private TypeTable<?> typeTable;
 
@@ -31,49 +30,44 @@ public class LoadFieldDeclarationsAction implements SymbolAction {
 	}
 
 	@Override
-	public void execute(Symbol symbol, SymbolTable table, SymbolEvent event)
-			throws Exception {
-		if (event.equals(SymbolEvent.PUSH)) {
-			Node node = symbol.getLocation();
+	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
+		Node node = symbol.getLocation();
 
-			List<BodyDeclaration> members = null;
+		List<BodyDeclaration> members = null;
 
-			if (node instanceof TypeDeclaration) {
-				TypeDeclaration n = (TypeDeclaration) node;
-				members = n.getMembers();
-			} else if (node instanceof ObjectCreationExpr) {
-				members = ((ObjectCreationExpr) node).getAnonymousClassBody();
-			}
+		if (node instanceof TypeDeclaration) {
+			TypeDeclaration n = (TypeDeclaration) node;
+			members = n.getMembers();
+		} else if (node instanceof ObjectCreationExpr) {
+			members = ((ObjectCreationExpr) node).getAnonymousClassBody();
+		}
 
-			if (members != null) {
+		if (members != null) {
 
-				for (BodyDeclaration member : members) {
-					if (member instanceof FieldDeclaration) {
+			for (BodyDeclaration member : members) {
+				if (member instanceof FieldDeclaration) {
 
-						FieldDeclaration fd = (FieldDeclaration) member;
-						Type type = fd.getType();
-						List<SymbolAction> actions = null;
-						if (actionProvider != null) {
-							actions = actionProvider.getActions(fd);
-						}
-						SymbolType resolvedType = typeTable.valueOf(type);
-						resolvedType
-								.setClazz(typeTable.loadClass(resolvedType));
-						type.setSymbolData(resolvedType);
-
-						for (VariableDeclarator var : fd.getVariables()) {
-							SymbolType symType = resolvedType.clone();
-							symType.setArrayCount(var.getId().getArrayCount());
-
-							table.pushSymbol(var.getId().getName(),
-									ReferenceType.VARIABLE, symType, fd,
-									actions);
-						}
-
+					FieldDeclaration fd = (FieldDeclaration) member;
+					Type type = fd.getType();
+					List<SymbolAction> actions = null;
+					if (actionProvider != null) {
+						actions = actionProvider.getActions(fd);
 					}
-				}
+					SymbolType resolvedType = typeTable.valueOf(type);
+					resolvedType.setClazz(typeTable.loadClass(resolvedType));
+					type.setSymbolData(resolvedType);
 
+					for (VariableDeclarator var : fd.getVariables()) {
+						SymbolType symType = resolvedType.clone();
+						symType.setArrayCount(var.getId().getArrayCount());
+
+						table.pushSymbol(var.getId().getName(),
+								ReferenceType.VARIABLE, symType, var, actions);
+					}
+
+				}
 			}
+
 		}
 	}
 }

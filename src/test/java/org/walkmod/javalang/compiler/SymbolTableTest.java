@@ -16,7 +16,7 @@ public class SymbolTableTest {
 		st.pushScope();
 		SymbolType type = new SymbolType("java.lang.String");
 		st.pushSymbol("a", ReferenceType.VARIABLE, type, null);
-		Symbol s = st.findSymbol("a", ReferenceType.VARIABLE);
+		Symbol<?> s = st.findSymbol("a", ReferenceType.VARIABLE);
 		Assert.assertNotNull(s);
 		st.popScope();
 	}
@@ -28,7 +28,7 @@ public class SymbolTableTest {
 		SymbolType type = new SymbolType("java.lang.String");
 		st.pushSymbol("a", ReferenceType.VARIABLE, type, null);
 		st.pushScope();
-		Symbol s = st.findSymbol("a", ReferenceType.VARIABLE);
+		Symbol<?> s = st.findSymbol("a", ReferenceType.VARIABLE);
 		Assert.assertNotNull(s);
 		st.pushSymbol("a", ReferenceType.VARIABLE, new SymbolType("int"), null);
 		s = st.findSymbol("a", ReferenceType.VARIABLE);

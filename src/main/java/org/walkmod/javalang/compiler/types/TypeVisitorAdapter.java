@@ -17,6 +17,7 @@ package org.walkmod.javalang.compiler.types;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.TypeVariable;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -94,6 +95,7 @@ import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.exceptions.InvalidTypeException;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
@@ -288,7 +290,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						scopeType = new SymbolType(c);
 						symbolTable.lookUpSymbolForRead(
 								typeTable.getSimpleName(c.getName()),
-								ReferenceType.TYPE);
+								ReferenceType.TYPE, null);
 						n.setSymbolData(scopeType);
 					}
 				} catch (ClassNotFoundException e) {
@@ -336,7 +338,6 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(LongLiteralMinValueExpr n, A arg) {
 		n.setSymbolData(new SymbolType("long"));
 	}
-	
 
 	@Override
 	public void visit(MethodCallExpr n, A arg) {
@@ -380,7 +381,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			}
 
 			// for static imports
-			Symbol s = symbolTable.findSymbol(n.getName(),
+			Symbol<?> s = symbolTable.findSymbol(n.getName(),
 					ReferenceType.METHOD, scope, symbolTypes);
 
 			if (s != null) {
@@ -483,12 +484,13 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				i++;
 			}
 		}
-		SymbolType st = (SymbolType)n.getType().getSymbolData();
+		SymbolType st = (SymbolType) n.getType().getSymbolData();
 		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 		ArrayFilter<Constructor<?>> filter = new ArrayFilter<Constructor<?>>(
 				null);
-		filter.appendPredicate(new CompatibleConstructorArgsPredicate(symbolTypes));
-		
+		filter.appendPredicate(new CompatibleConstructorArgsPredicate(
+				symbolTypes));
+
 		if (hasFunctionalExpressions) {
 			filter.appendPredicate(new CompatibleFunctionalConstructorPredicate<A>(
 					st, this, n.getArgs(), arg));
@@ -496,13 +498,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		CompositeBuilder<Constructor<?>> builder = new CompositeBuilder<Constructor<?>>();
 		builder.appendBuilder(new GenericsBuilderFromConstructorParameterTypes(
 				typeMapping, n.getArgs(), symbolTypes));
-		
+
 		try {
-			SymbolType aux = ConstructorInspector
-					.findConstructor(
-							st,
-							filter,
-							builder, typeMapping);
+			SymbolType aux = ConstructorInspector.findConstructor(st, filter,
+					builder, typeMapping);
 			n.setSymbolData(aux);
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException(e);
@@ -651,8 +650,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				type = new SymbolType(clazz);
 			}
 		} else {
-			Symbol s = symbolTable.lookUpSymbolForRead(typeName,
-					ReferenceType.TYPE);
+			Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName,
+					ReferenceType.TYPE, n);
 			if (s != null) {
 				type = s.getType().clone();
 			} else {
@@ -668,8 +667,32 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			if (args != null) {
 				List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
 				for (Type currentArg : args) {
-					parameterizedTypes.add((SymbolType) currentArg
-							.getSymbolData());
+					SymbolType st = (SymbolType) currentArg.getSymbolData();
+					if (st == null && currentArg.toString().equals("?")) {
+						TypeVariable<?>[] vars = type.getClazz()
+								.getTypeParameters();
+						boolean found = false;
+						if (vars.length == 1) {
+							TypeVariable<?> var = vars[0];
+							java.lang.reflect.Type[] bounds = var.getBounds();
+							List<SymbolType> varTypes = new LinkedList<SymbolType>();
+							if (bounds.length > 0) {
+								for (int i = 0; i < bounds.length && !found; i++) {
+									try {
+										varTypes.add(SymbolType.valueOf(
+												bounds[i], null));
+									} catch (InvalidTypeException e) {
+										throw new NoSuchExpressionTypeException(e);
+									}
+								}
+							}
+							else{
+								varTypes.add(new SymbolType(Object.class));
+							}
+							st = new SymbolType(varTypes);
+						}
+					}
+					parameterizedTypes.add(st);
 				}
 				type.setParameterizedTypes(parameterizedTypes);
 			}
@@ -743,8 +766,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(VariableDeclarator n, A arg) {
 		n.getId().accept(this, arg);
+		
 		Expression init = n.getInit();
 		if (init != null) {
+			symbolTable.pushScope(n);
 			if (init instanceof LambdaExpr
 					|| init instanceof MethodReferenceExpr) {
 				ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
@@ -769,6 +794,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			} else {
 				init.accept(this, arg);
 			}
+			symbolTable.popScope();
 		}
 	}
 

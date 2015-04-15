@@ -21,45 +21,56 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.SymbolDefinition;
 
 public class Scope {
 
-	private Map<String, List<Symbol>> symbols = new HashMap<String, List<Symbol>>();
+	private Map<String, List<Symbol<?>>> symbols = new HashMap<String, List<Symbol<?>>>();
 
 	private List<SymbolAction> actions;
 
+	private boolean isSymbolDefinitionScope = false;
+
 	public Scope() {
+	}
+	
+	public Scope(boolean isSymbolDefinitionScope) {
+		this(isSymbolDefinitionScope, null);
 	}
 
 	public Scope(List<SymbolAction> actions) {
-		this.actions = actions;
+		this(false, actions);
 	}
 
-	public List<Symbol> getSymbols() {
-		List<Symbol> result = new LinkedList<Symbol>();
+	public Scope(boolean isSymbolDefinitionScope, List<SymbolAction> actions) {
+		this.actions = actions;
+		this.isSymbolDefinitionScope = isSymbolDefinitionScope;
+	}
 
-		Iterator<List<Symbol>> it = symbols.values().iterator();
+	public List<Symbol<?>> getSymbols() {
+		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
+
+		Iterator<List<Symbol<?>>> it = symbols.values().iterator();
 		while (it.hasNext()) {
 			result.addAll(it.next());
 		}
 		return result;
 	}
 
-	public Symbol getSymbol(String name) {
+	public Symbol<?> getSymbol(String name) {
 		return getSymbol(name, ReferenceType.VARIABLE);
 	}
 
-	public Symbol getSymbol(String name, ReferenceType referenceType) {
-		List<Symbol> list = symbols.get(name);
+	public Symbol<?> getSymbol(String name, ReferenceType referenceType) {
+		List<Symbol<?>> list = symbols.get(name);
 		if (list == null) {
 			return null;
 		} else {
-			Iterator<Symbol> it = list.iterator();
+			Iterator<Symbol<?>> it = list.iterator();
 			while (it.hasNext()) {
-				Symbol s = it.next();
+				Symbol<?> s = it.next();
 				if (referenceType == null
 						|| s.getReferenceType().equals(referenceType)) {
 					return s;
@@ -69,17 +80,17 @@ public class Scope {
 		}
 	}
 
-	public List<Symbol> getSymbols(String name) {
+	public List<Symbol<?>> getSymbols(String name) {
 		return symbols.get(name);
 	}
 
-	public List<Symbol> getSymbolsByLocation(Node node) {
-		List<Symbol> result = new LinkedList<Symbol>();
-		Collection<List<Symbol>> values = symbols.values();
-		Iterator<List<Symbol>> it = values.iterator();
+	public List<Symbol<?>> getSymbolsByLocation(Node node) {
+		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
+		Collection<List<Symbol<?>>> values = symbols.values();
+		Iterator<List<Symbol<?>>> it = values.iterator();
 		while (it.hasNext()) {
-			List<Symbol> list = it.next();
-			for (Symbol symbol : list) {
+			List<Symbol<?>> list = it.next();
+			for (Symbol<?> symbol : list) {
 				if (symbol.getLocation() == node) {// yes, by reference
 					result.add(symbol);
 				}
@@ -89,17 +100,18 @@ public class Scope {
 		return result;
 	}
 
-	public List<Symbol> getSymbolsByType(String typeName,
+	public List<Symbol<?>> getSymbolsByType(String typeName,
 			ReferenceType referenceType) {
-		List<Symbol> result = new LinkedList<Symbol>();
-		Collection<List<Symbol>> values = symbols.values();
-		Iterator<List<Symbol>> it = values.iterator();
+		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
+		Collection<List<Symbol<?>>> values = symbols.values();
+		Iterator<List<Symbol<?>>> it = values.iterator();
 		while (it.hasNext()) {
-			List<Symbol> list = it.next();
-			for (Symbol symbol : list) {
-				if (symbol.getReferenceType() == referenceType) {// yes, by reference
-					
-					if (symbol.getType().getName().startsWith(typeName)){
+			List<Symbol<?>> list = it.next();
+			for (Symbol<?> symbol : list) {
+				if (symbol.getReferenceType() == referenceType) {// yes, by
+																	// reference
+
+					if (symbol.getType().getName().startsWith(typeName)) {
 						result.add(symbol);
 					}
 				}
@@ -110,14 +122,14 @@ public class Scope {
 
 	}
 
-	public Symbol getSymbol(String name, ReferenceType referenceType,
+	public Symbol<?> getSymbol(String name, ReferenceType referenceType,
 			SymbolType scope, SymbolType[] args) {
 		if (args == null) {
 			return getSymbol(name, referenceType);
 		} else {
-			List<Symbol> values = symbols.get(name);
+			List<Symbol<?>> values = symbols.get(name);
 			if (values != null) {
-				for (Symbol symbol : values) {
+				for (Symbol<?> symbol : values) {
 					if (symbol instanceof MethodSymbol) {
 						MethodSymbol aux = (MethodSymbol) symbol;
 						if (aux.hasCompatibleSignature(scope, args)) {
@@ -130,28 +142,30 @@ public class Scope {
 		return null;
 	}
 
-	public void chageSymbol(Symbol oldSymbol, Symbol newSymbol) {
-		List<Symbol> list = symbols.get(oldSymbol.getName());
+	public void chageSymbol(Symbol<?> oldSymbol, Symbol<?> newSymbol) {
+		List<Symbol<?>> list = symbols.get(oldSymbol.getName());
 		if (list.remove(oldSymbol)) {
-			List<Symbol> values = symbols.get(newSymbol.getName());
+			List<Symbol<?>> values = symbols.get(newSymbol.getName());
 			if (values == null) {
-				values = new LinkedList<Symbol>();
+				values = new LinkedList<Symbol<?>>();
 				symbols.put(newSymbol.getName(), values);
 			}
 			values.add(newSymbol);
 		}
 	}
 
-	public Symbol addSymbol(String symbolName, SymbolType type, Node location) {
+	public <T extends Node & SymbolDefinition> Symbol<T> addSymbol(
+			String symbolName, SymbolType type, T location) {
 
-		Symbol s = new Symbol(symbolName, type, location);
+		Symbol<T> s = new Symbol<T>(symbolName, type, location);
 		return addSymbol(s);
 	}
 
-	public Symbol addSymbol(Symbol symbol) {
-		List<Symbol> values = symbols.get(symbol.getName());
+	public <T extends Node & SymbolDefinition> Symbol<T> addSymbol(
+			Symbol<T> symbol) {
+		List<Symbol<?>> values = symbols.get(symbol.getName());
 		if (values == null) {
-			values = new LinkedList<Symbol>();
+			values = new LinkedList<Symbol<?>>();
 			symbols.put(symbol.getName(), values);
 		} else {
 			values.remove(symbol);
@@ -163,14 +177,17 @@ public class Scope {
 	public List<SymbolAction> getActions() {
 		return actions;
 	}
-	
-	public void addActions(List<SymbolAction> actions){
-		if(this.actions == null){
+
+	public void addActions(List<SymbolAction> actions) {
+		if (this.actions == null) {
 			this.actions = actions;
-		}
-		else{
+		} else {
 			this.actions.addAll(actions);
 		}
+	}
+
+	public boolean isSymbolDefinitionScope() {
+		return isSymbolDefinitionScope;
 	}
 
 }

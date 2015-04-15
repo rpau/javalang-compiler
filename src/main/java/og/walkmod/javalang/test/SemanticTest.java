@@ -1,4 +1,4 @@
-package org.walkmod.javalang.compiler;
+package og.walkmod.javalang.test;
 
 import java.io.File;
 import java.net.URL;
@@ -10,7 +10,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.compiler.Compiler;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
+import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.compiler.types.TypeTable;
 
 public abstract class SemanticTest {
@@ -56,7 +58,14 @@ public abstract class SemanticTest {
 		Compiler compiler = new Compiler();
 		compiler.compile(new File(CLASSES_DIR), new File(SOURCES_DIR), code);
 		cu = ASTManager.parse(code);
+		populateSemantics();
 		return cu;
+	}
+	
+	public void populateSemantics() throws Exception{
+		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
+		visitor.setClassLoader(getClassLoader());
+		visitor.visit(cu, new HashMap<String, Object>());
 	}
 
 	public ClassLoader getClassLoader() throws Exception {

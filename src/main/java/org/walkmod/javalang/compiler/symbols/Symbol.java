@@ -21,14 +21,16 @@ import java.util.List;
 import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.SymbolDefinition;
+import org.walkmod.javalang.ast.SymbolReference;
 
-public class Symbol {
+public class Symbol<T extends Node & SymbolDefinition> {
 
 	private String name;
 
 	private SymbolType type;
 
-	private Node location;
+	private T location;
 
 	private List<SymbolAction> actions;
 
@@ -36,17 +38,17 @@ public class Symbol {
 
 	private ReferenceType referenceType = ReferenceType.VARIABLE;
 
-	public Symbol(String name, SymbolType type, Node location) {
+	public Symbol(String name, SymbolType type, T location) {
 		this(name, type, location, ReferenceType.VARIABLE,
 				(List<SymbolAction>) null);
 	}
 
-	public Symbol(String name, SymbolType type, Node location,
+	public Symbol(String name, SymbolType type, T location,
 			ReferenceType referenceType) {
 		this(name, type, location, referenceType, (List<SymbolAction>) null);
 	}
 
-	public Symbol(String name, SymbolType type, Node location,
+	public Symbol(String name, SymbolType type, T location,
 			ReferenceType referenceType, SymbolAction action) {
 		setName(name);
 		setType(type);
@@ -56,13 +58,12 @@ public class Symbol {
 		actions.add(action);
 	}
 
-	public Symbol(String name, SymbolType type, Node location,
-			SymbolAction action) {
+	public Symbol(String name, SymbolType type, T location, SymbolAction action) {
 		this(name, type, location, ReferenceType.VARIABLE, action);
 
 	}
 
-	public Symbol(String name, SymbolType type, Node location,
+	public Symbol(String name, SymbolType type, T location,
 			ReferenceType referenceType, List<SymbolAction> actions) {
 		setName(name);
 		setType(type);
@@ -99,11 +100,11 @@ public class Symbol {
 		this.type = type;
 	}
 
-	public Node getLocation() {
+	public T getLocation() {
 		return location;
 	}
 
-	public void setLocation(Node initNode) {
+	public void setLocation(T initNode) {
 		this.location = initNode;
 	}
 
@@ -112,11 +113,11 @@ public class Symbol {
 		return name;
 	}
 
-	public void invokeActions(SymbolTable table, SymbolEvent event)
+	public void invokeActions(SymbolTable table, SymbolEvent event, SymbolReference reference)
 			throws Exception {
 		if (actions != null) {
 			for (SymbolAction action : actions) {
-				action.execute(this, table, event);
+				action.execute(this, table, event, reference);
 			}
 		}
 	}
@@ -126,7 +127,7 @@ public class Symbol {
 		if (o instanceof Symbol) {
 			return toString().equals(o.toString())
 					&& getReferenceType().equals(
-							((Symbol) o).getReferenceType());
+							((Symbol<?>) o).getReferenceType());
 		}
 		return false;
 	}

@@ -2,12 +2,12 @@ package org.walkmod.javalang.compiler.actions;
 
 import java.util.Map;
 
+import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
-import org.walkmod.javalang.compiler.symbols.SymbolEvent;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 
-public class ReferencesCounterAction implements SymbolAction {
+public class ReferencesCounterAction extends SymbolAction {
 
 	public static final String READS = "_READS_";
 
@@ -18,17 +18,20 @@ public class ReferencesCounterAction implements SymbolAction {
 	private int writesCounter = 0;
 
 	@Override
-	public void execute(Symbol symbol, SymbolTable table, SymbolEvent event) {
-		if (event.equals(SymbolEvent.READ)) {
-			update(symbol, READS);
-			readsCounter++;
-		} else if (event.equals(SymbolEvent.WRITE)) {
-			update(symbol, WRITES);
-			writesCounter++;
-		}
+	public void doRead(Symbol<?> symbol, SymbolTable table,
+			SymbolReference emitter) {
+		update(symbol, READS);
+		readsCounter++;
 	}
 
-	private void update(Symbol symbol, String key) {
+	@Override
+	public void doWrite(Symbol<?> symbol, SymbolTable table,
+			SymbolReference emitter) {
+		update(symbol, WRITES);
+		writesCounter++;
+	}
+
+	private void update(Symbol<?> symbol, String key) {
 		Map<String, Object> attrs = symbol.getAttributes();
 
 		Object reads = attrs.get(key);
