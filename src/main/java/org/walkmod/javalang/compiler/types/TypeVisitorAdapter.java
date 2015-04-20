@@ -1,6 +1,6 @@
-/* 
-Copyright (C) 2013 Raquel Pau and Albert Coroleu.
-
+/*
+ Copyright (C) 2015 Raquel Pau and Albert Coroleu.
+ 
 Walkmod is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -666,14 +666,16 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 			if (args != null) {
 				List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+				TypeVariable<?>[] vars = type.getClazz()
+						.getTypeParameters();
+				int idx = 0;
 				for (Type currentArg : args) {
 					SymbolType st = (SymbolType) currentArg.getSymbolData();
 					if (st == null && currentArg.toString().equals("?")) {
-						TypeVariable<?>[] vars = type.getClazz()
-								.getTypeParameters();
+						
 						boolean found = false;
 						if (vars.length == 1) {
-							TypeVariable<?> var = vars[0];
+							TypeVariable<?> var = vars[idx];
 							java.lang.reflect.Type[] bounds = var.getBounds();
 							List<SymbolType> varTypes = new LinkedList<SymbolType>();
 							if (bounds.length > 0) {
@@ -691,6 +693,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 							}
 							st = new SymbolType(varTypes);
 						}
+						idx++;
 					}
 					parameterizedTypes.add(st);
 				}
