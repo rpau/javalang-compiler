@@ -1,0 +1,51 @@
+javalang-compiler: Java 8 semantic analysis customized for walkmod
+===================================================================
+
+image:https://travis-ci.org/rpau/javalang-compiler.svg?branch=master["Build Status", link="https://travis-ci.org/rpau/javalang-compiler"]
+
+Java 8 semantic analysis for the http://github.com/rpau/javalang[javalang] project. Therefore, the Java 8 AST is enriched with data calculated during the semantic analysis. Mainly, the calculated data is:
+
+- *Symbols data types*: In other words, what are the Java runtime classes, fields and methods that a given type or expression is referencing. For example, if the AST contains a `MethodCallExpr` node, the method `getSymbolData()` of this node returns the `java.lang.Method` that this node is referencing.
+
+- *Definitions and usages*: For those nodes that are subclass of `SymbolDefinition` (e.g declarations), the nodes contain which external references(`getBodyReferences()`) they have and which nodes reference them inside the same compilation unit (`getUsages()`).
+
+== License
+
+----
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Lesser General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+----
+== Usage
+
+If you are interested in creating a new http://www.walkmod.com[walkmod] plugin for Java code that requires this kind of information, you must add the following steps:
+
+. Add the following dependency in your project.
+
+----
+<dependency>
+    <groupId>org.walkmod</groupId>
+    <artifactId>javalang-compiler</artifactId>
+    <version>{last-version}</version>
+</dependency>
+----
+
+. Annotate your code transformations (visitors) with the `@RequiresSemanticAnalysis` annotation. Walkmod (specifically the walkmod-javalang-plugin), will automatically run the `org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter` to enrich the nodes.
+
+. Add a walkmod plugin in your `walkmod.xml` file that resolves your classpath and compiles your code (e.g walkmod-maven-plugin)
+
+
+== Contributing
+
+If you want to hack on this, fork it, improve it and send me a pull request.
+
+To get started using it, just clone it and call mvn install. 
