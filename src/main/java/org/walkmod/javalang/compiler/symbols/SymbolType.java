@@ -22,6 +22,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -279,7 +280,9 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public static SymbolType valueOf(Type type, SymbolType arg,
 			Map<String, SymbolType> updatedTypeMapping,
 			Map<String, SymbolType> typeMapping) {
-
+		if(typeMapping == null){
+			typeMapping = Collections.emptyMap();
+		}
 		SymbolType returnType = null;
 		if (type instanceof Class<?>) {
 			Class<?> aux = ((Class<?>) type);

@@ -25,6 +25,13 @@ public class ClassInspector {
 
 	public static Class<?> getTheNearestSuperClass(Class<?> clazz1,
 			Class<?> clazz2) {
+		if (clazz2 == null) {
+			clazz2 = Object.class;
+		}
+		if (clazz1 == null) {
+			clazz1 = Object.class;
+		}
+
 		if (clazz1.equals(clazz2)) {
 			return clazz1;
 		}
