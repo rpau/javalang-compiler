@@ -377,22 +377,22 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 							argToAnalyze = paramTypes.get(i);
 						}
 						boolean validParameterizedType = true;
-						if(t instanceof TypeVariable<?>){
-							Type[] bounds = ((TypeVariable<?>)t).getBounds();
+						if (t instanceof TypeVariable<?>) {
+							Type[] bounds = ((TypeVariable<?>) t).getBounds();
 							validParameterizedType = !(bounds.length == 1 && bounds[0] == type);
 						}
-						
+
 						SymbolType st = null;
-						if(validParameterizedType){
-						st = valueOf(t, argToAnalyze,
-								updatedTypeMapping, typeMapping);
+						if (validParameterizedType) {
+							st = valueOf(t, argToAnalyze, updatedTypeMapping,
+									typeMapping);
 						}
-						else{
+						if (st == null) {
 							st = new SymbolType("java.lang.Object");
 						}
-						if (st != null) {
-							params.add(st);
-						}
+
+						params.add(st);
+
 					}
 					i++;
 				}

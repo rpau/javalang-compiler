@@ -60,7 +60,11 @@ public class LoadTypeParamsAction extends SymbolAction {
 				SymbolType st = null;
 				if (typeBounds != null) {
 					for (ClassOrInterfaceType type : typeBounds) {
-						bounds.add(TypeTable.getInstance().valueOf(type));
+						SymbolType paramType = TypeTable.getInstance().valueOf(type, table);
+						if(paramType == null){
+							paramType = new SymbolType(Object.class);
+						}
+						bounds.add(paramType);
 					}
 					st = new SymbolType(bounds);
 

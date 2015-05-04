@@ -68,8 +68,11 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 					if (actionProvider != null) {
 						actions = actionProvider.getActions(fd);
 					}
-					SymbolType resolvedType = typeTable.valueOf(type);
-					resolvedType.setClazz(typeTable.loadClass(resolvedType));
+					SymbolType resolvedType = typeTable.valueOf(type, table);
+
+					if (resolvedType == null) {
+						resolvedType = new SymbolType(Object.class);
+					} 
 					type.setSymbolData(resolvedType);
 
 					for (VariableDeclarator var : fd.getVariables()) {

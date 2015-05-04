@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.compiler.CollectionFilter;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 public class RequiredMethodSignaturePredicate implements TypeMappingPredicate<Method> {
@@ -33,6 +34,8 @@ public class RequiredMethodSignaturePredicate implements TypeMappingPredicate<Me
 	private List<Expression> argumentValues;
 
 	private Map<String, SymbolType> typeMapping;
+	
+	private SymbolTable symbolTable;
 
 
 	public RequiredMethodSignaturePredicate() {
@@ -41,10 +44,12 @@ public class RequiredMethodSignaturePredicate implements TypeMappingPredicate<Me
 	public RequiredMethodSignaturePredicate(
 			CollectionFilter<Class<?>> resultTypeFilters,
 			List<Expression> argumentValues,
-			Map<String, SymbolType> typeMapping) {
+			Map<String, SymbolType> typeMapping,
+			SymbolTable symbolTable) {
 		this.argumentValues = argumentValues;
 		this.typeMapping = typeMapping;
 		this.resultTypeFilters = resultTypeFilters;
+		this.symbolTable = symbolTable;
 	}
 	
 	public void setResultTypeFilters(
@@ -61,7 +66,6 @@ public class RequiredMethodSignaturePredicate implements TypeMappingPredicate<Me
 		this.typeMapping = typeMapping;
 	}
 
-		
 
 	@Override
 	public boolean filter(Method method) throws Exception {
@@ -69,6 +73,7 @@ public class RequiredMethodSignaturePredicate implements TypeMappingPredicate<Me
 		if (resultTypeFilters != null) {
 			b2.setMethod(method);
 			b2.setArgumentValues(argumentValues);
+			b2.setSymbolTable(symbolTable);
 			
 			typeMapping = b2
 					.build(new HashMap<String, SymbolType>(typeMapping));

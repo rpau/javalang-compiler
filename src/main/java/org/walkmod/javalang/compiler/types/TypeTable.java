@@ -34,11 +34,13 @@ import java.util.jar.JarFile;
 
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
+import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.ModifierSet;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.QualifiedNameExpr;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
@@ -47,6 +49,8 @@ import org.walkmod.javalang.ast.type.ReferenceType;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.ast.type.VoidType;
 import org.walkmod.javalang.ast.type.WildcardType;
+import org.walkmod.javalang.compiler.reflection.ClassInspector;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
@@ -75,14 +79,37 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 	private Set<String> staticPgkImports = null;
 
+	private Map<String, String> innerClasses = null;
+
+	private boolean useSymbolTable = true;
+
 	private TypeTable() {
 
 		for (String defaultType : defaultJavaLangClasses) {
 			typeNames.add(defaultType);
-			typeTable.put(
-					defaultType.substring(defaultType.lastIndexOf(".") + 1),
-					defaultType);
+			typeTable.put(getKeyName(defaultType, false), defaultType);
 		}
+	}
+
+	private String getKeyName(String name, boolean imported) {
+		int index = name.lastIndexOf(".");
+		String simpleName = name;
+		if (index != -1) {
+			simpleName = name.substring(index + 1);
+		}
+		if (imported) {
+			index = simpleName.lastIndexOf("$");
+			if (index != -1) {
+				simpleName = simpleName.substring(index + 1);
+			}
+		} else {
+			simpleName = simpleName.replaceAll("\\$", ".");
+		}
+		return simpleName;
+	}
+
+	public void setUseSymbolTable(boolean useSymbolTable) {
+		this.useSymbolTable = useSymbolTable;
 	}
 
 	public static TypeTable<Map<String, Object>> getInstance() {
@@ -105,6 +132,12 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		for (String type : typeNames) {
 			if (type.startsWith(namePrefix)) {
 				result.add(type);
+			}
+		}
+		Set<String> keys = innerClasses.keySet();
+		for (String type : keys) {
+			if (type.startsWith(namePrefix)) {
+				result.add(innerClasses.get(type));
 			}
 		}
 		return result;
@@ -130,7 +163,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			if (packageName != null && packageName.equals(contextName)) {
 				name = contextName + "." + name;
 			} else {
-				name = contextName/*.replace("$", ".")*/ + "$" + name;
+				name = contextName/* .replace("$", ".") */+ "$" + name;
 			}
 		}
 		if (mainJavaClassFile == null) {
@@ -139,7 +172,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			}
 		}
 		if (typeNames.add(name)) {
-			typeTable.put(type.getName(), name);
+			typeTable.put(getKeyName(name, false), name);
 		}
 		return name;
 	}
@@ -178,7 +211,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		if (!id.isAsterisk()) {
 			if (!id.isStatic()) {
 				String typeName = id.getName().toString();
-				addType(typeName);
+				addType(typeName, true);
 				className = typeName;
 			} else {
 				className = ((QualifiedNameExpr) id.getName()).getQualifier()
@@ -195,7 +228,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			int index = className.lastIndexOf(".");
 			if (index != -1) {
 				if (className.substring(0, index).equals(packageName)) {
-					staticPgkImports.add(className.substring(index+1));
+					staticPgkImports.add(className.substring(index + 1));
 				}
 
 			} else if (packageName.equals("")) {
@@ -206,24 +239,25 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 	}
 
-	private void addType(String name) {
+	private void addType(String name, boolean imported) {
 		if (classLoader != null && name != null) {
 			try {
 				Class<?> clazz = Class.forName(name, false, classLoader);
 				if (!Modifier.isPrivate(clazz.getModifiers())) {
 					if (typeNames.add(name)) {
-						typeTable.put(clazz.getSimpleName(), name);
+						typeTable.put(getKeyName(name, imported), name);
 					}
 					Class<?>[] innerClasses = clazz.getDeclaredClasses();
 					if (innerClasses != null) {
 						for (int i = 0; i < innerClasses.length; i++) {
 							if (!Modifier.isPrivate(innerClasses[i]
 									.getModifiers())) {
-								if (typeNames.add(innerClasses[i].getName())) {
+								String fullName = innerClasses[i].getName();
 
+								if (typeNames.add(fullName)) {
 									typeTable.put(
-											innerClasses[i].getSimpleName(),
-											innerClasses[i].getName());
+											getKeyName(fullName, imported),
+											fullName);
 
 								}
 							}
@@ -232,37 +266,53 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 					}
 				}
 			} catch (ClassNotFoundException e) {
-				loadInnerClass(name);
+				loadInnerClass(name, imported);
 			} catch (IncompatibleClassChangeError e2) {
 				int index = name.lastIndexOf("$");
 				if (index != -1) {
-					addType(name.substring(0, index));
+					addType(name.substring(0, index), imported);
 				}
 			}
 
 		}
 	}
 
-	private void loadInnerClass(String name) {
+	private void loadInnerClass(String name, boolean imported) {
 		int index = name.lastIndexOf(".");
 		if (index != -1) {
 			// it is an inner class?
-			name = name.substring(0, index) + "$" + name.substring(index + 1);
+			String preffix = name.substring(0, index);
+			String suffix = name.substring(index + 1);
+
+			String internalName = preffix + "$" + suffix;
+			int index2 = preffix.lastIndexOf(".");
+
+			String simpleName = null;
+			if (index2 != -1) {
+				simpleName = preffix.substring(index2 + 1) + "." + suffix;
+			} else {
+				simpleName = preffix + "." + suffix;
+			}
 			try {
-				Class<?> clazz = Class.forName(name, false, classLoader);
+				Class<?> clazz = Class
+						.forName(internalName, false, classLoader);
 				if (!Modifier.isPrivate(clazz.getModifiers())
-						&& typeNames.add(name)) {
-					typeTable.put(clazz.getSimpleName(), name);
+						&& typeNames.add(simpleName)) {
+					// <A.B, com.foo.A$B>
+					typeTable.put(getKeyName(internalName, imported),
+							internalName);
+					// com.foo.A.B
+					innerClasses.put(name, internalName);
 				}
 			} catch (ClassNotFoundException e1) {
-				throw new RuntimeException("The referenced class " + name
-						+ " does not exists");
+				throw new RuntimeException("The referenced class "
+						+ internalName + " does not exists");
 			} catch (IncompatibleClassChangeError e2) {
 				// existent bug of the JVM
 				// http://bugs.java.com/view_bug.do?bug_id=7003595
-				index = name.lastIndexOf("$");
+				index = internalName.lastIndexOf("$");
 				if (index != -1) {
-					addType(name.substring(0, index));
+					addType(internalName.substring(0, index), imported);
 				}
 			}
 
@@ -286,7 +336,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 				name = name.replaceAll("/", ".");
 				name = name.substring(0, name.length() - 6);
-				addType(name);
+				addType(name, false);
 			}
 		}
 	}
@@ -323,7 +373,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 							if (!"".equals(packageName)) {
 								name = packageName + "." + simpleName;
 							}
-							addType(name);
+							addType(name, false);
 						}
 					}
 				}
@@ -391,6 +441,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			contextName = "";
 		}
 		staticPgkImports = new HashSet<String>();
+		innerClasses = new HashMap<String, String>();
 		packageName = contextName;
 		loadClassesFromPackage(packageName);
 		super.visit(cu, context);
@@ -461,9 +512,10 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		}
 	}
 
-	public Class<?> loadClass(Type t) throws ClassNotFoundException {
+	public Class<?> loadClass(Type t, SymbolTable st)
+			throws ClassNotFoundException {
 
-		Class<?> result = loadClass(valueOf(t));
+		Class<?> result = loadClass(valueOf(t, st));
 		if (result == null) {
 			throw new ClassNotFoundException("The class " + t.toString()
 					+ " is not found");
@@ -471,7 +523,110 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		return result;
 	}
 
-	public SymbolType valueOf(Type parserType) {
+	private SymbolType resolve(ClassOrInterfaceType type, SymbolTable st) {
+		// ClassOrInterfaceType type = (ClassOrInterfaceType) containerType;
+		SymbolType result = null;
+		if (type == null) {
+			return result;
+		}
+		String name = type.getName();
+		ClassOrInterfaceType scope = type.getScope();
+		Node parent = type.getParentNode();
+		boolean isObjectCreationCtxt = (parent != null && parent instanceof ObjectCreationExpr);
+		isObjectCreationCtxt = isObjectCreationCtxt
+				&& ((ObjectCreationExpr) parent).getScope() != null;
+		if (scope == null && useSymbolTable && !isObjectCreationCtxt) {
+			// it can be resolved through the symbol table (imports,
+			// generics, sibling/children inner classes, package
+			// classes)
+			result = st.getType(name,
+					org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
+			if (result != null) {
+				result = result.clone();
+			} else {
+				SymbolType thisType = st
+						.getType(
+								"this",
+								org.walkmod.javalang.compiler.symbols.ReferenceType.VARIABLE);
+				if (thisType != null) {
+					Class<?> superClass = thisType.getClazz().getSuperclass();
+					Class<?> nestedClass = ClassInspector.findClassMember(
+							thisType.getClazz().getPackage(), name, superClass);
+					if (nestedClass != null) {
+						result = new SymbolType(nestedClass);
+					}
+				}
+			}
+
+		} else {
+			// it is a fully qualified name or a inner class (>1 hop)
+
+			String scopeName = "";
+			if (isObjectCreationCtxt) {
+				scopeName = ((ObjectCreationExpr) parent).getScope()
+						.getSymbolData().getName()
+						+ ".";
+			}
+			while (type.getScope() != null) {
+				type = (ClassOrInterfaceType) type.getScope();
+				scopeName = type.getName() + "." + scopeName;
+			}
+
+			String innerClassName = name;
+			if (scopeName.length() > 1) {
+				innerClassName = scopeName.substring(0, scopeName.length() - 1)
+						+ "$" + name;
+			}
+			String fullName = scopeName + name;
+			if (innerClasses.containsKey(innerClassName)) {
+				// fully qualified inner class name
+				result = new SymbolType();
+				result.setName(innerClassName);
+			} else if (typeNames.contains(fullName)) {
+				// fully qualified class name
+				result = new SymbolType();
+				result.setName(fullName);
+			} else {
+				// nested inner class >1 hop A.B.C
+				String aux = typeTable.get(fullName);
+				if (aux == null) {
+					// in the code appears B.C
+					SymbolType scopeType = resolve(type.getScope(), st);
+					if (scopeType != null) {
+						result = new SymbolType();
+						result.setName(scopeType.getName() + "$" + name);
+					} else {
+						result = new SymbolType();
+						// it is a type that has not previously imported
+						result.setName(fullName);
+					}
+				} else {
+					result = new SymbolType();
+					result.setName(aux);
+				}
+			}
+
+		}
+		if (type.getTypeArgs() != null) {
+			if (result == null) {
+				result = new SymbolType();
+			}
+			List<SymbolType> typeArgs = new LinkedList<SymbolType>();
+
+			for (Type typeArg : type.getTypeArgs()) {
+				SymbolType aux = valueOf(typeArg, st);
+				if (aux == null) {
+					aux = new SymbolType(Object.class);
+				}
+				typeArgs.add(aux);
+			}
+			result.setParameterizedTypes(typeArgs);
+		}
+
+		return result;
+	}
+
+	public SymbolType valueOf(Type parserType, SymbolTable st) {
 
 		SymbolType result = new SymbolType();
 
@@ -479,48 +634,17 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 			Type containerType = (Type) ((ReferenceType) parserType).getType();
 
-			result.setArrayCount(((ReferenceType) parserType).getArrayCount());
-
 			if (containerType instanceof PrimitiveType) {
-				result.setName(valueOf(containerType).getName());
+				result.setName(valueOf(containerType, st).getName());
 
 			} else if (containerType instanceof ClassOrInterfaceType) {
 
-				ClassOrInterfaceType type = (ClassOrInterfaceType) containerType;
+				result = resolve((ClassOrInterfaceType) containerType, st);
 
-				String name = type.getName();
-
-				// it is a generic collections parameter
-				if (name.length() == 1) {
-
-					name = "java.lang.Object";
-
-				}
-
-				while (type.getScope() != null) {
-					type = (ClassOrInterfaceType) type.getScope();
-					name = type.getName() + "." + name;
-				}
-				if (typeNames.contains(name)) {
-					result.setName(name);
-				} else {
-					result.setName(typeTable.get(name));
-				}
-				if (result.getName() == null) {
-					// it is a fully qualified name
-					result.setName(name);
-				}
-
-				if (type.getTypeArgs() != null) {
-
-					List<SymbolType> typeArgs = new LinkedList<SymbolType>();
-
-					for (Type typeArg : type.getTypeArgs()) {
-						SymbolType aux = valueOf(typeArg);
-						typeArgs.add(aux);
-					}
-					result.setParameterizedTypes(typeArgs);
-				}
+			}
+			if (result != null) {
+				result.setArrayCount(((ReferenceType) parserType)
+						.getArrayCount());
 			}
 
 		} else if (parserType instanceof PrimitiveType) {
@@ -547,33 +671,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			}
 
 		} else if (parserType instanceof ClassOrInterfaceType) {
-			ClassOrInterfaceType type = ((ClassOrInterfaceType) parserType);
-			String name = type.getName();
 
-			while (type.getScope() != null) {
-				type = (ClassOrInterfaceType) type.getScope();
-				name = type.getName() + "." + name;
-			}
-
-			if (typeNames.contains(name)) {
-				result.setName(name);
-			} else {
-				result.setName(typeTable.get(name));
-			}
-			if (result.getName() == null) {
-				result.setName(name);
-			}
-
-			if (type.getTypeArgs() != null) {
-
-				List<SymbolType> typeArgs = new LinkedList<SymbolType>();
-
-				for (Type typeArg : type.getTypeArgs()) {
-					SymbolType aux = valueOf(typeArg);
-					typeArgs.add(aux);
-				}
-				result.setParameterizedTypes(typeArgs);
-			}
+			result = resolve((ClassOrInterfaceType) parserType, st);
 
 		} else if (parserType instanceof WildcardType) {
 			if (((WildcardType) parserType).toString().equals("?")) {
@@ -583,15 +682,15 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 						.getExtends();
 				ReferenceType superRef = ((WildcardType) parserType).getSuper();
 				if (extendsRef != null) {
-					result = valueOf(extendsRef);
+					result = valueOf(extendsRef, st);
 				} else {
-					result = valueOf(superRef);
+					result = valueOf(superRef, st);
 				}
 			}
 		} else if (parserType instanceof VoidType) {
 			result.setName(Void.class.getName());
 		}
-		if (result.getName() == null) {
+		if (result != null && result.getName() == null) {
 			throw new RuntimeException("The type " + parserType.toString()
 					+ " cannot be resolved");
 		}
@@ -599,22 +698,15 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		return result;
 	}
 
-	public String getFullName(ClassOrInterfaceType type) {
-
-		if (type.getScope() != null) {
-			return getFullName(type.getScope());
-		}
-
-		if (typeNames.contains(type.getName())) {
-			return type.getName();
-		} else {
-			return typeTable.get(type.getName());
-		}
-
-	}
-
 	public String getFullName(TypeDeclaration type) {
-		return typeTable.get(type.getName());
+		String name = type.getName();
+		Node parentNode = type.getParentNode();
+		// if it is an inner class, we build the unique name
+		while (parentNode instanceof TypeDeclaration) {
+			name = ((TypeDeclaration) parentNode).getName() + "." + name;
+			parentNode = parentNode.getParentNode();
+		}
+		return typeTable.get(name);
 	}
 
 	public void clear() {
@@ -624,9 +716,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		contextName = null;
 		for (String defaultType : defaultJavaLangClasses) {
 			typeNames.add(defaultType);
-			typeTable.put(
-					defaultType.substring(defaultType.lastIndexOf(".") + 1),
-					defaultType);
+			typeTable.put(getKeyName(defaultType, false), defaultType);
 		}
 	}
 

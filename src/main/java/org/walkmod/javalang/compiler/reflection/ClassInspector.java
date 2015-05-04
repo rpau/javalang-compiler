@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -101,6 +102,50 @@ public class ClassInspector {
 					result.add(parent);
 				}
 				otherClasses.remove(0);
+			}
+		}
+		return result;
+	}
+	
+	public static Class<?> findClassMember(Package pkg, String name, Class<?> clazz){
+		
+		if(clazz == null || clazz.equals(Object.class)){
+			return null;
+		}
+		
+		Class<?>[] innerClasses = clazz.getDeclaredClasses();
+		Class<?> result = null;
+		boolean found = false;
+		for(int i = 0; i < innerClasses.length && !found; i++){
+			String fullName = innerClasses[i].getName();
+			String simpleName = innerClasses[i].getSimpleName();
+			int index = fullName.indexOf('$');
+			if(index != -1){
+				int index2 = fullName.indexOf('$', index+1);
+				if(index2 != -1){
+					simpleName = fullName.substring(index+1);
+					simpleName  = simpleName.replaceAll("\\$", ".");
+				}
+			}
+			if(simpleName.equals(name)){
+				int modifiers = innerClasses[i].getModifiers();
+				found = Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers);
+				found = found ||  innerClasses[i].getPackage().equals(pkg);
+			}
+			if(found){
+				
+				result = innerClasses[i];
+			}
+			found = result != null;
+		}
+		if(!found){
+			result = findClassMember(pkg, name, clazz.getSuperclass());
+			if(result == null){
+				Class<?>[] interfaces = clazz.getInterfaces();
+				for(int i = 0; i < interfaces.length && !found; i++){
+					result = findClassMember(pkg, name, interfaces[i]);
+					found = result != null;
+				}
 			}
 		}
 		return result;

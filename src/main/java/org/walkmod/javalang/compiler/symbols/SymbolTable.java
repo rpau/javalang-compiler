@@ -116,36 +116,7 @@ public class SymbolTable {
 		}
 	}
 
-	private void loadParentSymbols() {
-		Class<?> parentClazz = findSymbol("this", ReferenceType.VARIABLE)
-				.getClass().getSuperclass();
-		if (parentClazz != null) {
-			SymbolType aux = new SymbolType(parentClazz.getName());
-			aux.setClazz(parentClazz);
-			pushSymbol("super", ReferenceType.VARIABLE, aux, null);
-		}
-
-		while (parentClazz != null) {
-			Field[] fields = parentClazz.getDeclaredFields();
-			if (fields != null) {
-				for (Field field : fields) {
-					if (!Modifier.isPrivate(field.getModifiers())) {
-						// if the symbol already exists, it has been
-						// declared in a more closed superclass
-						if (!containsSymbol(field.getName(),
-								ReferenceType.VARIABLE)) {
-							SymbolType aux = new SymbolType(field.getType()
-									.getName());
-							aux.setClazz(field.getType());
-							pushSymbol(field.getName(), ReferenceType.VARIABLE,
-									aux, null);
-						}
-					}
-				}
-			}
-			parentClazz = parentClazz.getSuperclass();
-		}
-	}
+	
 
 	public Symbol<?> findSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolScope, SymbolType[] args) {
@@ -337,12 +308,6 @@ public class SymbolTable {
 		}
 		// if not, we add it
 		lastScope.addSymbol(symbol);
-
-		if (name.equals("this")) {
-			loadParentSymbols();
-			loadParentInterfacesSymbols();
-
-		}
 		try {
 			invokeActions(lastScope, symbol, SymbolEvent.PUSH, null);
 		} catch (Exception e) {

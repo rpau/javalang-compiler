@@ -16,7 +16,6 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.types;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.TypeVariable;
 import java.util.HashMap;
@@ -138,7 +137,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ArrayCreationExpr n, A arg) {
-		SymbolType arrayType = typeTable.valueOf(n.getType());
+		SymbolType arrayType = typeTable.valueOf(n.getType(), symbolTable);
 		arrayType.setArrayCount(1);
 		n.setSymbolData(arrayType);
 	}
@@ -679,16 +678,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			if (clazz != null) {
 				type = new SymbolType(clazz);
 			}
+			
 		} else {
 			Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName,
 					ReferenceType.TYPE, n);
 			if (s != null) {
 				type = s.getType().clone();
 			} else {
-				String fullName = typeTable.getFullName(n);
-				if (fullName != null) {
-					type = new SymbolType(fullName);
-				}
+				type = typeTable.valueOf(n, symbolTable);
+				
 			}
 		}
 		if (type != null) {
@@ -724,6 +722,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 							st = new SymbolType(varTypes);
 
 							idx++;
+						} else {
+							st = new SymbolType(Object.class);
 						}
 					}
 					parameterizedTypes.add(st);

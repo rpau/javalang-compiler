@@ -53,8 +53,13 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 			MethodDeclaration md) throws Exception {
 
 		Type type = md.getType();
-		SymbolType resolvedType = typeTable.valueOf(type);
-		resolvedType.setClazz(typeTable.loadClass(resolvedType));
+		SymbolType resolvedType = typeTable.valueOf(type, table);
+		if(resolvedType == null){
+			resolvedType = new SymbolType(Object.class);
+		}
+		else{
+			resolvedType.setClazz(typeTable.loadClass(resolvedType));
+		}
 		type.setSymbolData(resolvedType);
 
 		List<Parameter> params = md.getParameters();
@@ -63,7 +68,7 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
-				args[i] = typeTable.valueOf(params.get(i).getType());
+				args[i] = typeTable.valueOf(params.get(i).getType(), table);
 				params.get(i).getType().setSymbolData(args[i]);
 				if (i == args.length - 1) {
 					hasDynamicArgs = params.get(i).isVarArgs();
@@ -84,16 +89,16 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 	private void pushConstructor(Symbol<?> symbol, SymbolTable table,
 			ConstructorDeclaration md) throws Exception {
 		Type type = new ClassOrInterfaceType(md.getName());
-		SymbolType resolvedType = typeTable.valueOf(type);
+		SymbolType resolvedType = typeTable.valueOf(type, table);
 		type.setSymbolData(resolvedType);
-		resolvedType.setClazz(typeTable.loadClass(resolvedType));
+		
 		List<Parameter> params = md.getParameters();
 		SymbolType[] args = null;
 		boolean hasDynamicArgs = false;
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
-				args[i] = typeTable.valueOf(params.get(i).getType());
+				args[i] = typeTable.valueOf(params.get(i).getType(), table);
 				params.get(i).getType().setSymbolData(args[i]);
 				if (i == args.length - 1) {
 					hasDynamicArgs = params.get(i).isVarArgs();

@@ -350,11 +350,12 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		String className = typeTable.getFullName(declaration);
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(new LoadTypeParamsAction());
+		actions.add(new LoadTypeDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadFieldDeclarationsAction(typeTable, actionProvider));
+		actions.add(new LoadEnumConstantLiteralsAction());
 		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider,
 				expressionTypeAnalyzer));
-		actions.add(new LoadTypeDeclarationsAction(typeTable, actionProvider));
-		actions.add(new LoadEnumConstantLiteralsAction());
+		
 
 		if (actionProvider != null) {
 			actions.addAll(actionProvider.getActions(declaration));
@@ -400,12 +401,13 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 					.findSymbol("this", ReferenceType.TYPE).getType().getName();
 			List<SymbolAction> actions = new LinkedList<SymbolAction>();
 			actions.add(new LoadTypeParamsAction());
+			actions.add(new LoadTypeDeclarationsAction(typeTable,
+					actionProvider));
 			actions.add(new LoadFieldDeclarationsAction(typeTable,
 					actionProvider));
 			actions.add(new LoadMethodDeclarationsAction(typeTable,
 					actionProvider, expressionTypeAnalyzer));
-			actions.add(new LoadTypeDeclarationsAction(typeTable,
-					actionProvider));
+			
 			actions.add(new LoadEnumConstantLiteralsAction());
 
 			if (actionProvider != null) {
@@ -432,10 +434,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(new LoadTypeParamsAction());
+		actions.add(new LoadTypeDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadFieldDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider,
 				expressionTypeAnalyzer));
-		actions.add(new LoadTypeDeclarationsAction(typeTable, actionProvider));
 		actions.add(new LoadEnumConstantLiteralsAction());
 
 		if (actionProvider != null) {
@@ -632,7 +634,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 		while (it.hasNext()) {
 			Type aux = it.next();
-			SymbolType type = typeTable.valueOf(aux);
+			SymbolType type = typeTable.valueOf(aux, symbolTable);
 			aux.setSymbolData(type);
 			symbolTypes.add(type);
 		}
