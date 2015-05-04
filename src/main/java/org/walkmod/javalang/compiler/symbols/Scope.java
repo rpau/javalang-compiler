@@ -32,6 +32,8 @@ public class Scope {
 	private List<SymbolAction> actions;
 
 	private boolean isSymbolDefinitionScope = false;
+	
+	private int innerAnonymousClassCounter = 0;
 
 	public Scope() {
 	}
@@ -188,6 +190,14 @@ public class Scope {
 
 	public boolean isSymbolDefinitionScope() {
 		return isSymbolDefinitionScope;
+	}
+
+	public int getInnerAnonymousClassCounter() {
+		return innerAnonymousClassCounter;
+	}
+	
+	public void incrInnerAnonymousClassCounter(){
+		innerAnonymousClassCounter++;
 	}
 
 }

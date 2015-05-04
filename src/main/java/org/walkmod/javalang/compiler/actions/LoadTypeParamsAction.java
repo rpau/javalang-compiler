@@ -41,35 +41,41 @@ public class LoadTypeParamsAction extends SymbolAction {
 						.getLocation();
 				List<TypeParameter> typeParams = declaration
 						.getTypeParameters();
-				if (typeParams != null && !typeParams.isEmpty()) {
-					SymbolType thisType = symbol.getType();
-					List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
-
-					for (TypeParameter tp : typeParams) {
-						List<ClassOrInterfaceType> typeBounds = tp
-								.getTypeBound();
-						List<SymbolType> bounds = new LinkedList<SymbolType>();
-						SymbolType st = null;
-						if (typeBounds != null) {
-							for (ClassOrInterfaceType type : typeBounds) {
-								bounds.add(TypeTable.getInstance()
-										.valueOf(type));
-							}
-							st = new SymbolType(bounds);
-
-						} else {
-							st = new SymbolType(Object.class);
-						}
-						table.pushSymbol(tp.getName(), ReferenceType.TYPE, st,
-								tp);
-						st.setTemplateVariable(true);
-						parameterizedTypes.add(st);
-					}
-					thisType.setParameterizedTypes(parameterizedTypes);
-				}
+				SymbolType thisType = symbol.getType();
+				load(table, typeParams, thisType);
 			}
-
 		}
+
+	}
+
+	public void load(SymbolTable table, List<TypeParameter> typeParams,
+			SymbolType thisType) {
+		if (typeParams != null && !typeParams.isEmpty()) {
+
+			List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+
+			for (TypeParameter tp : typeParams) {
+				List<ClassOrInterfaceType> typeBounds = tp.getTypeBound();
+				List<SymbolType> bounds = new LinkedList<SymbolType>();
+				SymbolType st = null;
+				if (typeBounds != null) {
+					for (ClassOrInterfaceType type : typeBounds) {
+						bounds.add(TypeTable.getInstance().valueOf(type));
+					}
+					st = new SymbolType(bounds);
+
+				} else {
+					st = new SymbolType(Object.class);
+				}
+				table.pushSymbol(tp.getName(), ReferenceType.TYPE, st, tp);
+				st.setTemplateVariable(true);
+				parameterizedTypes.add(st);
+			}
+			if (thisType != null) {
+				thisType.setParameterizedTypes(parameterizedTypes);
+			}
+		}
+
 	}
 
 }

@@ -16,6 +16,7 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.types;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.TypeVariable;
 import java.util.HashMap;
@@ -91,6 +92,7 @@ import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
 import org.walkmod.javalang.compiler.reflection.SymbolDataOfMethodReferenceBuilder;
+import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -198,14 +200,21 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		} catch (ClassNotFoundException e) {
 			throw new NoSuchExpressionTypeException(e);
 		}
-
-		if (n.getOperator().equals(Operator.plus)) {
+		Operator op = n.getOperator();
+		if (op.equals(Operator.plus)) {
 
 			if (leftType.getName().equals("java.lang.String")) {
 				resultType = leftType;
 			} else if (rightType.getName().equals("java.lang.String")) {
 				resultType = rightType;
 			}
+		}
+
+		if (op.equals(Operator.equals) || op.equals(Operator.notEquals)
+				|| op.equals(Operator.greater)
+				|| op.equals(Operator.greaterEquals)
+				|| op.equals(Operator.less) || op.equals(Operator.lessEquals)) {
+			resultType = new SymbolType(boolean.class);
 		}
 
 		n.setSymbolData(resultType);
@@ -236,6 +245,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ClassExpr n, A arg) {
+		n.getType().accept(this, arg);
 		n.setSymbolData(new SymbolType("java.lang.Class"));
 	}
 
@@ -385,7 +395,21 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					ReferenceType.METHOD, scope, symbolTypes);
 
 			if (s != null) {
-				n.setSymbolData(s.getType());
+				MethodSymbol methodSymbol = (MethodSymbol) s;
+				Method m = methodSymbol.getReferencedMethod();
+				if (m.getTypeParameters().length > 0
+						&& !m.getReturnType().equals(void.class)) {
+					// it is may return a parameterized type
+					Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+					GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
+							typeMapping, n.getArgs(), symbolTypes);
+
+					builder.build(m);
+					SymbolType aux = SymbolType.valueOf(m, typeMapping);
+					n.setSymbolData(aux);
+				} else {
+					n.setSymbolData(s.getType());
+				}
 			} else {
 				Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 				// it should be initialized after resolving the method
@@ -438,8 +462,14 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					String className = clazz.getName();
 					type = new SymbolType();
 					type.setName(className);
+				} else {
+					SymbolType thisType = symbolTable.getType("this",
+							ReferenceType.VARIABLE);
+
+					type = FieldInspector.findFieldType(thisType, n.getName());
+
 				}
-			} catch (ClassNotFoundException e) {
+			} catch (Exception e) {
 				// a name expression could be "org.walkmod.A" and this node
 				// could be "org.walkmod"
 			}
@@ -666,15 +696,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 			if (args != null) {
 				List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
-				TypeVariable<?>[] vars = type.getClazz()
-						.getTypeParameters();
+				TypeVariable<?>[] vars = type.getClazz().getTypeParameters();
 				int idx = 0;
 				for (Type currentArg : args) {
 					SymbolType st = (SymbolType) currentArg.getSymbolData();
-					if (st == null && currentArg.toString().equals("?")) {
-						
-						boolean found = false;
-						if (vars.length == 1) {
+					if (st == null) {
+						if (currentArg.toString().equals("?")) {
+
+							boolean found = false;
+
 							TypeVariable<?> var = vars[idx];
 							java.lang.reflect.Type[] bounds = var.getBounds();
 							List<SymbolType> varTypes = new LinkedList<SymbolType>();
@@ -684,16 +714,17 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 										varTypes.add(SymbolType.valueOf(
 												bounds[i], null));
 									} catch (InvalidTypeException e) {
-										throw new NoSuchExpressionTypeException(e);
+										throw new NoSuchExpressionTypeException(
+												e);
 									}
 								}
-							}
-							else{
+							} else {
 								varTypes.add(new SymbolType(Object.class));
 							}
 							st = new SymbolType(varTypes);
+
+							idx++;
 						}
-						idx++;
 					}
 					parameterizedTypes.add(st);
 				}
@@ -769,7 +800,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(VariableDeclarator n, A arg) {
 		n.getId().accept(this, arg);
-		
+
 		Expression init = n.getInit();
 		if (init != null) {
 			symbolTable.pushScope(n);

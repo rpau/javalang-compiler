@@ -33,16 +33,20 @@ import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 
 public class LoadMethodDeclarationsAction extends SymbolAction {
 
 	private TypeTable<?> typeTable;
 	private SymbolActionProvider actionProvider;
+	private TypeVisitorAdapter<?> expressionTypeAnalyzer;
 
 	public LoadMethodDeclarationsAction(TypeTable<?> typeTable,
-			SymbolActionProvider actionProvider) {
+			SymbolActionProvider actionProvider,
+			TypeVisitorAdapter<?> expressionTypeAnalyzer) {
 		this.typeTable = typeTable;
 		this.actionProvider = actionProvider;
+		this.expressionTypeAnalyzer = expressionTypeAnalyzer;
 	}
 
 	private void pushMethod(Symbol<?> symbol, SymbolTable table,
@@ -55,19 +59,25 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 		List<Parameter> params = md.getParameters();
 		SymbolType[] args = null;
+		boolean hasDynamicArgs = false;
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
 				args[i] = typeTable.valueOf(params.get(i).getType());
 				params.get(i).getType().setSymbolData(args[i]);
+				if (i == args.length - 1) {
+					hasDynamicArgs = params.get(i).isVarArgs();
+				}
 			}
 		}
 		List<SymbolAction> actions = null;
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(md);
 		}
+		md.accept(expressionTypeAnalyzer, null);
 		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
-				symbol.getType(), args, false, actions);
+				symbol.getType(), args, false, hasDynamicArgs, md
+						.getSymbolData().getMethod(), actions);
 		table.pushSymbol(method);
 	}
 
@@ -79,19 +89,26 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 		resolvedType.setClazz(typeTable.loadClass(resolvedType));
 		List<Parameter> params = md.getParameters();
 		SymbolType[] args = null;
+		boolean hasDynamicArgs = false;
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
 				args[i] = typeTable.valueOf(params.get(i).getType());
 				params.get(i).getType().setSymbolData(args[i]);
+				if (i == args.length - 1) {
+					hasDynamicArgs = params.get(i).isVarArgs();
+				}
 			}
 		}
 		List<SymbolAction> actions = null;
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(md);
 		}
+		md.accept(expressionTypeAnalyzer, null);
+
 		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
-				symbol.getType(), args, false, actions);
+				symbol.getType(), args, false, hasDynamicArgs, md
+						.getSymbolData().getConstructor(), actions);
 		table.pushSymbol(method);
 	}
 

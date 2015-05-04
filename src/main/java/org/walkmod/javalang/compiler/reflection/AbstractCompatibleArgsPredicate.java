@@ -42,11 +42,12 @@ public abstract class AbstractCompatibleArgsPredicate {
 		this.typeArgs = typeArgs;
 	}
 
-	public boolean filter() {
+	public boolean filter() throws Exception {
 		int numParams = typeArgs == null ? 0 : typeArgs.length;
 		SymbolType lastVariableTypeArg = null;
 		boolean isCompatible = true;
-		if ((paramsCount == numParams) || isVarAgs) {
+		if ((paramsCount == numParams)
+				|| (isVarAgs && numParams >= (paramsCount - 1))) {
 
 			// if I enter again, is that the previous method is not valid
 			if (methodArgsMapping != null && !methodArgsMapping.isEmpty()) {
@@ -65,17 +66,21 @@ public abstract class AbstractCompatibleArgsPredicate {
 			}
 			if (isVarAgs) {
 
-				if (paramsCount < numParams) {
-
-					lastVariableTypeArg = methodArgs[methodArgs.length - 1];
-
-					numParams = paramsCount;
-				}
 				if (paramsCount <= numParams) {
+					if (numParams == (paramsCount - 1)) {
+						lastVariableTypeArg = SymbolType.valueOf(
+								genericParameterTypes[paramsCount - 1],
+								typeMapping);
+					} else {
+						lastVariableTypeArg = methodArgs[methodArgs.length - 1];
+					}
+					numParams = paramsCount;
+
 					// changing the last argument to an array
 					SymbolType[] newTypeArgs = new SymbolType[paramsCount];
 
-					for (int i = 0; i < newTypeArgs.length - 1; i++) {
+					for (int i = 0; i < newTypeArgs.length - 1
+							&& i < typeArgs.length; i++) {
 						newTypeArgs[i] = typeArgs[i];
 					}
 

@@ -103,6 +103,23 @@ public class Types {
 		}
 
 	}
+	
+	public static boolean isAssignable(Class<?> fromClass, Class<?> toClass) {
+		if (fromClass == null || toClass == null) {
+			return true;
+		}
+		if(fromClass.equals(Object.class) && toClass.equals(String.class)){
+			return false;
+		}
+		if (matrixTypePosition.containsKey(fromClass.getName())
+				&& matrixTypePosition.containsKey(toClass.getName())) {
+			return compatibilityMatrix[matrixTypePosition.get(fromClass
+					.getName())][matrixTypePosition.get(toClass.getName())];
+		} else {
+			return toClass.isAssignableFrom(fromClass);
+		}
+
+	}
 
 	public static boolean isCompatible(Class<?>[] fromClasses,
 			Class<?>[] toClasses) {

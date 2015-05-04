@@ -21,6 +21,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.walkmod.javalang.compiler.types.Types;
+
 public class ClassInspector {
 
 	public static Class<?> getTheNearestSuperClass(Class<?> clazz1,
@@ -35,10 +37,10 @@ public class ClassInspector {
 		if (clazz1.equals(clazz2)) {
 			return clazz1;
 		}
-		if (clazz1.isAssignableFrom(clazz2)) {
+		if (Types.isAssignable(clazz2, clazz1)) {
 			return clazz1;
 		}
-		if (clazz2.isAssignableFrom(clazz1)) {
+		if (Types.isAssignable(clazz1, clazz2)) {
 			return clazz2;
 		}
 		Class<?> parent = getTheNearestSuperClass(clazz1,
@@ -60,7 +62,7 @@ public class ClassInspector {
 					}
 				}
 			}
-			if (common != null && parent.isAssignableFrom(common)) {
+			if (common != null && Types.isAssignable(common, parent)) {
 				parent = common;
 			}
 		}
@@ -77,7 +79,7 @@ public class ClassInspector {
 				if (classes.size() > 2) {
 					List<Class<?>> sublist = classes.subList(2, classes.size());
 					sublist.add(0, superClass);
-					return getTheNearestSuperClass(classes);
+					return getTheNearestSuperClass(sublist);
 				} else {
 					return superClass;
 				}

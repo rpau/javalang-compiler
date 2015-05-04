@@ -16,5 +16,5 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
 public enum SymbolEvent {
-	PUSH, POP, READ, WRITE
+	PUSH, POP, READ, WRITE, IN, OUT
 }

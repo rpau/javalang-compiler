@@ -56,7 +56,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	private Method method = null;
 
 	private Field field = null;
-	
+
 	private Constructor<?> constructor = null;
 
 	public SymbolType() {
@@ -143,8 +143,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	@SuppressWarnings("unchecked")
 	@Override
 	public List<SymbolType> getParameterizedTypes() {
-		if(parameterizedTypes == null){
-			if(bounds != null && !bounds.isEmpty()){
+		if (parameterizedTypes == null) {
+			if (bounds != null && !bounds.isEmpty()) {
 				return bounds.get(0).getParameterizedTypes();
 			}
 		}
@@ -259,7 +259,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 			result.setParameterizedTypes(list);
 		}
-		if(bounds != null){
+		if (bounds != null) {
 			List<SymbolType> list = new LinkedList<SymbolType>();
 			for (SymbolData type : bounds) {
 				list.add(((SymbolType) type).clone());
@@ -271,18 +271,25 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 	/**
 	 * Builds a symbol type from a Java type.
-	 * @param type type to convert
-	 * @param arg reference class to take into account if the type is a generic variable.
-	 * @param updatedTypeMapping place to put the resolved generic variables.
-	 * @param typeMapping reference type mapping for generic variables.
+	 * 
+	 * @param type
+	 *            type to convert
+	 * @param arg
+	 *            reference class to take into account if the type is a generic
+	 *            variable.
+	 * @param updatedTypeMapping
+	 *            place to put the resolved generic variables.
+	 * @param typeMapping
+	 *            reference type mapping for generic variables.
 	 * @return the representative symbol type
 	 */
 	public static SymbolType valueOf(Type type, SymbolType arg,
 			Map<String, SymbolType> updatedTypeMapping,
 			Map<String, SymbolType> typeMapping) {
-		if(typeMapping == null){
+		if (typeMapping == null) {
 			typeMapping = Collections.emptyMap();
 		}
+
 		SymbolType returnType = null;
 		if (type instanceof Class<?>) {
 			Class<?> aux = ((Class<?>) type);
@@ -369,8 +376,20 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						if (paramTypes != null && paramTypes.size() > i) {
 							argToAnalyze = paramTypes.get(i);
 						}
-						SymbolType st = valueOf(t, argToAnalyze,
+						boolean validParameterizedType = true;
+						if(t instanceof TypeVariable<?>){
+							Type[] bounds = ((TypeVariable<?>)t).getBounds();
+							validParameterizedType = !(bounds.length == 1 && bounds[0] == type);
+						}
+						
+						SymbolType st = null;
+						if(validParameterizedType){
+						st = valueOf(t, argToAnalyze,
 								updatedTypeMapping, typeMapping);
+						}
+						else{
+							st = new SymbolType("java.lang.Object");
+						}
 						if (st != null) {
 							params.add(st);
 						}
@@ -395,15 +414,16 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public static SymbolType valueOf(Type type,
 			Map<String, SymbolType> typeMapping) throws InvalidTypeException {
 
-		return valueOf(type, null, null, typeMapping);
+		return valueOf(type, null, new HashMap<String, SymbolType>(),
+				typeMapping);
 
 	}
 
 	public Method getMethod() {
 		return method;
 	}
-	
-	public void setMethod(Method method){
+
+	public void setMethod(Method method) {
 		this.method = method;
 	}
 
@@ -471,8 +491,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		}
 
 	}
-	
-	public void setConstructor(Constructor<?> constructor){
+
+	public void setConstructor(Constructor<?> constructor) {
 		this.constructor = constructor;
 	}
 

@@ -15,6 +15,8 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import org.walkmod.javalang.ast.Node;
@@ -28,25 +30,67 @@ public class MethodSymbol extends Symbol {
 	/* comes from an static import */
 	private boolean staticallyImported = false;
 
+	private boolean hasDynamicArgs = false;
+
+	private Method referencedMethod = null;
+
+	private Constructor<?> referencedConstructor = null;
+
 	public MethodSymbol(String name, SymbolType type, Node location,
-			boolean staticallyImported) {
-		this(name, type, location, null, null, staticallyImported, null);
+			boolean staticallyImported, boolean hasDynamicArgs,
+			Method referencedMethod) {
+		this(name, type, location, null, null, staticallyImported,
+				hasDynamicArgs, referencedMethod, null);
 	}
 
 	public MethodSymbol(String name, SymbolType type, Node location,
-			boolean staticallyImported, List<SymbolAction> actions) {
-		this(name, type, location, null, null, staticallyImported, actions);
+			boolean staticallyImported, boolean hasDynamicArgs,
+			Constructor<?> referencedConstructor) {
+		this(name, type, location, null, null, staticallyImported,
+				hasDynamicArgs, referencedConstructor, null);
+	}
+
+	public MethodSymbol(String name, SymbolType type, Node location,
+			boolean staticallyImported, boolean hasDynamicArgs,
+			List<SymbolAction> actions, Method referencedMethod) {
+		this(name, type, location, null, null, staticallyImported,
+				hasDynamicArgs, referencedMethod, actions);
+	}
+
+	public MethodSymbol(String name, SymbolType type, Node location,
+			boolean staticallyImported, boolean hasDynamicArgs,
+			List<SymbolAction> actions, Constructor<?> referencedConstructor) {
+		this(name, type, location, null, null, staticallyImported,
+				hasDynamicArgs, referencedConstructor, actions);
 	}
 
 	public MethodSymbol(String name, SymbolType type, Node location,
 			SymbolType scope, SymbolType[] args, boolean staticallyImported,
+			boolean hasDynamicArgs, Constructor<?> referencedConstructor,
 			List<SymbolAction> actions) {
 		super(name, type, location, ReferenceType.METHOD, actions);
 
 		this.args = args;
 		this.scope = scope;
 		this.staticallyImported = staticallyImported;
+		this.hasDynamicArgs = hasDynamicArgs;
+		this.referencedConstructor = referencedConstructor;
+		if (args == null) {
+			args = new SymbolType[0];
+		}
+	}
 
+	public MethodSymbol(String name, SymbolType type, Node location,
+			SymbolType scope, SymbolType[] args, boolean staticallyImported,
+			boolean hasDynamicArgs, Method referencedMethod,
+			List<SymbolAction> actions) {
+		super(name, type, location, ReferenceType.METHOD, actions);
+
+		this.args = args;
+		this.scope = scope;
+		this.staticallyImported = staticallyImported;
+		this.hasDynamicArgs = hasDynamicArgs;
+		this.referencedMethod = referencedMethod;
 		if (args == null) {
 			args = new SymbolType[0];
 		}
@@ -77,21 +121,50 @@ public class MethodSymbol extends Symbol {
 			if (args == null && otherArgs.length == 0) {
 				return true;
 			}
-			boolean sameNumberOfArgs = otherArgs.length == args.length;
-			if (!sameNumberOfArgs) {
-				return false;
+			int otherLenght = 0;
+			int argsLenght = 0;
+			if (otherArgs != null) {
+				otherLenght = otherArgs.length;
 			}
-			boolean sameArgs = true;
-			for (int i = 0; i < args.length && sameArgs; i++) {
-				sameArgs = (otherArgs[i] == null /*
-												 * the expression to call the
-												 * method is a
-												 * NullExpressionLiteral
-												 */
-				|| (args[i] != null && otherArgs[i] != null && args[i]
-						.isCompatible(otherArgs[i])));
+			if (args != null) {
+				argsLenght = args.length;
 			}
-			return sameArgs;
+
+			boolean sameNumberOfArgs = otherLenght == argsLenght;
+			if (!hasDynamicArgs) {
+				if (!sameNumberOfArgs) {
+					return false;
+				}
+				boolean sameArgs = true;
+				for (int i = 0; i < args.length && sameArgs; i++) {
+					sameArgs = (otherArgs[i] == null || (args[i] != null
+							&& otherArgs[i] != null && args[i]
+							.isCompatible(otherArgs[i])));
+				}
+				return sameArgs;
+			} else {
+				if (otherLenght < argsLenght - 1) {
+					return false;
+				}
+				boolean sameArgs = true;
+				for (int i = 0; i < args.length - 1 && sameArgs; i++) {
+					sameArgs = (otherArgs[i] == null || (args[i] != null
+							&& otherArgs[i] != null && args[i]
+							.isCompatible(otherArgs[i])));
+				}
+				if (otherLenght == argsLenght - 1) {
+					return sameArgs;
+				}
+				SymbolType last = args[args.length - 1];
+				SymbolType aux = last.clone();
+				aux.setArrayCount(0);
+				for (int i = args.length - 1; i < otherLenght && sameArgs; i++) {
+					sameArgs = (otherArgs[i] == null || (aux
+							.isCompatible(otherArgs[i])));
+				}
+				return sameArgs;
+
+			}
 		}
 		return false;
 	}
@@ -112,6 +185,22 @@ public class MethodSymbol extends Symbol {
 			return hasCompatibleSignature(other.getScope(), other.getArgs());
 		}
 		return false;
+	}
+
+	public boolean isVarArgs() {
+		return hasDynamicArgs;
+	}
+
+	public Method getReferencedMethod() {
+		return referencedMethod;
+	}
+	
+	public Constructor<?> getReferencedConstructor(){
+		return referencedConstructor;
+	}
+	
+	public boolean isConstructor(){
+		return referencedConstructor != null;
 	}
 
 }

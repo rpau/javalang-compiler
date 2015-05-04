@@ -23,9 +23,11 @@ import java.net.URLClassLoader;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -35,7 +37,9 @@ import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.EnumDeclaration;
+import org.walkmod.javalang.ast.body.ModifierSet;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
+import org.walkmod.javalang.ast.expr.QualifiedNameExpr;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
 import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
@@ -64,8 +68,12 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 	private static Map<String, Class<?>> primitiveClasses = new HashMap<String, Class<?>>();
 
 	private static JarFile SDKJar;
-	
+
 	private static TypeTable<Map<String, Object>> instance = null;
+
+	private String mainJavaClassFile = null;
+
+	private Set<String> staticPgkImports = null;
 
 	private TypeTable() {
 
@@ -76,14 +84,13 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 					defaultType);
 		}
 	}
-	
-	public static TypeTable<Map<String, Object>> getInstance(){
-		if(instance == null){
+
+	public static TypeTable<Map<String, Object>> getInstance() {
+		if (instance == null) {
 			instance = new TypeTable<Map<String, Object>>();
 		}
 		return instance;
 	}
-	
 
 	public void setClassLoader(ClassLoader cl) {
 		this.classLoader = cl;
@@ -116,40 +123,47 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		return type;
 	}
 
-	public String getContext(TypeDeclaration type){
+	public String getContext(TypeDeclaration type) {
 		String name = type.getName();
 
-		if (contextName != null) {
+		if (contextName != null && !contextName.equals("")) {
 			if (packageName != null && packageName.equals(contextName)) {
 				name = contextName + "." + name;
 			} else {
-				name = contextName.replace("$", ".") + "$" + name;
+				name = contextName/*.replace("$", ".")*/ + "$" + name;
 			}
 		}
-
+		if (mainJavaClassFile == null) {
+			if (ModifierSet.isPublic(type.getModifiers())) {
+				mainJavaClassFile = type.getName();
+			}
+		}
 		if (typeNames.add(name)) {
 			typeTable.put(type.getName(), name);
 		}
 		return name;
 	}
-	
+
 	public void visit(ClassOrInterfaceDeclaration type, T context) {
+
 		String name = getContext(type);
 		String oldCtx = contextName;
 		contextName = name;
 		super.visit(type, context);
 		contextName = oldCtx;
 	}
-	
-	public void visit(EnumDeclaration type, T context){
+
+	public void visit(EnumDeclaration type, T context) {
+
 		String name = getContext(type);
 		String oldCtx = contextName;
 		contextName = name;
 		super.visit(type, context);
 		contextName = oldCtx;
 	}
-	
-	public void visit(AnnotationDeclaration type, T context){
+
+	public void visit(AnnotationDeclaration type, T context) {
+
 		String name = getContext(type);
 		String oldCtx = contextName;
 		contextName = name;
@@ -158,19 +172,38 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 	}
 
 	public void visit(ImportDeclaration id, T context) {
+
+		String className = null;
+
 		if (!id.isAsterisk()) {
 			if (!id.isStatic()) {
 				String typeName = id.getName().toString();
 				addType(typeName);
+				className = typeName;
+			} else {
+				className = ((QualifiedNameExpr) id.getName()).getQualifier()
+						.toString();
 			}
 		} else {
 			if (classLoader != null) {
-
 				String typeName = id.getName().toString();
-
 				loadClassesFromPackage(typeName);
+				className = typeName;
 			}
 		}
+		if (id.isStatic()) {
+			int index = className.lastIndexOf(".");
+			if (index != -1) {
+				if (className.substring(0, index).equals(packageName)) {
+					staticPgkImports.add(className.substring(index+1));
+				}
+
+			} else if (packageName.equals("")) {
+				staticPgkImports.add(className);
+			}
+
+		}
+
 	}
 
 	private void addType(String name) {
@@ -217,7 +250,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			name = name.substring(0, index) + "$" + name.substring(index + 1);
 			try {
 				Class<?> clazz = Class.forName(name, false, classLoader);
-				if (!Modifier.isPrivate(clazz.getModifiers()) && typeNames.add(name)) {
+				if (!Modifier.isPrivate(clazz.getModifiers())
+						&& typeNames.add(name)) {
 					typeTable.put(clazz.getSimpleName(), name);
 				}
 			} catch (ClassNotFoundException e1) {
@@ -252,7 +286,6 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 				name = name.replaceAll("/", ".");
 				name = name.substring(0, name.length() - 6);
-
 				addType(name);
 			}
 		}
@@ -286,7 +319,10 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 						if (resource.getName().endsWith(".class")) {
 							String simpleName = resource.getName().substring(0,
 									resource.getName().lastIndexOf(".class"));
-							String name = packageName + "." + simpleName;
+							String name = simpleName;
+							if (!"".equals(packageName)) {
+								name = packageName + "." + simpleName;
+							}
 							addType(name);
 						}
 					}
@@ -350,10 +386,13 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 		if (cu.getPackage() != null) {
 			contextName = cu.getPackage().getName().toString();
-			packageName = contextName;
-			loadClassesFromPackage(packageName);
 
+		} else {
+			contextName = "";
 		}
+		staticPgkImports = new HashSet<String>();
+		packageName = contextName;
+		loadClassesFromPackage(packageName);
 		super.visit(cu, context);
 	}
 
@@ -540,7 +579,14 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			if (((WildcardType) parserType).toString().equals("?")) {
 				result.setName("java.lang.Object");
 			} else {
-				result = valueOf(((WildcardType) parserType).getExtends());
+				ReferenceType extendsRef = ((WildcardType) parserType)
+						.getExtends();
+				ReferenceType superRef = ((WildcardType) parserType).getSuper();
+				if (extendsRef != null) {
+					result = valueOf(extendsRef);
+				} else {
+					result = valueOf(superRef);
+				}
 			}
 		} else if (parserType instanceof VoidType) {
 			result.setName(Void.class.getName());
@@ -582,6 +628,37 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 					defaultType.substring(defaultType.lastIndexOf(".") + 1),
 					defaultType);
 		}
+	}
+
+	public Set<String> getPackageClasses() {
+		Set<String> pkgClasses = new HashSet<String>();
+		String name = packageName;
+		if (name == null) {
+			name = "";
+		}
+		Set<Entry<String, String>> entries = this.typeTable.entrySet();
+		Iterator<Entry<String, String>> it = entries.iterator();
+		while (it.hasNext()) {
+			Entry<String, String> entry = it.next();
+			String fullName = entry.getValue();
+			int index = fullName.lastIndexOf(".");
+			String pckName = "";
+			if (index != -1) {
+				pckName = fullName.substring(0, index);
+
+			}
+			if (pckName.equals(name) && mainJavaClassFile != null
+					&& !mainJavaClassFile.equals(entry.getKey())) {
+				pkgClasses.add(entry.getKey());
+			}
+		}
+
+		return pkgClasses;
+	}
+
+	public Set<String> getStaticPackageClasses() {
+
+		return staticPgkImports;
 	}
 
 }

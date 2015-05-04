@@ -20,8 +20,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.List;
 
+import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.PackageDeclaration;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
@@ -31,6 +33,8 @@ import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 public class LoadStaticImportsAction extends SymbolAction {
 
+	private String pkgName = null;
+	
 	@Override
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
 		Node n = symbol.getLocation();
@@ -38,29 +42,53 @@ public class LoadStaticImportsAction extends SymbolAction {
 			ImportDeclaration id = (ImportDeclaration) n;
 			if (id.isStatic()) {
 				Class<?> clazz = symbol.getType().getClazz();
-				Method[] methods = clazz.getMethods();
+				Method[] methods = clazz.getDeclaredMethods();
+				Package pkg = clazz.getPackage();
+				String importPkgName = "";
+				if (pkg != null) {
+					importPkgName = pkg.getName();
+				}
+				if (pkgName == null) {
+					CompilationUnit cu = (CompilationUnit) id.getParentNode();
+					PackageDeclaration pkgDeclaration = cu.getPackage();
+					if (pkgDeclaration != null) {
+						pkgName = pkgDeclaration.getName().toString();
+					}
+					else{
+						pkgName="";
+					}
+				}
 				for (Method m : methods) {
 					if (id.isAsterisk()
 							|| id.getName().getName().equals(m.getName())) {
-						if (Modifier.isStatic(m.getModifiers())
-								&& Modifier.isPublic(m.getModifiers())) {
-							Class<?> returnClass = m.getReturnType();
-							Class<?>[] params = m.getParameterTypes();
-							SymbolType[] args = null;
-							if (params.length > 0) {
-								args = new SymbolType[params.length];
-								int i = 0;
-								for (Class<?> param : params) {
-									args[i] = new SymbolType(param);
-									i++;
-								}
-							}
+						int modifiers = m.getModifiers();
+						if (Modifier.isStatic(modifiers)) {
 
-							SymbolType st = new SymbolType(returnClass);
-							MethodSymbol method = new MethodSymbol(m.getName(),
-									st, n, symbol.getType(), args, true,
-									(List<SymbolAction>) null);
-							table.pushSymbol(method);
+							boolean isVisible = Modifier.isPublic(modifiers)
+									|| (!Modifier.isPrivate(modifiers) && importPkgName
+											.equals(pkgName));
+
+							if (isVisible) {
+								Class<?> returnClass = m.getReturnType();
+								Class<?>[] params = m.getParameterTypes();
+								SymbolType[] args = null;
+								if (params.length > 0) {
+									args = new SymbolType[params.length];
+									int i = 0;
+									for (Class<?> param : params) {
+										args[i] = SymbolType.valueOf(param,
+												null);
+										i++;
+									}
+								}
+
+								SymbolType st = new SymbolType(returnClass);
+								MethodSymbol method = new MethodSymbol(
+										m.getName(), st, n, symbol.getType(),
+										args, true, m.isVarArgs(), m,
+										(List<SymbolAction>) null);
+								table.pushSymbol(method);
+							}
 						}
 					}
 				}

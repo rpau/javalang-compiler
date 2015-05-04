@@ -25,8 +25,12 @@ import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
+import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
+import org.walkmod.javalang.ast.body.TypeDeclaration;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.compiler.types.TypeSymbolNotFound;
 import org.walkmod.javalang.exceptions.SymbolTableException;
 
@@ -145,14 +149,51 @@ public class SymbolTable {
 
 	public Symbol<?> findSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolScope, SymbolType[] args) {
-		int i = indexStructure.size() - 1;
+		int j = indexStructure.size() - 1;
 		Symbol<?> result = null;
+		Scope selectedScope = null;
+		int k = definitionsStackTrace.size() - 1;
+		if (symbolScope != null) {
 
-		while (i >= 0 && result == null) {
-			Scope scope = indexStructure.get(i);
+			while (j > 0 && selectedScope == null) {
+				Scope scope = indexStructure.get(j);
+				if (scope.isSymbolDefinitionScope()) {
+					SymbolDefinition sd = definitionsStackTrace.get(k);
+					if (sd instanceof TypeDeclaration
+							|| sd instanceof ObjectCreationExpr) {
+						if (symbolScope.equals(((SymbolDataAware<?>) sd)
+								.getSymbolData())) {
+							selectedScope = scope;
+						}
+					}
+					if (selectedScope == null) {
+						k--;
+					}
+				}
+				if (selectedScope == null) {
+					j--;
+				}
+			}
+
+		}
+		if (selectedScope == null) {
+			j = indexStructure.size() - 1;
+		}
+
+		while (j >= 0 && result == null) {
+			Scope scope = indexStructure.get(j);
+			if (selectedScope != null && scope.isSymbolDefinitionScope()) {
+				SymbolDefinition sd = definitionsStackTrace.get(k);
+				if (sd instanceof SymbolDataAware<?>) {
+					symbolScope = (SymbolType) ((SymbolDataAware<?>) sd)
+							.getSymbolData();
+				}
+				k--;
+			}
 			result = scope.getSymbol(symbolName, referenceType, symbolScope,
 					args);
-			i--;
+
+			j--;
 		}
 		return result;
 	}
@@ -265,12 +306,42 @@ public class SymbolTable {
 			throw new TypeSymbolNotFound("Null symbol type resoltion for "
 					+ name);
 		}
+		Object definition = symbol.getLocation();
+		if (name.equals("this")
+				&& (definition instanceof ObjectCreationExpr || definition instanceof EnumConstantDeclaration)) {
+			int max = this.definitionsStackTrace.size() - 2;
+			int j = indexStructure.size() - 2;
+			String suffixName = null;
+
+			// we upgrade the class counter in the closest inner class
+			while (j > 0 && suffixName == null) {
+				Scope sc = indexStructure.get(j);
+				if (sc.isSymbolDefinitionScope()) {
+					SymbolDefinition sd = definitionsStackTrace.get(max);
+					if (sd instanceof ObjectCreationExpr
+							|| sd instanceof TypeDeclaration) {
+
+						sc.incrInnerAnonymousClassCounter();
+
+						int num = sc.getInnerAnonymousClassCounter();
+						suffixName = "$" + num;
+						symbol.getType().setName(
+								((SymbolDataAware<?>) sd).getSymbolData()
+										.getName() + suffixName);
+					}
+					max--;
+				}
+				j--;
+			}
+
+		}
 		// if not, we add it
 		lastScope.addSymbol(symbol);
 
 		if (name.equals("this")) {
 			loadParentSymbols();
 			loadParentInterfacesSymbols();
+
 		}
 		try {
 			invokeActions(lastScope, symbol, SymbolEvent.PUSH, null);
@@ -320,7 +391,7 @@ public class SymbolTable {
 			}
 		}
 		indexStructure.pop();
-		if(scope.isSymbolDefinitionScope()){
+		if (scope.isSymbolDefinitionScope()) {
 			definitionsStackTrace.pop();
 		}
 	}
@@ -328,7 +399,7 @@ public class SymbolTable {
 	public void pushScope() {
 		pushScope(null, null);
 	}
-	
+
 	public void pushScope(SymbolDefinition symbolDefinition) {
 		pushScope(symbolDefinition, null);
 	}
@@ -337,10 +408,11 @@ public class SymbolTable {
 		indexStructure.peek().addActions(actions);
 	}
 
-	public void pushScope(SymbolDefinition symbolDefinition, List<SymbolAction> actions) {
+	public void pushScope(SymbolDefinition symbolDefinition,
+			List<SymbolAction> actions) {
 		Scope newScope = new Scope(symbolDefinition != null, actions);
 		indexStructure.push(newScope);
-		if(symbolDefinition != null){
+		if (symbolDefinition != null) {
 			definitionsStackTrace.push(symbolDefinition);
 		}
 	}

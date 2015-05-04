@@ -74,8 +74,9 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 
 					for (VariableDeclarator var : fd.getVariables()) {
 						SymbolType symType = resolvedType.clone();
-						symType.setArrayCount(var.getId().getArrayCount());
-
+						if (symType.getArrayCount() == 0) {
+							symType.setArrayCount(var.getId().getArrayCount());
+						}
 						table.pushSymbol(var.getId().getName(),
 								ReferenceType.VARIABLE, symType, var, actions);
 					}

@@ -27,9 +27,9 @@ public abstract class SymbolAction {
 			doPop(symbol, table);
 		} else if (event.equals(SymbolEvent.READ)) {
 			doRead(symbol, table, reference);
-		} else {
+		} else if (event.equals(SymbolEvent.WRITE)) {
 			doWrite(symbol, table, reference);
-		}
+		} 
 	}
 
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {

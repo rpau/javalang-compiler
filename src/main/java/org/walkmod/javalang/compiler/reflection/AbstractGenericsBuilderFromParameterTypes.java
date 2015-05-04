@@ -18,6 +18,7 @@ package org.walkmod.javalang.compiler.reflection;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +33,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 	private List<Expression> args;
 
 	private SymbolType[] typeArgs;
-	
+
 	private Type[] types;
 
 	public AbstractGenericsBuilderFromParameterTypes(
@@ -56,13 +57,11 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 
 	public void build() throws Exception {
 		int pos = 0;
-		boolean hasGenerics = false;
 
+		Map<String, SymbolType> typeMappingClasses = new HashMap<String, SymbolType>();
 		for (Type type : types) {
 			if (type instanceof ParameterizedType) {
-				if (!hasGenerics) {
-					hasGenerics = true;
-				}
+
 				Type aux = ((ParameterizedType) type).getRawType();
 				if (aux instanceof Class) {
 					if (((Class<?>) aux).getName().equals("java.lang.Class")) {
@@ -72,33 +71,50 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 							String letter = targ.toString();
 							if (!"?".equals(letter)
 									&& !typeMapping.containsKey(letter)) {
-								Expression e = args.get(pos);
-								String className = "";
-								if (e instanceof ClassExpr) {
-									className = ((ClassExpr) e).getType()
-											.toString();
-									Class<?> tclazz = TypeTable.getInstance()
-											.loadClass(className);
+								if (pos < args.size()) {
+									Expression e = args.get(pos);
+									String className = "";
+									if (e instanceof ClassExpr) {
+										className = ((ClassExpr) e).getType()
+												.toString();
+										Class<?> tclazz = TypeTable
+												.getInstance().loadClass(
+														className);
+										typeMapping.put(letter, new SymbolType(
+												tclazz.getName()));
+										typeMappingClasses
+												.put(letter, new SymbolType(
+														tclazz.getName()));
+									}
+								} else {
 									typeMapping.put(letter, new SymbolType(
-											tclazz.getName()));
+											Object.class));
 								}
 							}
 						}
 					}
 				}
-			} else if (type instanceof TypeVariable) {
+			}
+			pos++;
+		}
+		pos = 0;
+		for (Type type : types) {
+
+			if (type instanceof TypeVariable) {
 				String name = ((TypeVariable<?>) type).getName();
 				SymbolType st = typeMapping.get(name);
 				if (st == null) {
 					typeMapping.put(name, typeArgs[pos]);
 				} else {
-					typeMapping.put(name, (SymbolType) st.merge(typeArgs[pos]));
+					if (!typeMappingClasses.containsKey(name)) {
+						typeMapping.put(name,
+								(SymbolType) st.merge(typeArgs[pos]));
+					}
 				}
 			}
 			pos++;
 		}
 
-		
 	}
 
 	public void setTypeMapping(Map<String, SymbolType> typeMapping) {
@@ -109,5 +125,4 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 		this.types = types;
 	}
 
-	
 }
