@@ -549,12 +549,35 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 								"this",
 								org.walkmod.javalang.compiler.symbols.ReferenceType.VARIABLE);
 				if (thisType != null) {
-					Class<?> superClass = thisType.getClazz().getSuperclass();
+					Class<?> clazz = thisType.getClazz();
+					// we look for a declared class in one of our super classes
+					Class<?> superClass = clazz.getSuperclass();
 					Class<?> nestedClass = ClassInspector.findClassMember(
 							thisType.getClazz().getPackage(), name, superClass);
+
+					// this is an inner class? If so, we look for a nested class
+					// in one of our parent classes
+					while (clazz.isMemberClass() && nestedClass == null) {
+						clazz = clazz.getDeclaringClass();
+						nestedClass = ClassInspector.findClassMember(
+								clazz.getPackage(), name, clazz);
+					}
+					// this is an anonymous class? If so, we look for a nested
+					// class in the enclosing class
+					while (clazz.isAnonymousClass() && nestedClass == null) {
+						clazz = clazz.getEnclosingClass();
+						nestedClass = ClassInspector.findClassMember(
+								clazz.getPackage(), name, clazz);
+						while (clazz.isMemberClass() && nestedClass == null) {
+							clazz = clazz.getDeclaringClass();
+							nestedClass = ClassInspector.findClassMember(
+									clazz.getPackage(), name, clazz);
+						}
+					}
 					if (nestedClass != null) {
 						result = new SymbolType(nestedClass);
 					}
+
 				}
 			}
 
