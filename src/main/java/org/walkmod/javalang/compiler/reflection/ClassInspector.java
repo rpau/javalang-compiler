@@ -106,46 +106,68 @@ public class ClassInspector {
 		}
 		return result;
 	}
-	
-	public static Class<?> findClassMember(Package pkg, String name, Class<?> clazz){
-		
-		if(clazz == null || clazz.equals(Object.class)){
+
+	public static Class<?> findClassMember(Package pkg, String name,
+			Class<?> clazz) {
+
+		if (clazz == null || clazz.equals(Object.class)) {
 			return null;
 		}
-		
+
+		Class<?> result = validateInnerClasses(pkg, name, clazz);
+		boolean found = result != null;
+
+		if (!found) {
+			result = findClassMember(pkg, name, clazz.getSuperclass());
+			if (result == null) {
+				Class<?>[] interfaces = clazz.getInterfaces();
+				for (int i = 0; i < interfaces.length && !found; i++) {
+					result = findClassMember(pkg, name, interfaces[i]);
+					found = result != null;
+				}
+			}
+		}
+		return result;
+	}
+
+	private static Class<?> validateInnerClasses(Package pkg, String name,
+			Class<?> clazz) {
+		if (clazz == null || clazz.equals(Object.class)) {
+			return null;
+		}
+
 		Class<?>[] innerClasses = clazz.getDeclaredClasses();
 		Class<?> result = null;
 		boolean found = false;
-		for(int i = 0; i < innerClasses.length && !found; i++){
+		for (int i = 0; i < innerClasses.length && !found; i++) {
 			String fullName = innerClasses[i].getName();
 			String simpleName = innerClasses[i].getSimpleName();
 			int index = fullName.indexOf('$');
-			if(index != -1){
-				int index2 = fullName.indexOf('$', index+1);
-				if(index2 != -1){
-					simpleName = fullName.substring(index+1);
-					simpleName  = simpleName.replaceAll("\\$", ".");
+			String uniqueName = simpleName;
+			if (index != -1) {
+				int index2 = fullName.indexOf('$', index + 1);
+				if (index2 != -1) {
+					uniqueName = fullName.substring(index + 1);
+					uniqueName = uniqueName.replaceAll("\\$", ".");
 				}
 			}
-			if(simpleName.equals(name)){
-				int modifiers = innerClasses[i].getModifiers();
-				found = Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers);
-				found = found ||  innerClasses[i].getPackage().equals(pkg);
-			}
-			if(found){
-				
+			int modifiers = innerClasses[i].getModifiers();
+			boolean validModifiers = Modifier.isPublic(modifiers)
+					|| Modifier.isProtected(modifiers)
+					|| (!Modifier.isPrivate(modifiers) && innerClasses[i]
+							.getPackage().equals(pkg));
+			found = validModifiers
+					&& (uniqueName.equals(name) || simpleName.equals(name));
+
+			if (found) {
 				result = innerClasses[i];
 			}
 			found = result != null;
 		}
-		if(!found){
-			result = findClassMember(pkg, name, clazz.getSuperclass());
-			if(result == null){
-				Class<?>[] interfaces = clazz.getInterfaces();
-				for(int i = 0; i < interfaces.length && !found; i++){
-					result = findClassMember(pkg, name, interfaces[i]);
-					found = result != null;
-				}
+		if (!found) {
+			for (int i = 0; i < innerClasses.length && !found; i++) {
+				result = validateInnerClasses(pkg, name, innerClasses[i]);
+				found = result != null;
 			}
 		}
 		return result;
