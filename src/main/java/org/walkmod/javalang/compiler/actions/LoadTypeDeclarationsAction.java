@@ -15,7 +15,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.actions;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
@@ -55,12 +57,41 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 				ReferenceType.TYPE, st, node, actions);
 	}
 
+	private void getInnerClasses(Class<?> clazz, Set<Class<?>> result) {
+		if (clazz != null && !clazz.equals(Object.class)) {
+			Class<?> superClass = clazz.getSuperclass();
+			if (superClass != null) {
+				Class<?>[] decClasses = superClass.getDeclaredClasses();
+				for (int i = 0; i < decClasses.length; i++) {
+					result.add(decClasses[i]);
+				}
+			}
+			getInnerClasses(superClass, result);
+			Class<?>[] interfaces = clazz.getInterfaces();
+			for (int i = 0; i < interfaces.length; i++) {
+				Class<?>[] decClasses = interfaces[i].getDeclaredClasses();
+				for (int j = 0; j < decClasses.length; j++) {
+					result.add(decClasses[j]);
+				}
+				getInnerClasses(interfaces[i].getSuperclass(), result);
+			}
+		}
+	}
+
 	@Override
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
 		Node node = symbol.getLocation();
-
+		
 		if (node instanceof TypeDeclaration) {
-
+			if (symbol.getName().equals("this")) {
+				Class<?> clazz = symbol.getType().getClazz();
+				Set<Class<?>> inheritedTypes = new HashSet<Class<?>>();
+				getInnerClasses(clazz, inheritedTypes);
+				for (Class<?> inheritedType : inheritedTypes) {
+					table.pushSymbol(inheritedType.getSimpleName(), ReferenceType.TYPE,
+							SymbolType.valueOf(inheritedType, null), null);
+				}
+			}
 			TypeDeclaration n = (TypeDeclaration) node;
 
 			if (n.getMembers() != null) {

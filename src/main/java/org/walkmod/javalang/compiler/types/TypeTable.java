@@ -156,6 +156,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		return type;
 	}
 
+	
+
 	public String getContext(TypeDeclaration type) {
 		String name = type.getName();
 
@@ -171,6 +173,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 				mainJavaClassFile = type.getName();
 			}
 		}
+
 		if (typeNames.add(name)) {
 			typeTable.put(getKeyName(name, false), name);
 		}
@@ -239,31 +242,50 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 	}
 
+	private void loadNestedClasses(Class<?> clazz, boolean imported) {
+		Class<?>[] innerClasses = clazz.getDeclaredClasses();
+		if (innerClasses != null) {
+			for (int i = 0; i < innerClasses.length; i++) {
+				if (!Modifier.isPrivate(innerClasses[i].getModifiers())) {
+					String fullName = innerClasses[i].getName();
+
+					if (typeNames.add(fullName)) {
+						typeTable.put(getKeyName(fullName, imported), fullName);
+
+					}
+				}
+			}
+
+		}
+	}
+
 	private void addType(String name, boolean imported) {
 		if (classLoader != null && name != null) {
 			try {
 				Class<?> clazz = Class.forName(name, false, classLoader);
-				if (!Modifier.isPrivate(clazz.getModifiers())) {
+				if (!Modifier.isPrivate(clazz.getModifiers())
+						&& !clazz.isAnonymousClass()) {
+
 					if (typeNames.add(name)) {
 						typeTable.put(getKeyName(name, imported), name);
-					}
-					Class<?>[] innerClasses = clazz.getDeclaredClasses();
-					if (innerClasses != null) {
-						for (int i = 0; i < innerClasses.length; i++) {
-							if (!Modifier.isPrivate(innerClasses[i]
-									.getModifiers())) {
-								String fullName = innerClasses[i].getName();
-
-								if (typeNames.add(fullName)) {
-									typeTable.put(
-											getKeyName(fullName, imported),
-											fullName);
-
+						if (clazz.isMemberClass()) {
+							String cname = clazz.getCanonicalName();
+							if (cname != null) {
+								innerClasses.put(cname, name);
+								Package pkg = clazz.getPackage();
+								if (pkg != null) {
+									if (pkg.getName().equals(packageName)) {
+										typeTable.put(clazz.getSimpleName(),
+												name);
+									}
 								}
 							}
 						}
 
+						loadNestedClasses(clazz, imported);
+
 					}
+
 				}
 			} catch (ClassNotFoundException e) {
 				loadInnerClass(name, imported);
@@ -285,24 +307,22 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			String suffix = name.substring(index + 1);
 
 			String internalName = preffix + "$" + suffix;
-			int index2 = preffix.lastIndexOf(".");
 
-			String simpleName = null;
-			if (index2 != -1) {
-				simpleName = preffix.substring(index2 + 1) + "." + suffix;
-			} else {
-				simpleName = preffix + "." + suffix;
-			}
 			try {
 				Class<?> clazz = Class
 						.forName(internalName, false, classLoader);
-				if (!Modifier.isPrivate(clazz.getModifiers())
-						&& typeNames.add(simpleName)) {
-					// <A.B, com.foo.A$B>
-					typeTable.put(getKeyName(internalName, imported),
-							internalName);
-					// com.foo.A.B
-					innerClasses.put(name, internalName);
+
+				if (!Modifier.isPrivate(clazz.getModifiers())) {
+					String keyName = getKeyName(internalName, imported);
+					if (!innerClasses.containsKey(name)) {
+
+						typeNames.add(internalName);
+						// <A.B, com.foo.A$B>
+						typeTable.put(keyName, internalName);
+						// com.foo.A.B
+						innerClasses.put(name, internalName);
+						loadNestedClasses(clazz, imported);
+					}
 				}
 			} catch (ClassNotFoundException e1) {
 				throw new RuntimeException("The referenced class "
@@ -590,9 +610,10 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 						.getSymbolData().getName()
 						+ ".";
 			}
-			while (type.getScope() != null) {
-				type = (ClassOrInterfaceType) type.getScope();
-				scopeName = type.getName() + "." + scopeName;
+			ClassOrInterfaceType ctxt = type;
+			while (ctxt.getScope() != null) {
+				ctxt = (ClassOrInterfaceType) ctxt.getScope();
+				scopeName = ctxt.getName() + "." + scopeName;
 			}
 
 			String innerClassName = name;
@@ -614,7 +635,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 				String aux = typeTable.get(fullName);
 				if (aux == null) {
 					// in the code appears B.C
-					SymbolType scopeType = resolve(type.getScope(), st);
+					SymbolType scopeType = resolve(ctxt.getScope(), st);
 					if (scopeType != null) {
 						result = new SymbolType();
 						result.setName(scopeType.getName() + "$" + name);
@@ -630,6 +651,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			}
 
 		}
+
 		if (type.getTypeArgs() != null) {
 			if (result == null) {
 				result = new SymbolType();
@@ -645,7 +667,6 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			}
 			result.setParameterizedTypes(typeArgs);
 		}
-
 		return result;
 	}
 

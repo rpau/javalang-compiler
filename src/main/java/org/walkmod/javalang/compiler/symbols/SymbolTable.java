@@ -79,42 +79,7 @@ public class SymbolTable {
 		return findSymbol(symbolName, referenceType, null, null);
 	}
 
-	private void loadParentInterfacesSymbols() {
-		Queue<java.lang.Class<?>> interfacesQueue = new ConcurrentLinkedQueue<java.lang.Class<?>>();
-
-		Class<?>[] interfaces = findSymbol("this", ReferenceType.VARIABLE)
-				.getClass().getInterfaces();
-
-		if (interfaces != null) {
-			for (Class<?> inter : interfaces) {
-				interfacesQueue.add(inter);
-			}
-		}
-
-		for (Class<?> inter : interfacesQueue) {
-			Field[] fields = inter.getDeclaredFields();
-			if (fields != null) {
-				for (Field field : fields) {
-					if (!Modifier.isPrivate(field.getModifiers())) {
-						// if the symbol already exists, it has been
-						// declared in a more closed superclass
-						if (!containsSymbol(field.getName(),
-								ReferenceType.VARIABLE)) {
-							pushSymbol(field.getName(), ReferenceType.VARIABLE,
-									new SymbolType(field.getType().getName()),
-									null);
-						}
-					}
-				}
-			}
-			Class<?> superClass = inter.getSuperclass();
-			if (superClass != null) {
-				if (!interfacesQueue.contains(superClass)) {
-					interfacesQueue.add(superClass);
-				}
-			}
-		}
-	}
+	
 
 	
 
