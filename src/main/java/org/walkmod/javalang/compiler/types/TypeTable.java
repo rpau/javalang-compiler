@@ -36,8 +36,10 @@ import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
+import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.EnumDeclaration;
+import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.ModifierSet;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
@@ -186,7 +188,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		String name = getContext(type);
 		String oldCtx = contextName;
 		contextName = name;
-		super.visit(type, context);
+		List<BodyDeclaration> members = type.getMembers();
+		processMembers(members, context);
 		contextName = oldCtx;
 	}
 
@@ -196,7 +199,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		String name = getContext(type);
 		String oldCtx = contextName;
 		contextName = name;
-		super.visit(type, context);
+		List<BodyDeclaration> members = type.getMembers();
+		processMembers(members, context);
 		contextName = oldCtx;
 	}
 
@@ -205,8 +209,24 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		String name = getContext(type);
 		String oldCtx = contextName;
 		contextName = name;
-		super.visit(type, context);
+		List<BodyDeclaration> members = type.getMembers();
+		processMembers(members, context);
 		contextName = oldCtx;
+	}
+	
+	private void processMembers(List<BodyDeclaration> members, T context){
+		if(members != null){
+			for(BodyDeclaration bd: members){
+				if(bd instanceof TypeDeclaration){
+					bd.accept(this, context);
+				}
+			}
+		}
+	}
+	
+	public void visit(ObjectCreationExpr n, T context){
+		List<BodyDeclaration> members = n.getAnonymousClassBody();
+		processMembers(members, context);
 	}
 
 	public void visit(ImportDeclaration id, T context) {
