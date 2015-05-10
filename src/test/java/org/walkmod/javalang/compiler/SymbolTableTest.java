@@ -18,6 +18,7 @@ package org.walkmod.javalang.compiler;
 import junit.framework.Assert;
 
 import org.junit.Test;
+
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -62,5 +63,5 @@ public class SymbolTableTest {
 		st.pushSymbol("a", ReferenceType.VARIABLE, type, null);
 		st.pushScope();
 	}
-
+	
 }

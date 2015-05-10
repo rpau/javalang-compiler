@@ -22,39 +22,38 @@ import java.util.Set;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypeTable;
 
 public class LoadTypeDeclarationsAction extends SymbolAction {
 
-	private TypeTable<?> typeTable;
-
 	private SymbolActionProvider actionProvider;
 
-	public LoadTypeDeclarationsAction(TypeTable<?> typeTable,
+	public LoadTypeDeclarationsAction(
 			SymbolActionProvider actionProvider) {
-		this.typeTable = typeTable;
+		
 		this.actionProvider = actionProvider;
 	}
 
-	private void update(TypeDeclaration node, SymbolTable table)
-			throws Exception {
-		String className = typeTable.getFullName(node);
+	private void update(Symbol<?> symbol, TypeDeclaration node,
+			SymbolTable table) throws Exception {
+
+		String className = symbol.getType().getClazz().getName() + "$"
+				+ node.getName();
 		List<SymbolAction> actions = null;
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(node);
 		}
 		SymbolType st = new SymbolType();
 		st.setName(className);
-		st.setClazz(typeTable.loadClass(className));
+
 		node.setSymbolData(st);
-		table.pushSymbol(typeTable.getSimpleName(className),
-				ReferenceType.TYPE, st, node, actions);
+		table.pushSymbol(node.getName(), ReferenceType.TYPE, st, node, actions);
 	}
 
 	private void getInnerClasses(Class<?> clazz, Set<Class<?>> result) {
@@ -81,24 +80,34 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 	@Override
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
 		Node node = symbol.getLocation();
-		
-		if (node instanceof TypeDeclaration) {
+
+		if (node instanceof TypeDeclaration
+				|| node instanceof ObjectCreationExpr) {
 			if (symbol.getName().equals("this")) {
 				Class<?> clazz = symbol.getType().getClazz();
 				Set<Class<?>> inheritedTypes = new HashSet<Class<?>>();
 				getInnerClasses(clazz, inheritedTypes);
 				for (Class<?> inheritedType : inheritedTypes) {
-					table.pushSymbol(inheritedType.getSimpleName(), ReferenceType.TYPE,
+					table.pushSymbol(inheritedType.getSimpleName(),
+							ReferenceType.TYPE,
 							SymbolType.valueOf(inheritedType, null), null);
 				}
-			}
-			TypeDeclaration n = (TypeDeclaration) node;
 
-			if (n.getMembers() != null) {
+				List<BodyDeclaration> members = null;
+				if (node instanceof TypeDeclaration) {
+					TypeDeclaration n = (TypeDeclaration) node;
+					members = n.getMembers();
 
-				for (BodyDeclaration member : n.getMembers()) {
-					if (member instanceof TypeDeclaration) {
-						update((TypeDeclaration) member, table);
+				} else {
+					ObjectCreationExpr n = (ObjectCreationExpr) node;
+					members = n.getAnonymousClassBody();
+				}
+				if (members != null) {
+
+					for (BodyDeclaration member : members) {
+						if (member instanceof TypeDeclaration) {
+							update(symbol, (TypeDeclaration) member, table);
+						}
 					}
 				}
 			}

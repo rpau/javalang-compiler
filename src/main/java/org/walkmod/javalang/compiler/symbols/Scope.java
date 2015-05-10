@@ -32,12 +32,12 @@ public class Scope {
 	private List<SymbolAction> actions;
 
 	private boolean isSymbolDefinitionScope = false;
-	
+
 	private int innerAnonymousClassCounter = 0;
 
 	public Scope() {
 	}
-	
+
 	public Scope(boolean isSymbolDefinitionScope) {
 		this(isSymbolDefinitionScope, null);
 	}
@@ -65,7 +65,7 @@ public class Scope {
 		return getSymbol(name, ReferenceType.VARIABLE);
 	}
 
-	public Symbol<?> getSymbol(String name, ReferenceType referenceType) {
+	public Symbol<?> getSymbol(String name, ReferenceType... referenceType) {
 		List<Symbol<?>> list = symbols.get(name);
 		if (list == null) {
 			return null;
@@ -73,10 +73,18 @@ public class Scope {
 			Iterator<Symbol<?>> it = list.iterator();
 			while (it.hasNext()) {
 				Symbol<?> s = it.next();
-				if (referenceType == null
-						|| s.getReferenceType().equals(referenceType)) {
+				if (referenceType == null || referenceType.length == 0) {
 					return s;
+				} else {
+					boolean found = false;
+					for (int i = 0; i < referenceType.length && !found; i++) {
+						found = s.getReferenceType().equals(referenceType[i]);
+					}
+					if (found) {
+						return s;
+					}
 				}
+
 			}
 			return null;
 		}
@@ -124,8 +132,8 @@ public class Scope {
 
 	}
 
-	public Symbol<?> getSymbol(String name, ReferenceType referenceType,
-			SymbolType scope, SymbolType[] args) {
+	public Symbol<?> getSymbol(String name, SymbolType scope,
+			SymbolType[] args, ReferenceType... referenceType) {
 		if (args == null) {
 			return getSymbol(name, referenceType);
 		} else {
@@ -195,8 +203,8 @@ public class Scope {
 	public int getInnerAnonymousClassCounter() {
 		return innerAnonymousClassCounter;
 	}
-	
-	public void incrInnerAnonymousClassCounter(){
+
+	public void incrInnerAnonymousClassCounter() {
 		innerAnonymousClassCounter++;
 	}
 

@@ -15,14 +15,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDataAware;
@@ -67,24 +63,26 @@ public class SymbolTable {
 		this.symbolFactory = symbolFactory;
 	}
 
-	public SymbolType getType(String symbolName, ReferenceType referenceType) {
+	public SymbolType getType(String symbolName, ReferenceType... referenceType) {
 		Symbol<?> s = findSymbol(symbolName, referenceType);
 		if (s != null) {
 			return s.getType();
 		}
 		return null;
 	}
+	
+	
 
-	public Symbol<?> findSymbol(String symbolName, ReferenceType referenceType) {
-		return findSymbol(symbolName, referenceType, null, null);
+	public Symbol<?> findSymbol(String symbolName, ReferenceType... referenceType) {
+		return findSymbol(symbolName, null, null, referenceType);
 	}
 
 	
 
 	
 
-	public Symbol<?> findSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolScope, SymbolType[] args) {
+	public Symbol<?> findSymbol(String symbolName,
+			SymbolType symbolScope, SymbolType[] args,  ReferenceType... referenceType) {
 		int j = indexStructure.size() - 1;
 		Symbol<?> result = null;
 		Scope selectedScope = null;
@@ -126,8 +124,8 @@ public class SymbolTable {
 				}
 				k--;
 			}
-			result = scope.getSymbol(symbolName, referenceType, symbolScope,
-					args);
+			result = scope.getSymbol(symbolName,symbolScope,
+					args, referenceType);
 
 			j--;
 		}
@@ -179,15 +177,15 @@ public class SymbolTable {
 	}
 
 	public Symbol<?> lookUpSymbolForRead(String symbolName,
-			ReferenceType referenceType, SymbolReference reference) {
-		return lookUpSymbolForRead(symbolName, referenceType, reference, null,
-				null);
+			 SymbolReference reference, ReferenceType... referenceType) {
+		return lookUpSymbolForRead(symbolName,  reference, null,
+				null, referenceType);
 	}
 
 	public Symbol<?> lookUpSymbolForRead(String symbolName,
-			ReferenceType referenceType, SymbolReference reference,
-			SymbolType symbolScope, SymbolType[] args) {
-		Symbol<?> s = findSymbol(symbolName, referenceType, symbolScope, args);
+			 SymbolReference reference,
+			SymbolType symbolScope, SymbolType[] args, ReferenceType... referenceType) {
+		Symbol<?> s = findSymbol(symbolName,  symbolScope, args, referenceType);
 		if (s != null) {
 			try {
 				invokeActions(indexStructure.peek(), s, SymbolEvent.READ,
@@ -206,8 +204,8 @@ public class SymbolTable {
 
 	public Symbol<?> lookUpSymbolForWrite(String symbolName,
 			SymbolReference reference, SymbolType symbolScope, SymbolType[] args) {
-		Symbol<?> s = findSymbol(symbolName, ReferenceType.VARIABLE,
-				symbolScope, args);
+		Symbol<?> s = findSymbol(symbolName, 
+				symbolScope, args, ReferenceType.VARIABLE);
 		try {
 			invokeActions(indexStructure.peek(), s, SymbolEvent.WRITE,
 					reference);

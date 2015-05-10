@@ -83,6 +83,8 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 	private boolean useSymbolTable = true;
 
+	
+
 	private TypeTable() {
 
 		for (String defaultType : defaultJavaLangClasses) {
@@ -156,8 +158,6 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		return type;
 	}
 
-	
-
 	public String getContext(TypeDeclaration type) {
 		String name = type.getName();
 
@@ -176,6 +176,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 
 		if (typeNames.add(name)) {
 			typeTable.put(getKeyName(name, false), name);
+
 		}
 		return name;
 	}
@@ -188,6 +189,7 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 		super.visit(type, context);
 		contextName = oldCtx;
 	}
+
 
 	public void visit(EnumDeclaration type, T context) {
 
@@ -490,13 +492,30 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 								if (index < className.length() - 1) {
 									String preffix = className.substring(0,
 											index);
+									String resolvedType = preffix;
 									if (!typeNames.contains(preffix)) {
-										preffix = typeTable.get(preffix);
+										resolvedType = typeTable.get(preffix);
 									}
-									if (preffix == null) {
-										throw e;
+									if (resolvedType == null) {
+
+										Class<?> parent = loadClass(preffix);
+										if (parent != null) {
+											className = parent.getName()
+													+ "$"
+													+ className
+															.substring(index + 1);
+										} else {
+											throw e;
+										}
+										try {
+											return Class.forName(className,
+													false, classLoader);
+										} catch (ClassNotFoundException e2) {
+											throw e;
+										}
+
 									} else {
-										className = preffix
+										className = resolvedType
 												+ "$"
 												+ className
 														.substring(index + 1);
@@ -613,7 +632,11 @@ public class TypeTable<T> extends VoidVisitorAdapter<T> {
 			ClassOrInterfaceType ctxt = type;
 			while (ctxt.getScope() != null) {
 				ctxt = (ClassOrInterfaceType) ctxt.getScope();
-				scopeName = ctxt.getName() + "." + scopeName;
+				if (ctxt.getSymbolData() != null) {
+					scopeName = ctxt.getName() + "$" + scopeName;
+				} else {
+					scopeName = ctxt.getName() + "." + scopeName;
+				}
 			}
 
 			String innerClassName = name;

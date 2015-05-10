@@ -22,6 +22,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -402,11 +403,24 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 
 		} else if (type instanceof GenericArrayType) {
-			returnType = new SymbolType(valueOf(
+			SymbolType st = valueOf(
 					((GenericArrayType) type).getGenericComponentType(), arg,
-					updatedTypeMapping, typeMapping).getName());
+					updatedTypeMapping, typeMapping);
 
-			returnType.setArrayCount(1);
+			returnType = st.clone();
+			returnType.setArrayCount(returnType.getArrayCount() + 1);
+		}
+		else if(type instanceof WildcardType){
+			WildcardType wt = (WildcardType) type;
+			Type[] types = wt.getUpperBounds();
+			
+			if(types != null && types.length > 0){
+				List<SymbolType> bounds = new LinkedList<SymbolType>();
+				for(int i = 0; i < types.length; i++){
+					bounds.add(valueOf(types[i], arg, updatedTypeMapping, typeMapping));
+				}
+				returnType = new SymbolType(bounds);
+			}
 		}
 		return returnType;
 	}

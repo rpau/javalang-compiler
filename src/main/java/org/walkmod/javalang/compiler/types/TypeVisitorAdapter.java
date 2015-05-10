@@ -298,8 +298,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					if (c != null) {
 						scopeType = new SymbolType(c);
 						symbolTable.lookUpSymbolForRead(
-								typeTable.getSimpleName(c.getName()),
-								ReferenceType.TYPE, null);
+								typeTable.getSimpleName(c.getName()), null,
+								ReferenceType.TYPE);
 						n.setSymbolData(scopeType);
 					}
 				} catch (ClassNotFoundException e) {
@@ -314,7 +314,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			}
 
 		} catch (Exception e) {
-			throw new NoSuchExpressionTypeException(e);
+			throw new NoSuchExpressionTypeException(
+					"Error evaluating a type expression in " + n.toString(), e);
 
 		}
 		if (semanticVisitor != null) {
@@ -387,11 +388,13 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					}
 					i++;
 				}
+			} else {
+				symbolTypes = new SymbolType[0];
 			}
 
 			// for static imports
-			Symbol<?> s = symbolTable.findSymbol(n.getName(),
-					ReferenceType.METHOD, scope, symbolTypes);
+			Symbol<?> s = symbolTable.findSymbol(n.getName(), scope,
+					symbolTypes, ReferenceType.METHOD);
 
 			if (s != null) {
 				MethodSymbol methodSymbol = (MethodSymbol) s;
@@ -452,7 +455,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(NameExpr n, A arg) {
 
-		SymbolType type = symbolTable.getType(n.getName(), null);
+		SymbolType type = symbolTable.getType(n.getName(),
+				ReferenceType.VARIABLE, ReferenceType.ENUM_LITERAL,
+				ReferenceType.TYPE);
 
 		if (type == null) {
 			try {
@@ -678,15 +683,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			if (clazz != null) {
 				type = new SymbolType(clazz);
 			}
-			
+
 		} else {
-			Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName,
-					ReferenceType.TYPE, n);
+			Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
+					ReferenceType.TYPE);
 			if (s != null) {
 				type = s.getType().clone();
 			} else {
 				type = typeTable.valueOf(n, symbolTable);
-				
+
 			}
 		}
 		if (type != null) {
