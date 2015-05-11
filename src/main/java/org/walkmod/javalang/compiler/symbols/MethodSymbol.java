@@ -156,11 +156,13 @@ public class MethodSymbol extends Symbol {
 					return sameArgs;
 				}
 				SymbolType last = args[args.length - 1];
-				SymbolType aux = last.clone();
-				aux.setArrayCount(0);
-				for (int i = args.length - 1; i < otherLenght && sameArgs; i++) {
-					sameArgs = (otherArgs[i] == null || (aux
-							.isCompatible(otherArgs[i])));
+				if (last != null) {
+					SymbolType aux = last.clone();
+					aux.setArrayCount(0);
+					for (int i = args.length - 1; i < otherLenght && sameArgs; i++) {
+						sameArgs = (otherArgs[i] == null || (aux
+								.isCompatible(otherArgs[i])));
+					}
 				}
 				return sameArgs;
 
@@ -194,12 +196,12 @@ public class MethodSymbol extends Symbol {
 	public Method getReferencedMethod() {
 		return referencedMethod;
 	}
-	
-	public Constructor<?> getReferencedConstructor(){
+
+	public Constructor<?> getReferencedConstructor() {
 		return referencedConstructor;
 	}
-	
-	public boolean isConstructor(){
+
+	public boolean isConstructor() {
 		return referencedConstructor != null;
 	}
 

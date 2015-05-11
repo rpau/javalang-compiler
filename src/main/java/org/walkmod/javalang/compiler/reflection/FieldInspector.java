@@ -18,15 +18,38 @@ package org.walkmod.javalang.compiler.reflection;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 
 public class FieldInspector {
+
+	public static Set<Field> getNonPrivateFields(Class<?> clazz) {
+		Set<Field> result = new HashSet<Field>();
+		if (clazz == null || clazz.equals(Object.class)) {
+			return result;
+		}
+		Field[] fields = clazz.getDeclaredFields();
+
+		for (int i = 0; i < fields.length; i++) {
+			if (!Modifier.isPrivate(fields[i].getModifiers())) {
+				result.add(fields[i]);
+			}
+		}
+		result.addAll(getNonPrivateFields(clazz.getSuperclass()));
+		Class<?>[] interfaces = clazz.getInterfaces();
+		for(int i = 0; i < interfaces.length; i++){
+			result.addAll(getNonPrivateFields(interfaces[i]));
+		}
+		return result;
+	}
+	
 
 	public static SymbolType findFieldType(SymbolType scope, String fieldName) {
 
@@ -53,8 +76,8 @@ public class FieldInspector {
 							if (field == null) {
 								// check a field with no visibility
 
-								Class<?> internal = TypeTable.getInstance()
-										.loadClass(
+								Class<?> internal = TypesLoaderVisitor
+										.getClassLoader().loadClass(
 												clazz.getName() + "$"
 														+ fieldName);
 								result = new SymbolType(internal);

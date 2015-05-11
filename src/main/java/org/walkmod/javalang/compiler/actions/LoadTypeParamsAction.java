@@ -22,12 +22,13 @@ import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
+import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 
 public class LoadTypeParamsAction extends SymbolAction {
 
@@ -60,7 +61,7 @@ public class LoadTypeParamsAction extends SymbolAction {
 				SymbolType st = null;
 				if (typeBounds != null) {
 					for (ClassOrInterfaceType type : typeBounds) {
-						SymbolType paramType = TypeTable.getInstance().valueOf(type, table);
+						SymbolType paramType = ASTSymbolTypeResolver.getInstance().valueOf(type);
 						if(paramType == null){
 							paramType = new SymbolType(Object.class);
 						}
@@ -75,7 +76,7 @@ public class LoadTypeParamsAction extends SymbolAction {
 				st.setTemplateVariable(true);
 				parameterizedTypes.add(st);
 			}
-			if (thisType != null) {
+			if (thisType != null && !parameterizedTypes.isEmpty()) {
 				thisType.setParameterizedTypes(parameterizedTypes);
 			}
 		}

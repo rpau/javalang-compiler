@@ -27,16 +27,18 @@ import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 
 public class LoadEnumConstantLiteralsAction extends SymbolAction {
-	
+
 	@Override
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
-		Node node = symbol.getLocation();
-		if (node instanceof EnumDeclaration) {
-			EnumDeclaration ed = (EnumDeclaration) node;
-			List<EnumConstantDeclaration> entries = ed.getEntries();
-			for (EnumConstantDeclaration ecd : entries) {
-				table.pushSymbol(ecd.getName(), ReferenceType.ENUM_LITERAL,
-						symbol.getType(), ecd);
+		if (symbol.getName().equals("this")) {
+			Node node = symbol.getLocation();
+			if (node instanceof EnumDeclaration) {
+				EnumDeclaration ed = (EnumDeclaration) node;
+				List<EnumConstantDeclaration> entries = ed.getEntries();
+				for (EnumConstantDeclaration ecd : entries) {
+					table.pushSymbol(ecd.getName(), ReferenceType.ENUM_LITERAL,
+							symbol.getType(), ecd);
+				}
 			}
 		}
 	}

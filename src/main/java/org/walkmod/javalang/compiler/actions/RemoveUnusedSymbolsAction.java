@@ -73,7 +73,7 @@ public class RemoveUnusedSymbolsAction extends SymbolAction {
 					Symbol<?> thisSymbol = table.findSymbol("this",
 							ReferenceType.VARIABLE);
 					if (symbol.getReferenceType().equals(ReferenceType.TYPE)
-							&& !thisSymbol.getType().equals(symbol.getType())) {
+							&& thisSymbol != null && !thisSymbol.getType().equals(symbol.getType())) {
 						removeType(symbol, table);
 					}
 				} else if (n instanceof ImportDeclaration) {

@@ -19,6 +19,7 @@ import java.lang.reflect.Constructor;
 import java.util.List;
 
 import org.walkmod.javalang.ast.expr.Expression;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
@@ -27,8 +28,9 @@ public class CompatibleFunctionalConstructorPredicate<T> extends
 		TypeMappingPredicate<Constructor<?>> {
 
 	public CompatibleFunctionalConstructorPredicate(SymbolType scope,
-			VoidVisitor<T> typeResolver, List<Expression> args, T ctx) {
-		super(scope, typeResolver, args, ctx);
+			VoidVisitor<T> typeResolver, List<Expression> args, T ctx,
+			SymbolTable symTable) {
+		super(scope, typeResolver, args, ctx, symTable);
 	}
 
 	@Override

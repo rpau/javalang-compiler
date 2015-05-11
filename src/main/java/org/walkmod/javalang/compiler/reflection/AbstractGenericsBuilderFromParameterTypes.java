@@ -25,7 +25,7 @@ import java.util.Map;
 import org.walkmod.javalang.ast.expr.ClassExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 
 public abstract class AbstractGenericsBuilderFromParameterTypes {
 	private Map<String, SymbolType> typeMapping;
@@ -77,8 +77,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 									if (e instanceof ClassExpr) {
 										className = ((ClassExpr) e).getType()
 												.toString();
-										Class<?> tclazz = TypeTable
-												.getInstance().loadClass(
+										Class<?> tclazz = TypesLoaderVisitor.getClassLoader().loadClass(
 														className);
 										typeMapping.put(letter, new SymbolType(
 												tclazz.getName()));

@@ -26,9 +26,8 @@ import java.util.Map;
 import org.walkmod.javalang.ast.expr.ClassExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.compiler.Builder;
-import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 
 /**
@@ -46,17 +45,16 @@ public class GenericsBuilderFromArgs implements
 
 	private List<Expression> argumentValues;
 
-	private SymbolTable symbolTable;
+	
 
 	public GenericsBuilderFromArgs() {
 	}
 
 	public GenericsBuilderFromArgs(Method method,
-			List<Expression> argumentValues, TypeTable<?> typeTable,
-			SymbolTable symbolTable) {
+			List<Expression> argumentValues, TypesLoaderVisitor<?> typeTable) {
 		this.method = method;
 		this.argumentValues = argumentValues;
-		this.symbolTable = symbolTable;
+	
 	}
 
 	public void setMethod(Method method) {
@@ -68,9 +66,6 @@ public class GenericsBuilderFromArgs implements
 	}
 	
 
-	public void setSymbolTable(SymbolTable symbolTable) {
-		this.symbolTable = symbolTable;
-	}
 
 	@Override
 	public Map<String, SymbolType> build(Map<String, SymbolType> obj) {
@@ -99,13 +94,11 @@ public class GenericsBuilderFromArgs implements
 								if (argumentValues.get(j) instanceof ClassExpr) {
 									Class<?> paramClass;
 									try {
-										paramClass = TypeTable
-												.getInstance()
+										paramClass = TypesLoaderVisitor.getClassLoader()
 												.loadClass(
 														((ClassExpr) argumentValues
 																.get(j))
-																.getType(),
-														symbolTable);
+																.getType());
 									} catch (ClassNotFoundException e) {
 										throw new NoSuchExpressionTypeException(
 												"Invalid class into the generics resolution",

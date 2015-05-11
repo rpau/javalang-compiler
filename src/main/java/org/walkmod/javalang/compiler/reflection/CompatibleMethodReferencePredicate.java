@@ -25,8 +25,9 @@ import java.util.Map;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.Predicate;
+import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypeTable;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
 public class CompatibleMethodReferencePredicate<A> extends
@@ -41,11 +42,17 @@ public class CompatibleMethodReferencePredicate<A> extends
 	private SymbolType sd;
 
 	private List<Method> methodCallCandidates = null;
+	
+	private SymbolTable symTable;
 
-	public CompatibleMethodReferencePredicate(MethodReferenceExpr expression,
-			VoidVisitor<A> typeResolver, A ctx, Map<String, SymbolType> mapping) {
+	public CompatibleMethodReferencePredicate(
+			MethodReferenceExpr expression,
+			VoidVisitor<A> typeResolver, 
+			A ctx, Map<String, SymbolType> mapping,
+			SymbolTable symTable) {
 		this.expression = expression;
 		this.typeResolver = typeResolver;
+		this.symTable = symTable;
 		this.ctx = ctx;
 		setTypeMapping(mapping);
 	}
@@ -99,9 +106,9 @@ public class CompatibleMethodReferencePredicate<A> extends
 					} else {
 						
 						String typeName = expression.getScope().toString();
-						String fullName = TypeTable.getInstance().getTypeTable().get(typeName);
+						
 						// it is a variable
-						if (fullName == null
+						if (symTable.findSymbol(typeName, ReferenceType.VARIABLE) != null
 								&& mdParameterCount == elemParameterCount) {
 							setTypeArgs(args);
 							found = super.filter(elem);

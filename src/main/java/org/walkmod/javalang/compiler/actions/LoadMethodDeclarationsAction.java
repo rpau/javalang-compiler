@@ -18,6 +18,7 @@ package org.walkmod.javalang.compiler.actions;
 import java.util.List;
 
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
@@ -27,21 +28,22 @@ import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
+import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 
 public class LoadMethodDeclarationsAction extends SymbolAction {
 
-	private TypeTable<?> typeTable;
+	private TypesLoaderVisitor<?> typeTable;
 	private SymbolActionProvider actionProvider;
 	private TypeVisitorAdapter<?> expressionTypeAnalyzer;
 
-	public LoadMethodDeclarationsAction(TypeTable<?> typeTable,
+	public LoadMethodDeclarationsAction(TypesLoaderVisitor<?> typeTable,
 			SymbolActionProvider actionProvider,
 			TypeVisitorAdapter<?> expressionTypeAnalyzer) {
 		this.typeTable = typeTable;
@@ -53,22 +55,25 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 			MethodDeclaration md) throws Exception {
 
 		Type type = md.getType();
-		SymbolType resolvedType = typeTable.valueOf(type, table);
-		if(resolvedType == null){
+		SymbolType resolvedType = ASTSymbolTypeResolver.getInstance().valueOf(
+				type);
+		if (resolvedType == null) {
 			resolvedType = new SymbolType(Object.class);
-		}
-		else{
-			resolvedType.setClazz(typeTable.loadClass(resolvedType));
+		} else {
+			resolvedType.setClazz(TypesLoaderVisitor.getClassLoader()
+					.loadClass(resolvedType));
 		}
 		type.setSymbolData(resolvedType);
 
 		List<Parameter> params = md.getParameters();
+		List<TypeParameter> tps = md.getTypeParameters();
 		SymbolType[] args = null;
 		boolean hasDynamicArgs = false;
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
-				args[i] = typeTable.valueOf(params.get(i).getType(), table);
+				args[i] = ASTSymbolTypeResolver.getInstance().valueOf(
+						params.get(i).getType(), tps);
 				params.get(i).getType().setSymbolData(args[i]);
 				if (i == args.length - 1) {
 					hasDynamicArgs = params.get(i).isVarArgs();
@@ -89,16 +94,23 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 	private void pushConstructor(Symbol<?> symbol, SymbolTable table,
 			ConstructorDeclaration md) throws Exception {
 		Type type = new ClassOrInterfaceType(md.getName());
-		SymbolType resolvedType = typeTable.valueOf(type, table);
+		SymbolType resolvedType = ASTSymbolTypeResolver.getInstance().valueOf(
+				type);
 		type.setSymbolData(resolvedType);
-		
+
 		List<Parameter> params = md.getParameters();
+		List<TypeParameter> tps = md.getTypeParameters();
+		
+		
 		SymbolType[] args = null;
 		boolean hasDynamicArgs = false;
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
-				args[i] = typeTable.valueOf(params.get(i).getType(), table);
+				
+				args[i] = ASTSymbolTypeResolver.getInstance().valueOf(
+						params.get(i).getType(), tps);
+				
 				params.get(i).getType().setSymbolData(args[i]);
 				if (i == args.length - 1) {
 					hasDynamicArgs = params.get(i).isVarArgs();
@@ -119,26 +131,28 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 	@Override
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
-		Node node = symbol.getLocation();
-		List<BodyDeclaration> members = null;
+		if (symbol.getName().equals("this")) {
+			Node node = symbol.getLocation();
+			List<BodyDeclaration> members = null;
 
-		if (node instanceof TypeDeclaration) {
-			TypeDeclaration n = (TypeDeclaration) node;
-			members = n.getMembers();
-		} else if (node instanceof ObjectCreationExpr) {
-			members = ((ObjectCreationExpr) node).getAnonymousClassBody();
-		}
+			if (node instanceof TypeDeclaration) {
+				TypeDeclaration n = (TypeDeclaration) node;
+				members = n.getMembers();
+			} else if (node instanceof ObjectCreationExpr) {
+				members = ((ObjectCreationExpr) node).getAnonymousClassBody();
+			}
 
-		if (members != null) {
+			if (members != null) {
 
-			for (BodyDeclaration member : members) {
-				if (member instanceof MethodDeclaration) {
-					MethodDeclaration md = (MethodDeclaration) member;
-					pushMethod(symbol, table, md);
+				for (BodyDeclaration member : members) {
+					if (member instanceof MethodDeclaration) {
+						MethodDeclaration md = (MethodDeclaration) member;
+						pushMethod(symbol, table, md);
 
-				} else if (member instanceof ConstructorDeclaration) {
-					ConstructorDeclaration cd = (ConstructorDeclaration) member;
-					pushConstructor(symbol, table, cd);
+					} else if (member instanceof ConstructorDeclaration) {
+						ConstructorDeclaration cd = (ConstructorDeclaration) member;
+						pushConstructor(symbol, table, cd);
+					}
 				}
 			}
 		}

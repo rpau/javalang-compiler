@@ -18,39 +18,39 @@ package org.walkmod.javalang.compiler;
 import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.Map;
 
 import junit.framework.Assert;
 
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 
 public class TypeTableTest {
 
-	@SuppressWarnings("rawtypes")
 	@Test
 	public void testSimpleClass() throws Exception {
 
 		File aux = new File(new File("src/main/java"),
-				"org/walkmod/javalang/compiler/types/TypeTable.java");
+				"org/walkmod/javalang/compiler/types/TypesLoaderVisitor.java");
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(aux);
 
-		TypeTable ttl = TypeTable.getInstance();
-		
+		SymbolTable st = new SymbolTable();
+		st.pushScope();
+
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+				null);
+
 		ttl.clear();
-		
+
 		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
 
-		ttl.visit(cu, null);
+		cu.accept(ttl, null);
 
-		Map map = ttl.getTypeTable();
+		Assert.assertNotNull(st.findSymbol("TypesLoaderVisitor"));
 
-		Assert.assertNotNull(map);
-
-		Assert.assertNotNull(map.get("CompilationUnit"));
 	}
 
 	@Test
@@ -59,21 +59,21 @@ public class TypeTableTest {
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
-		TypeTable ttl = TypeTable.getInstance();
+		SymbolTable st = new SymbolTable();
+		st.pushScope();
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+				null);
 		ttl.clear();
-		
-		URL[] classpath = new URL[] { new File("target/classes").toURI().toURL()};
+
+		URL[] classpath = new URL[] { new File("target/classes").toURI()
+				.toURL() };
 		URLClassLoader urlCL = new URLClassLoader(classpath);
 
 		ttl.setClassLoader(urlCL);
 
-		ttl.visit(cu, null);
+		cu.accept(ttl, null);
 
-		Map<String, String> map = ttl.getTypeTable();
-
-		Assert.assertNotNull(map);
-
-		Assert.assertNotNull(map.get("Scope"));
+		Assert.assertNotNull(st.findSymbol("Scope"));
 
 	}
 
@@ -83,37 +83,49 @@ public class TypeTableTest {
 
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
-		TypeTable ttl = TypeTable.getInstance();
+		SymbolTable st = new SymbolTable();
+		st.pushScope();
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+				null);
+
 		ttl.clear();
 
 		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
 
-		ttl.visit(cu, null);
+		cu.accept(ttl, null);
 
-		Map<String, String> map = ttl.getTypeTable();
-
-		Assert.assertNotNull(map);
-
-		Assert.assertNotNull(map.get("String"));
+		Assert.assertNotNull(st.findSymbol("String"));
 
 	}
-	
+
 	@Test
 	public void javaInnerClasses() throws Exception {
 		String code = "public class Foo { public class A {} public class B extends A{} }";
 		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
 
-		TypeTable ttl = TypeTable.getInstance();
+		SymbolTable st = new SymbolTable();
+		st.pushScope();
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+				null);
+
 		ttl.clear();
-		
+
 		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
+		cu.accept(ttl, null);
 
-		ttl.visit(cu, null);
+		Assert.assertNotNull(st.findSymbol("Foo.B"));
 
-		Map<String, String> map = ttl.getTypeTable();
+		st.pushScope();
 
-		Assert.assertNotNull(map);
+		cu.getTypes().get(0).accept(ttl, null);
 
+		Assert.assertNotNull(st.findSymbol("A"));
+
+		Assert.assertNotNull(st.findSymbol("B"));
+
+		Assert.assertNotNull(st.findSymbol("Foo.B"));
+
+		Assert.assertNotNull(st.findSymbol("Foo"));
 	}
 
 }

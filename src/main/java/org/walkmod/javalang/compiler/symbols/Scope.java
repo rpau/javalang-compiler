@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
+import org.walkmod.javalang.compiler.reflection.FieldInspector;
 
 public class Scope {
 
@@ -62,13 +63,15 @@ public class Scope {
 	}
 
 	public Symbol<?> getSymbol(String name) {
-		return getSymbol(name, ReferenceType.VARIABLE);
+		return getSymbol(name, null, ReferenceType.VARIABLE);
 	}
 
 	public Symbol<?> getSymbol(String name, ReferenceType... referenceType) {
 		List<Symbol<?>> list = symbols.get(name);
 		if (list == null) {
+
 			return null;
+
 		} else {
 			Iterator<Symbol<?>> it = list.iterator();
 			while (it.hasNext()) {
@@ -168,20 +171,20 @@ public class Scope {
 			String symbolName, SymbolType type, T location) {
 
 		Symbol<T> s = new Symbol<T>(symbolName, type, location);
-		return addSymbol(s);
+		if (addSymbol(s)) {
+			return s;
+		}
+		return null;
 	}
 
-	public <T extends Node & SymbolDefinition> Symbol<T> addSymbol(
+	public <T extends Node & SymbolDefinition> boolean addSymbol(
 			Symbol<T> symbol) {
 		List<Symbol<?>> values = symbols.get(symbol.getName());
 		if (values == null) {
 			values = new LinkedList<Symbol<?>>();
 			symbols.put(symbol.getName(), values);
-		} else {
-			values.remove(symbol);
 		}
-		values.add(symbol);
-		return symbol;
+		return values.add(symbol);
 	}
 
 	public List<SymbolAction> getActions() {

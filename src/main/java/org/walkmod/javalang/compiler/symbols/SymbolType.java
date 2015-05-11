@@ -35,7 +35,7 @@ import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.reflection.ClassInspector;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 
@@ -109,19 +109,21 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		List<SymbolType> result = null;
 		TypeVariable<?>[] typeParams = clazz.getTypeParameters();
 		if (typeParams.length > 0) {
-			result = new LinkedList<SymbolType>();
+			
 			for (TypeVariable<?> td : typeParams) {
 				Type[] bounds = td.getBounds();
-				if (bounds.length == 1) {
-					if (bounds[0] instanceof Class) {
-						SymbolType st = new SymbolType((Class<?>) bounds[0]);
+				for (int i = 0; i < bounds.length; i++) {
+					if (bounds[i] instanceof Class) {
+						SymbolType st = new SymbolType((Class<?>) bounds[i]);
+						if(result == null){
+							result = new LinkedList<SymbolType>();
+						}
 						result.add(st);
 					}
-				} else {
-					throw new RuntimeException("Multiple bounds not supported");
 				}
 			}
 		}
+
 		return result;
 	}
 
@@ -197,7 +199,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public Class<?> getClazz() {
 		if (clazz == null) {
 			try {
-				clazz = TypeTable.getInstance().loadClass(this);
+				clazz = TypesLoaderVisitor.getClassLoader().loadClass(this);
 			} catch (ClassNotFoundException e) {
 				throw new RuntimeException("Error resolving the class for "
 						+ name, e.getCause());
@@ -409,15 +411,15 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 			returnType = st.clone();
 			returnType.setArrayCount(returnType.getArrayCount() + 1);
-		}
-		else if(type instanceof WildcardType){
+		} else if (type instanceof WildcardType) {
 			WildcardType wt = (WildcardType) type;
 			Type[] types = wt.getUpperBounds();
-			
-			if(types != null && types.length > 0){
+
+			if (types != null && types.length > 0) {
 				List<SymbolType> bounds = new LinkedList<SymbolType>();
-				for(int i = 0; i < types.length; i++){
-					bounds.add(valueOf(types[i], arg, updatedTypeMapping, typeMapping));
+				for (int i = 0; i < types.length; i++) {
+					bounds.add(valueOf(types[i], arg, updatedTypeMapping,
+							typeMapping));
 				}
 				returnType = new SymbolType(bounds);
 			}

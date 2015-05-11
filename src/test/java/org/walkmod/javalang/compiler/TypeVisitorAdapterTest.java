@@ -24,7 +24,6 @@ import java.util.Map;
 import javax.lang.model.SourceVersion;
 
 import junit.framework.Assert;
-import og.walkmod.javalang.test.SemanticTest;
 
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -37,37 +36,41 @@ import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.UnaryExpr;
+import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
-import org.walkmod.javalang.compiler.types.TypeTable;
 import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
+import org.walkmod.javalang.test.SemanticTest;
 
 public class TypeVisitorAdapterTest extends SemanticTest {
 
 	private TypeVisitorAdapter<Map<String, Object>> expressionAnalyzer;
 
-	public void populateSemantics() throws Exception{}
-	
-	
+	public void populateSemantics() throws Exception {
+	}
+
 	@Override
 	public CompilationUnit compile(String code) throws Exception {
 		return compile(code, false);
 	}
-	
-	public CompilationUnit compile(String code, boolean useTypeTable) throws Exception {
+
+	public CompilationUnit compile(String code, boolean useTypeTable)
+			throws Exception {
 		
 		CompilationUnit cu = super.compile(code);
+		initTypes();
 		SymbolVisitorAdapter<Map<String, Object>> semanticVisitor = new SymbolVisitorAdapter<Map<String, Object>>();
-		TypeTable<?> tt = getTypeTable();
-		tt.setUseSymbolTable(useTypeTable);
 		semanticVisitor.setSymbolTable(getSymbolTable());
+		
 		expressionAnalyzer = new TypeVisitorAdapter<Map<String, Object>>(
-				tt, getSymbolTable(), semanticVisitor);
+				getSymbolTable(), semanticVisitor);
+		
 		semanticVisitor.setExpressionTypeAnalyzer(expressionAnalyzer);
 		return cu;
 	}
+
 	@Test
 	public void testVariableType() throws Exception {
 		compile("public class A {}");
@@ -103,6 +106,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testArithmeticExpressionsWithEqualTypes() throws Exception {
 		compile("public class A {}");
+		
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
 		symTable.pushSymbol("a", ReferenceType.VARIABLE, new SymbolType(
@@ -113,6 +117,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 				.parse(Expression.class, "a+b");
 
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
@@ -729,7 +734,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 			st = new SymbolType(getClassLoader().loadClass(
 					"Person$ComparisonProvider"));
 
-			symTable.pushSymbol("myComparisonProvider", ReferenceType.TYPE, st,
+			symTable.pushSymbol("myComparisonProvider", ReferenceType.VARIABLE, st,
 					null);
 
 			MethodCallExpr expr = (MethodCallExpr) ASTManager
@@ -868,6 +873,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 			st.setParameterizedTypes(paramTypes);
 
 			SymbolTable symTable = getSymbolTable();
+			ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
 			symTable.pushScope();
 			// roster is a Collection<String>
 			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
@@ -921,39 +927,39 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
-	
+
 	@Test
-	public void testFieldsOverwriting() throws Exception{
+	public void testFieldsOverwriting() throws Exception {
 		compile("public class A { private Object name; public class B{ private String name; }}");
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A$B"));
 		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
-		org.walkmod.javalang.ast.expr.Expression expr = (org.walkmod.javalang.ast.expr.Expression) ASTManager.parse(
-				Expression.class, "a.name");
+		org.walkmod.javalang.ast.expr.Expression expr = (org.walkmod.javalang.ast.expr.Expression) ASTManager
+				.parse(Expression.class, "a.name");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expr.accept(expressionAnalyzer, ctx);
 		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.lang.String", type.getName());
 	}
-	
+
 	@Test
-	public void testReferencesToInnerClasses() throws Exception{
+	public void testReferencesToInnerClasses() throws Exception {
 		compile("public class OuterClass { public class InnerClass { } }", true);
-	
+
 		SymbolTable symTable = getSymbolTable();
+		ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("OuterClass"));
 		symTable.pushSymbol("outerObject", ReferenceType.VARIABLE, st, null);
-		org.walkmod.javalang.ast.expr.Expression expr = (org.walkmod.javalang.ast.expr.Expression) ASTManager.parse(
-				Expression.class, "outerObject.new InnerClass()");
+		org.walkmod.javalang.ast.expr.Expression expr = (org.walkmod.javalang.ast.expr.Expression) ASTManager
+				.parse(Expression.class, "outerObject.new InnerClass()");
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
 		expr.accept(expressionAnalyzer, ctx);
 		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("OuterClass$InnerClass", type.getName());
 	}
-	
 
 }

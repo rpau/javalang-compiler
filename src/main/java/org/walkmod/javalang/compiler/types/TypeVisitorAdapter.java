@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.walkmod.javalang.ast.FieldSymbolData;
+import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
@@ -70,6 +71,8 @@ import org.walkmod.javalang.ast.expr.UnaryExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
+import org.walkmod.javalang.ast.stmt.SwitchEntryStmt;
+import org.walkmod.javalang.ast.stmt.SwitchStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
 import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
@@ -91,6 +94,7 @@ import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
 import org.walkmod.javalang.compiler.reflection.SymbolDataOfMethodReferenceBuilder;
+import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
@@ -105,21 +109,19 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	public static final String IMPLICIT_PARAM_TYPE = "implicit_param_type";
 
-	private TypeTable<?> typeTable;
-
 	private SymbolTable symbolTable;
 
 	private static Logger LOG = Logger.getLogger(TypeVisitorAdapter.class);
 
 	private VoidVisitorAdapter<A> semanticVisitor;
 
-	public TypeVisitorAdapter(TypeTable<?> typeTable, SymbolTable symbolTable) {
-		this(typeTable, symbolTable, null);
+	public TypeVisitorAdapter(SymbolTable symbolTable) {
+		this(symbolTable, null);
 	}
 
-	public TypeVisitorAdapter(TypeTable<?> typeTable, SymbolTable symbolTable,
+	public TypeVisitorAdapter(SymbolTable symbolTable,
 			VoidVisitorAdapter<A> semanticVisitor) {
-		this.typeTable = typeTable;
+
 		this.symbolTable = symbolTable;
 		this.semanticVisitor = semanticVisitor;
 	}
@@ -127,17 +129,20 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(ArrayAccessExpr n, A arg) {
 		n.getName().accept(this, arg);
+		n.getIndex().accept(this, arg);
 		SymbolType arrayType = (SymbolType) n.getName().getSymbolData();
 		SymbolType newType = new SymbolType();
 		newType.setName(arrayType.getName());
 		newType.setParameterizedTypes(arrayType.getParameterizedTypes());
 		newType.setArrayCount(arrayType.getArrayCount() - 1);
+		
 		n.setSymbolData(newType);
 	}
 
 	@Override
 	public void visit(ArrayCreationExpr n, A arg) {
-		SymbolType arrayType = typeTable.valueOf(n.getType(), symbolTable);
+		SymbolType arrayType = ASTSymbolTypeResolver.getInstance().valueOf(
+				n.getType());
 		arrayType.setArrayCount(1);
 		n.setSymbolData(arrayType);
 	}
@@ -191,14 +196,19 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		SymbolType resultType = leftType;
 
-		try {
-			if (Types.isCompatible(typeTable.loadClass(leftType),
-					typeTable.loadClass(rightType))) {
-				resultType = rightType;
-			}
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
+		Class<?> leftClazz = null;
+		if (leftType != null) {
+			leftClazz = leftType.getClazz();
 		}
+		Class<?> rightClazz = null;
+		if (rightType != null) {
+			rightClazz = rightType.getClazz();
+		}
+
+		if (Types.isCompatible(leftClazz, rightClazz)) {
+			resultType = rightType;
+		}
+
 		Operator op = n.getOperator();
 		if (op.equals(Operator.plus)) {
 
@@ -294,12 +304,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		try {
 			if (scopeType == null) {
 				try {
-					c = typeTable.loadClass(n.toString());
+					c = TypesLoaderVisitor.getClassLoader().loadClass(
+							n.toString());
 					if (c != null) {
 						scopeType = new SymbolType(c);
-						symbolTable.lookUpSymbolForRead(
-								typeTable.getSimpleName(c.getName()), null,
-								ReferenceType.TYPE);
+						symbolTable.lookUpSymbolForRead(c.getSimpleName(),
+								null, ReferenceType.TYPE);
 						n.setSymbolData(scopeType);
 					}
 				} catch (ClassNotFoundException e) {
@@ -424,7 +434,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 								new CompatibleArgsPredicate(symbolTypes));
 				if (hasFunctionalExpressions) {
 					filter.appendPredicate(new CompatibleFunctionalMethodPredicate<A>(
-							scope, this, n.getArgs(), arg));
+							scope, this, n.getArgs(), arg, symbolTable));
 				}
 				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
 				builder.appendBuilder(new GenericsBuilderFromMethodParameterTypes(
@@ -455,27 +465,34 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(NameExpr n, A arg) {
 
+
 		SymbolType type = symbolTable.getType(n.getName(),
 				ReferenceType.VARIABLE, ReferenceType.ENUM_LITERAL,
 				ReferenceType.TYPE);
+		Node parentNode = n.getParentNode();
 
+		if (parentNode instanceof SwitchEntryStmt) {
+
+			SwitchStmt stmt = (SwitchStmt) parentNode.getParentNode();
+			SymbolType scope = (SymbolType) stmt.getSelector().getSymbolData();
+			if (scope.getClazz().isEnum()) {
+				type = FieldInspector.findFieldType(scope, n.getName());
+			}
+		}
 		if (type == null) {
+			Class<?> clazz = null;
 			try {
-				Class<?> clazz = typeTable.loadClass(n.getName());
-				if (clazz != null) {
-					String className = clazz.getName();
-					type = new SymbolType();
-					type.setName(className);
-				} else {
-					SymbolType thisType = symbolTable.getType("this",
-							ReferenceType.VARIABLE);
+				clazz = TypesLoaderVisitor.getClassLoader().loadClass(
+						n.getName());
 
-					type = FieldInspector.findFieldType(thisType, n.getName());
+				String className = clazz.getName();
+				type = new SymbolType();
+				type.setName(className);
 
-				}
-			} catch (Exception e) {
+			} catch (ClassNotFoundException e) {
 				// a name expression could be "org.walkmod.A" and this node
 				// could be "org.walkmod"
+
 			}
 		}
 		if (semanticVisitor != null) {
@@ -527,7 +544,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		if (hasFunctionalExpressions) {
 			filter.appendPredicate(new CompatibleFunctionalConstructorPredicate<A>(
-					st, this, n.getArgs(), arg));
+					st, this, n.getArgs(), arg, symbolTable));
 		}
 		CompositeBuilder<Constructor<?>> builder = new CompositeBuilder<Constructor<?>>();
 		builder.appendBuilder(new GenericsBuilderFromConstructorParameterTypes(
@@ -667,14 +684,16 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			if (data == null) {
 				typeName = scope.toString() + "." + typeName;
 				try {
-					clazz = typeTable.loadClass(typeName);
+					clazz = TypesLoaderVisitor.getClassLoader().loadClass(
+							typeName);
 				} catch (ClassNotFoundException e) {
 					// we are the parents of another class or interface type
 				}
 			} else {
 				typeName = data.getName() + "$" + typeName;
 				try {
-					clazz = typeTable.loadClass(typeName);
+					clazz = TypesLoaderVisitor.getClassLoader().loadClass(
+							typeName);
 				} catch (ClassNotFoundException e) {
 					throw new NoSuchExpressionTypeException("Ops! The class "
 							+ n.toString() + " can't be resolved", null);
@@ -686,18 +705,18 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		} else {
 			Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
-					ReferenceType.TYPE);
+					ReferenceType.TYPE, ReferenceType.VARIABLE);
 			if (s != null) {
 				type = s.getType().clone();
 			} else {
-				type = typeTable.valueOf(n, symbolTable);
+				type = ASTSymbolTypeResolver.getInstance().valueOf(n);
 
 			}
 		}
 		if (type != null) {
 			List<Type> args = n.getTypeArgs();
 
-			if (args != null) {
+			if (args != null && !args.isEmpty()) {
 				List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
 				TypeVariable<?>[] vars = type.getClazz().getTypeParameters();
 				int idx = 0;
@@ -815,7 +834,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				SymbolType scope = symbolTable.getType(n.getId().getName(),
 						ReferenceType.VARIABLE);
 				filter.appendPredicate(new CompatibleFunctionalMethodPredicate<A>(
-						scope, this, null, arg));
+						scope, this, null, arg, symbolTable));
 				SymbolData sd = null;
 				try {
 					sd = MethodInspector.findMethodType(scope, filter, null,

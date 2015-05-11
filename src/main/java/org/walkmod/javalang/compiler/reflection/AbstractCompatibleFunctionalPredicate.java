@@ -26,6 +26,7 @@ import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.LambdaExpr;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
@@ -39,13 +40,19 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 
 	private Class<?>[] params;
 	private boolean isVarArgs;
+	private SymbolTable symTable;
 
-	public AbstractCompatibleFunctionalPredicate(SymbolType scope,
-			VoidVisitor<T> typeResolver, List<Expression> args, T ctx) {
+	public AbstractCompatibleFunctionalPredicate(
+			SymbolType scope,
+			VoidVisitor<T> typeResolver, 
+			List<Expression> args,
+			T ctx,
+			SymbolTable symTable) {
 		this.typeResolver = typeResolver;
 		this.args = args;
 		this.ctx = ctx;
 		this.scope = scope;
+		this.symTable = symTable;
 	}
 
 	public Map<String, SymbolType> createMapping(Class<?> interfaceToInspect) {
@@ -92,7 +99,7 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 		Map<String, SymbolType> aux = createMapping(interfaceToInspect);
 		aux.putAll(typeMapping);
 		CompatibleMethodReferencePredicate<T> predArgs = new CompatibleMethodReferencePredicate<T>(
-				methodRef, typeResolver, ctx, aux);
+				methodRef, typeResolver, ctx, aux, symTable);
 
 		Method[] methods = interfaceToInspect.getMethods();
 		ArrayFilter<Method> filter = new ArrayFilter<Method>(methods);

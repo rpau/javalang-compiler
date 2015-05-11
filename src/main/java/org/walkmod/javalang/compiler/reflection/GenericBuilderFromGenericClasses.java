@@ -65,10 +65,23 @@ public class GenericBuilderFromGenericClasses implements
 		if (typeParams != null) {
 
 			for (int i = 0; i < typeParams.length; i++) {
-				if (parameterizedTypes != null
-						&& !parameterizedTypes.get(i).getName()
+				if (parameterizedTypes != null) {
+					if (parameterizedTypes.get(i).getName() == null
+							&& parameterizedTypes.get(i).hasBounds()) {
+						obj.put(typeParams[i].getName(),
+								parameterizedTypes.get(i));
+					} else {
+						if (!parameterizedTypes.get(i).getName()
 								.equals("java.lang.Object")) {
-					obj.put(typeParams[i].getName(), parameterizedTypes.get(i));
+							obj.put(typeParams[i].getName(),
+									parameterizedTypes.get(i));
+						}
+						else{
+							obj.put(typeParams[i].getName(), new SymbolType(
+									"java.lang.Object"));
+						}
+					}
+
 				} else {
 					obj.put(typeParams[i].getName(), new SymbolType(
 							"java.lang.Object"));
@@ -77,5 +90,4 @@ public class GenericBuilderFromGenericClasses implements
 		}
 		return obj;
 	}
-
 }

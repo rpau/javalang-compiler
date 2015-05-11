@@ -36,8 +36,7 @@ public class SymbolTable {
 
 	private Stack<SymbolDefinition> definitionsStackTrace;
 
-	private SymbolGenerator symbolGenerator = null;
-
+	
 	private SymbolFactory symbolFactory = null;
 
 	private List<SymbolAction> actions;
@@ -52,12 +51,7 @@ public class SymbolTable {
 		this.actions = actions;
 	}
 
-	public void setSymbolGenerator(SymbolGenerator symbolGenerator) {
-		this.symbolGenerator = symbolGenerator;
-		if (symbolGenerator != null) {
-			symbolGenerator.setSymbolTable(this);
-		}
-	}
+	
 
 	public void setSymbolFactory(SymbolFactory symbolFactory) {
 		this.symbolFactory = symbolFactory;
@@ -70,19 +64,14 @@ public class SymbolTable {
 		}
 		return null;
 	}
-	
-	
 
-	public Symbol<?> findSymbol(String symbolName, ReferenceType... referenceType) {
+	public Symbol<?> findSymbol(String symbolName,
+			ReferenceType... referenceType) {
 		return findSymbol(symbolName, null, null, referenceType);
 	}
 
-	
-
-	
-
-	public Symbol<?> findSymbol(String symbolName,
-			SymbolType symbolScope, SymbolType[] args,  ReferenceType... referenceType) {
+	public Symbol<?> findSymbol(String symbolName, SymbolType symbolScope,
+			SymbolType[] args, ReferenceType... referenceType) {
 		int j = indexStructure.size() - 1;
 		Symbol<?> result = null;
 		Scope selectedScope = null;
@@ -124,8 +113,8 @@ public class SymbolTable {
 				}
 				k--;
 			}
-			result = scope.getSymbol(symbolName,symbolScope,
-					args, referenceType);
+			result = scope.getSymbol(symbolName, symbolScope, args,
+					referenceType);
 
 			j--;
 		}
@@ -177,15 +166,15 @@ public class SymbolTable {
 	}
 
 	public Symbol<?> lookUpSymbolForRead(String symbolName,
-			 SymbolReference reference, ReferenceType... referenceType) {
-		return lookUpSymbolForRead(symbolName,  reference, null,
-				null, referenceType);
+			SymbolReference reference, ReferenceType... referenceType) {
+		return lookUpSymbolForRead(symbolName, reference, null, null,
+				referenceType);
 	}
 
 	public Symbol<?> lookUpSymbolForRead(String symbolName,
-			 SymbolReference reference,
-			SymbolType symbolScope, SymbolType[] args, ReferenceType... referenceType) {
-		Symbol<?> s = findSymbol(symbolName,  symbolScope, args, referenceType);
+			SymbolReference reference, SymbolType symbolScope,
+			SymbolType[] args, ReferenceType... referenceType) {
+		Symbol<?> s = findSymbol(symbolName, symbolScope, args, referenceType);
 		if (s != null) {
 			try {
 				invokeActions(indexStructure.peek(), s, SymbolEvent.READ,
@@ -204,8 +193,8 @@ public class SymbolTable {
 
 	public Symbol<?> lookUpSymbolForWrite(String symbolName,
 			SymbolReference reference, SymbolType symbolScope, SymbolType[] args) {
-		Symbol<?> s = findSymbol(symbolName, 
-				symbolScope, args, ReferenceType.VARIABLE);
+		Symbol<?> s = findSymbol(symbolName, symbolScope, args,
+				ReferenceType.VARIABLE);
 		try {
 			invokeActions(indexStructure.peek(), s, SymbolEvent.WRITE,
 					reference);
@@ -227,16 +216,11 @@ public class SymbolTable {
 		return 0;
 	}
 
-	public void pushSymbol(Symbol<?> symbol) {
+	public boolean pushSymbol(Symbol<?> symbol) {
 		Scope lastScope = indexStructure.peek();
 		String name = symbol.getName().toString();
-		// the symbol already exists?
-		SymbolType type = getType(name, symbol.getReferenceType());
-		if (type != null && symbolGenerator != null) {
-			Symbol<?> aux = symbolGenerator.generateSymbol(type);
-			lastScope.chageSymbol(findSymbol(name, symbol.getReferenceType()),
-					aux);
-		} else if (symbol.getType().getName() == null) {
+
+		if (symbol.getType().getName() == null) {
 			throw new TypeSymbolNotFound("Null symbol type resoltion for "
 					+ name);
 		}
@@ -270,41 +254,48 @@ public class SymbolTable {
 
 		}
 		// if not, we add it
-		lastScope.addSymbol(symbol);
-		try {
-			invokeActions(lastScope, symbol, SymbolEvent.PUSH, null);
-		} catch (Exception e) {
-			throw new SymbolTableException(e);
+		if (lastScope.addSymbol(symbol)) {
+			try {
+				invokeActions(lastScope, symbol, SymbolEvent.PUSH, null);
+			} catch (Exception e) {
+				throw new SymbolTableException(e);
+			}
+			return true;
+		}
+		else {
+			return false;
 		}
 
 	}
 
-	public void pushSymbol(String symbolName, ReferenceType referenceType,
+	public boolean pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location);
-		pushSymbol(symbol);
+		return pushSymbol(symbol);
 	}
 
-	public void pushSymbol(String symbolName, ReferenceType referenceType,
+	public boolean pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location, SymbolAction action) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location, action);
-		pushSymbol(symbol);
+		return pushSymbol(symbol);
 	}
 
-	public void pushSymbol(String symbolName, ReferenceType referenceType,
+	public boolean pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location, List<SymbolAction> actions) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location, actions);
-		pushSymbol(symbol);
+		return pushSymbol(symbol);
 	}
 
-	public void pushSymbols(Set<String> names, ReferenceType referenceType,
+	public boolean pushSymbols(Set<String> names, ReferenceType referenceType,
 			SymbolType symbolType, Node location, List<SymbolAction> actions) {
+		boolean allAdded = true;
 		for (String name : names) {
-			pushSymbol(name, referenceType, symbolType, location, actions);
+			allAdded = allAdded && pushSymbol(name, referenceType, symbolType, location, actions);
 		}
+		return allAdded;
 	}
 
 	public void popScope() {

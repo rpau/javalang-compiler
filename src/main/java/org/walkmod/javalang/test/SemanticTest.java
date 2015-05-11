@@ -13,7 +13,7 @@ GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
-package og.walkmod.javalang.test;
+package org.walkmod.javalang.test;
 
 import java.io.File;
 import java.net.URL;
@@ -28,13 +28,13 @@ import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.compiler.Compiler;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
-import org.walkmod.javalang.compiler.types.TypeTable;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 
 public abstract class SemanticTest {
 
 	private static String SOURCES_DIR = "./src/test/resources/tmp/";
 	private static String CLASSES_DIR = "./src/test/resources/tmp/classes";
-	private TypeTable<Map<String, Object>> tt = null;
+	private TypesLoaderVisitor<Map<String, Object>> tt = null;
 	private CompilationUnit cu = null;
 	private ClassLoader cl = null;
 	private SymbolTable symTable = null;
@@ -91,13 +91,19 @@ public abstract class SemanticTest {
 		return cl;
 	}
 
-	public TypeTable<Map<String, Object>> getTypeTable() throws Exception {
+	public TypesLoaderVisitor<Map<String, Object>> getTypeTable() throws Exception {
 		if (tt == null) {
-			tt = TypeTable.getInstance();
+			getSymbolTable().pushScope();
+			tt = new TypesLoaderVisitor<Map<String, Object>>(getSymbolTable(),null, null);
 			tt.setClassLoader(getClassLoader());
+			
 			cu.accept(tt, new HashMap<String, Object>());
 		}
 		return tt;
+	}
+	
+	public void initTypes()throws Exception{
+		getTypeTable();
 	}
 
 	public SymbolTable getSymbolTable() {

@@ -24,8 +24,6 @@ import java.util.List;
 
 import javax.lang.model.SourceVersion;
 
-import og.walkmod.javalang.test.SemanticTest;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -48,6 +46,7 @@ import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
+import org.walkmod.javalang.test.SemanticTest;
 
 public class SymbolVisitorAdapterTest extends SemanticTest {
 
@@ -219,7 +218,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testImportsOfAnnotations() throws Exception {
 		CompilationUnit cu = runRemoveUnusedMembers("import javax.annotation.Generated; @Generated(value=\"WALKMOD\") public class Foo {}");
 		Assert.assertTrue(!cu.getImports().isEmpty());
-		cu = runRemoveUnusedMembers("import javax.annotation.Generated; public class Foo {}");
+
+	}
+
+	@Test
+	public void testImportsOfAnnotations2() throws Exception {
+		CompilationUnit cu = runRemoveUnusedMembers("import javax.annotation.Generated; public class Foo {}");
 		Assert.assertTrue(cu.getImports().isEmpty());
 	}
 
@@ -494,7 +498,8 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
-		Assert.assertEquals("A$B", stmt.getExpression().getSymbolData().getName());
+		Assert.assertEquals("A$B", stmt.getExpression().getSymbolData()
+				.getName());
 
 	}
 }

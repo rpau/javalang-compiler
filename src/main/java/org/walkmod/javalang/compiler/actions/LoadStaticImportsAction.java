@@ -34,7 +34,7 @@ import org.walkmod.javalang.compiler.symbols.SymbolType;
 public class LoadStaticImportsAction extends SymbolAction {
 
 	private String pkgName = null;
-	
+
 	@Override
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
 		Node n = symbol.getLocation();
@@ -53,9 +53,8 @@ public class LoadStaticImportsAction extends SymbolAction {
 					PackageDeclaration pkgDeclaration = cu.getPackage();
 					if (pkgDeclaration != null) {
 						pkgName = pkgDeclaration.getName().toString();
-					}
-					else{
-						pkgName="";
+					} else {
+						pkgName = "";
 					}
 				}
 				for (Method m : methods) {
@@ -92,16 +91,23 @@ public class LoadStaticImportsAction extends SymbolAction {
 						}
 					}
 				}
-				Field[] fields = clazz.getFields();
+				Field[] fields = clazz.getDeclaredFields();
 				for (Field field : fields) {
 					if (id.isAsterisk()
 							|| id.getName().getName().equals(field.getName())) {
-						if (Modifier.isStatic(field.getModifiers())
-								&& Modifier.isPublic(field.getModifiers())) {
-							Class<?> type = field.getType();
-							SymbolType st = new SymbolType(type);
-							table.pushSymbol(field.getName(),
-									ReferenceType.VARIABLE, st, n);
+
+						int modifiers = field.getModifiers();
+						if (Modifier.isStatic(modifiers)) {
+
+							boolean isVisible = Modifier.isPublic(modifiers)
+									|| (!Modifier.isPrivate(modifiers) && importPkgName
+											.equals(pkgName));
+							if (isVisible) {
+								Class<?> type = field.getType();
+								SymbolType st = new SymbolType(type);
+								table.pushSymbol(field.getName(),
+										ReferenceType.VARIABLE, st, n);
+							}
 						}
 					}
 				}
