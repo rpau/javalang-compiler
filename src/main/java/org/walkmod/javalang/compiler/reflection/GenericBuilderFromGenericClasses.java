@@ -71,12 +71,11 @@ public class GenericBuilderFromGenericClasses implements
 						obj.put(typeParams[i].getName(),
 								parameterizedTypes.get(i));
 					} else {
-						if (!parameterizedTypes.get(i).getName()
-								.equals("java.lang.Object")) {
+						if (!"java.lang.Object".equals(parameterizedTypes
+								.get(i).getName())) {
 							obj.put(typeParams[i].getName(),
 									parameterizedTypes.get(i));
-						}
-						else{
+						} else {
 							obj.put(typeParams[i].getName(), new SymbolType(
 									"java.lang.Object"));
 						}
