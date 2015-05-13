@@ -270,14 +270,9 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	private void loadThisSymbol(TypeDeclaration declaration, A arg)
 			throws ClassNotFoundException {
-		SymbolType lastScope = symbolTable.getType("this",
-				ReferenceType.VARIABLE);
-		String className = null;
-		if (lastScope != null) {
-			className = lastScope.getName() + "$" + declaration.getName();
-		} else {
-			className = typeTable.getFullName(declaration);
-		}
+		SymbolType type = symbolTable.getType(declaration.getName(),
+				ReferenceType.TYPE);
+		
 
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(new LoadTypeParamsAction());
@@ -290,19 +285,9 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			actions.addAll(actionProvider.getActions(declaration));
 		}
 
-		SymbolType type = null;
-		if (lastScope == null) {
-			type = new SymbolType(className);
-			
-			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
-					declaration, actions);
-
-		} else {
-			type = new SymbolType(lastScope.getName() + "$"
-					+ declaration.getName());
-			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
-					declaration, actions);
-		}
+		
+		symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
+				declaration, actions);
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
 				symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
@@ -349,8 +334,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	private void loadThisSymbol(EnumConstantDeclaration n, A arg) {
-		String className = symbolTable.findSymbol("this", ReferenceType.TYPE)
-				.getType().getName();
+		SymbolType type = symbolTable.getType(n.getName(), ReferenceType.TYPE);
 
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(new LoadTypeParamsAction());
@@ -364,8 +348,6 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			actions.addAll(actionProvider.getActions(n));
 		}
 
-		SymbolType type = null;
-		type = new SymbolType(className);
 		symbolTable
 				.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
 		n.setSymbolData(type);
