@@ -283,7 +283,6 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		actions.add(new LoadTypeParamsAction());
 		actions.add(new LoadTypeDeclarationsAction(typeTable));
 		actions.add(new LoadFieldDeclarationsAction(actionProvider));
-		actions.add(new LoadEnumConstantLiteralsAction());
 		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider,
 				expressionTypeAnalyzer));
 
@@ -294,28 +293,21 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		SymbolType type = null;
 		if (lastScope == null) {
 			type = new SymbolType(className);
-			symbolTable.pushSymbol(declaration.getName(), ReferenceType.TYPE,
-					type, declaration);
+			
 			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
 					declaration, actions);
-			symbolTable.pushSymbol("this", ReferenceType.TYPE, type,
-					declaration, (List<SymbolAction>) null);
 
 		} else {
 			type = new SymbolType(lastScope.getName() + "$"
 					+ declaration.getName());
-			symbolTable.pushSymbol(declaration.getName(), ReferenceType.TYPE,
-					type, declaration);
 			symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
 					declaration, actions);
-			symbolTable.pushSymbol("this", ReferenceType.TYPE, type,
-					declaration, (List<SymbolAction>) null);
 		}
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
 				symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
 						new SymbolType(type.getClazz().getSuperclass()), null,
-						actions);
+						(List<SymbolAction>)null);
 			}
 		}
 		declaration.setSymbolData(type);
@@ -328,7 +320,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		boolean anonymousClass = n.getAnonymousClassBody() != null;
 		if (anonymousClass) {
 			String className = symbolTable
-					.findSymbol("this", ReferenceType.TYPE).getType().getName();
+					.findSymbol("this", ReferenceType.VARIABLE).getType().getName();
 			List<SymbolAction> actions = new LinkedList<SymbolAction>();
 			actions.add(new LoadTypeParamsAction());
 			actions.add(new LoadTypeDeclarationsAction(typeTable));
@@ -352,7 +344,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			symbolTable
 					.pushSymbol("super", ReferenceType.VARIABLE,
 							new SymbolType(type.getClazz().getSuperclass()), n,
-							actions);
+							(List<SymbolAction>)null);
 		}
 	}
 
@@ -379,7 +371,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		n.setSymbolData(type);
 
 		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, new SymbolType(
-				type.getClazz().getSuperclass()), n, actions);
+				type.getClazz().getSuperclass()), n, (List<SymbolAction>)null);
 	}
 
 	@Override

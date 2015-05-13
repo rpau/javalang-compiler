@@ -15,13 +15,26 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.actions;
 
+import java.util.List;
+import java.util.Set;
+
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.body.AnnotationDeclaration;
+import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.body.EmptyTypeDeclaration;
+import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
+import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
+import org.walkmod.javalang.compiler.reflection.ClassInspector;
+import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
+import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
+import org.walkmod.javalang.exceptions.InvalidTypeException;
+import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class LoadTypeDeclarationsAction extends SymbolAction {
 
@@ -38,7 +51,87 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 		if (node instanceof TypeDeclaration
 				|| node instanceof ObjectCreationExpr) {
 			if (symbol.getName().equals("this")) {
-				node.accept(typeTable, null);
+				LoadInheritedNestedClasses<?> vis = new LoadInheritedNestedClasses<Object>(table);
+				node.accept(vis, null);
+			}
+		}
+
+	}
+
+	private class LoadInheritedNestedClasses<A> extends VoidVisitorAdapter<A> {
+
+		private SymbolTable symbolTable;
+
+		public LoadInheritedNestedClasses(SymbolTable symbolTable) {
+			this.symbolTable = symbolTable;
+		}
+
+		@Override
+		public void visit(ClassOrInterfaceDeclaration n, A ctx) {
+			loadExtendsOrImplements(n.getExtends());
+			loadExtendsOrImplements(n.getImplements());
+			n.accept(typeTable, null);
+		}
+
+		@Override
+		public void visit(AnnotationDeclaration n, A ctx) {
+			n.accept(typeTable, null);
+		}
+
+		@Override
+		public void visit(EnumDeclaration n, A ctx) {
+			n.accept(typeTable, null);
+			loadExtendsOrImplements(n.getImplements());
+		}
+		
+		@Override
+		public void visit(EmptyTypeDeclaration n, A ctx) {
+			n.accept(typeTable, null);
+		}
+		
+		@Override
+		public void visit(ObjectCreationExpr n, A ctx) {
+			n.accept(typeTable, null);
+		}
+
+
+		private void loadExtendsOrImplements(
+				List<ClassOrInterfaceType> extendsList) {
+			if (extendsList != null) {
+				for (ClassOrInterfaceType type : extendsList) {
+					String name = type.getName();
+					ClassOrInterfaceType scope = type.getScope();
+					if (scope != null) {
+						name = scope.toString() + "." + name;
+					}
+					Symbol<?> s = symbolTable.findSymbol(name,
+							ReferenceType.TYPE);
+					if (s != null) {
+						Object location = s.getLocation();
+						if (location != null
+								&& location instanceof TypeDeclaration) {
+							
+							((TypeDeclaration) location).accept(this, null);
+
+						} else {
+							Class<?> clazz = s.getType().getClazz();
+							Set<Class<?>> innerClasses = ClassInspector
+									.getNonPrivateClassMembers(clazz);
+							innerClasses.remove(clazz);
+							for (Class<?> innerClass : innerClasses) {
+								try {
+									symbolTable.pushSymbol(innerClass
+											.getSimpleName(),
+											ReferenceType.TYPE, SymbolType
+													.valueOf(innerClass, null),
+											null);
+								} catch (InvalidTypeException e) {
+									throw new RuntimeException(e);
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 

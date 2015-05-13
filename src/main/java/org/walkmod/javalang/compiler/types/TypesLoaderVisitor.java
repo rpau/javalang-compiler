@@ -46,6 +46,7 @@ import org.walkmod.javalang.compiler.actions.LoadStaticImportsAction;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
@@ -150,25 +151,27 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		type.setSymbolData(st);
 		String keyName = getKeyName(name, false);
 
-		SymbolType oldType = symbolTable.getType(keyName,
+		Symbol<?> oldType = symbolTable.findSymbol(keyName,
 				org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
 
-		if (oldType == null || !oldType.equals(st)) {
+		if (oldType == null || !oldType.getType().equals(st)) {
 			symbolTable.pushSymbol(getKeyName(name, false),
 					org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
 					st, type, actions);
 		} else {
+			if (!(oldType.getLocation() instanceof ImportDeclaration)) {
+				if (startingNode != null && startingNode != type) {
 
-			if (startingNode != null && startingNode != type) {
-				String preffix = ((SymbolDataAware<?>) startingNode)
-						.getSymbolData().getName();
-				symbolTable
-						.pushSymbol(
-								getKeyName(
-										name.substring(preffix.length() + 1),
-										false),
-								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-								st, type, actions);
+					String preffix = ((SymbolDataAware<?>) startingNode)
+							.getSymbolData().getName();
+					symbolTable
+							.pushSymbol(
+									getKeyName(name
+											.substring(preffix.length() + 1),
+											false),
+									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
+									st, type, actions);
+				}
 			}
 		}
 
@@ -226,7 +229,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		}
 	}
 
-	private void processMembers(List<BodyDeclaration> members, T context) {
+	public void processMembers(List<BodyDeclaration> members, T context) {
 		if (members != null) {
 			for (BodyDeclaration bd : members) {
 				if (bd instanceof TypeDeclaration) {
@@ -457,7 +460,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 							if (!"".equals(packageName)) {
 								name = packageName + "." + simpleName;
 							}
-							if(!resource.getName().contains("$")){
+							if (!resource.getName().contains("$")) {
 								addType(name, false, null, actions);
 							}
 						}

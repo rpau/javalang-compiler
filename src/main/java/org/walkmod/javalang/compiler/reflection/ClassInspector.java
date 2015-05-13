@@ -18,9 +18,11 @@ package org.walkmod.javalang.compiler.reflection;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.walkmod.javalang.compiler.types.Types;
 
@@ -170,6 +172,26 @@ public class ClassInspector {
 				found = result != null;
 			}
 		}
+		return result;
+	}
+
+	public static Set<Class<?>> getNonPrivateClassMembers(Class<?> clazz) {
+		Set<Class<?>> result = new HashSet<Class<?>>();
+		if (clazz == null || clazz.equals(Object.class)) {
+			return result;
+		}
+		Class<?>[] declClasses = clazz.getDeclaredClasses();
+		for(int i = 0; i < declClasses.length; i++){
+			if (!Modifier.isPrivate(declClasses[i].getModifiers())) {
+				result.add(declClasses[i]);
+			}
+		}
+		result.addAll(getNonPrivateClassMembers(clazz.getSuperclass()));
+		Class<?>[] interfaces = clazz.getInterfaces();
+		for(int i = 0; i < interfaces.length; i++){
+			result.addAll(getNonPrivateClassMembers(interfaces[i]));
+		}
+		
 		return result;
 	}
 
