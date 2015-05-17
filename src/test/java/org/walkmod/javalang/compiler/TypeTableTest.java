@@ -22,54 +22,38 @@ import java.net.URLClassLoader;
 import junit.framework.Assert;
 
 import org.junit.Test;
-import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
+import org.walkmod.javalang.test.SemanticTest;
 
-public class TypeTableTest {
+public class TypeTableTest extends SemanticTest {
 
-	@Test
-	public void testSimpleClass() throws Exception {
+	public void populateSemantics() throws Exception {
+	}
 
-		File aux = new File(new File("src/main/java"),
-				"org/walkmod/javalang/compiler/types/TypesLoaderVisitor.java");
-
-		CompilationUnit cu = (CompilationUnit) ASTManager.parse(aux);
-
-		SymbolTable st = new SymbolTable();
-		st.pushScope();
-
-		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
-				null);
-
-		ttl.clear();
-
-		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
-
-		cu.accept(ttl, null);
-
-		Assert.assertNotNull(st.findSymbol("TypesLoaderVisitor"));
-
+	public ClassLoader getClassLoader() throws Exception {
+		if (cl == null) {
+			File aux = new File(CLASSES_DIR);
+			cl = new URLClassLoader(new URL[] { aux.toURI().toURL(),
+					new File("target/classes").toURI().toURL() });
+		}
+		return cl;
 	}
 
 	@Test
 	public void importsWithAsterisk() throws Exception {
 		String code = "import org.walkmod.javalang.compiler.symbols.*; public class Foo {}";
 
-		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
+		CompilationUnit cu = compile(code);
 
 		SymbolTable st = new SymbolTable();
 		st.pushScope();
-		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
-				null);
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null, null);
+		ttl.setClassLoader(getClassLoader());
 		ttl.clear();
 
-		URL[] classpath = new URL[] { new File("target/classes").toURI()
-				.toURL() };
-		URLClassLoader urlCL = new URLClassLoader(classpath);
-
-		ttl.setClassLoader(urlCL);
+		ttl.setClassLoader(getClassLoader());
 
 		cu.accept(ttl, null);
 
@@ -81,17 +65,14 @@ public class TypeTableTest {
 	public void javaLangTypes() throws Exception {
 		String code = "public class Foo {}";
 
-		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
+		CompilationUnit cu = compile(code);
 
 		SymbolTable st = new SymbolTable();
 		st.pushScope();
-		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
-				null);
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null, null);
 
 		ttl.clear();
-
-		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
-
+		ttl.setClassLoader(getClassLoader());
 		cu.accept(ttl, null);
 
 		Assert.assertNotNull(st.findSymbol("String"));
@@ -101,16 +82,15 @@ public class TypeTableTest {
 	@Test
 	public void javaInnerClasses() throws Exception {
 		String code = "public class Foo { public class A {} public class B extends A{} }";
-		CompilationUnit cu = (CompilationUnit) ASTManager.parse(code);
+
+		CompilationUnit cu = compile(code);
 
 		SymbolTable st = new SymbolTable();
 		st.pushScope();
-		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
-				null);
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null, null);
 
 		ttl.clear();
-
-		ttl.setClassLoader(Thread.currentThread().getContextClassLoader());
+		ttl.setClassLoader(getClassLoader());
 		cu.accept(ttl, null);
 
 		Assert.assertNotNull(st.findSymbol("Foo.B"));

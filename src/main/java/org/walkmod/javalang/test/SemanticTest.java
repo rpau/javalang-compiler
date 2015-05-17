@@ -19,7 +19,6 @@ import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
-import java.util.Map;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,11 +31,11 @@ import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 
 public abstract class SemanticTest {
 
-	private static String SOURCES_DIR = "./src/test/resources/tmp/";
-	private static String CLASSES_DIR = "./src/test/resources/tmp/classes";
+	public static String SOURCES_DIR = "./src/test/resources/tmp/";
+	public static String CLASSES_DIR = "./src/test/resources/tmp/classes";
 	private TypesLoaderVisitor tt = null;
 	private CompilationUnit cu = null;
-	private ClassLoader cl = null;
+	protected ClassLoader cl = null;
 	private SymbolTable symTable = null;
 
 	@Before

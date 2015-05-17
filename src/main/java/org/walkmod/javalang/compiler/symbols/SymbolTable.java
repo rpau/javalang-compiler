@@ -100,10 +100,11 @@ public class SymbolTable {
 						ReferenceType.TYPE);
 				if (scopeSymbol != null) {
 					if (scopeSymbol.getInnerScope() != null) {
-						//it is an inner class
+						// it is an inner class
 						return scopeSymbol.getInnerScope().getSymbol(
 								symbolName, symbolScope, args, referenceType);
-					}
+					} else
+						return null;
 				}
 			}
 

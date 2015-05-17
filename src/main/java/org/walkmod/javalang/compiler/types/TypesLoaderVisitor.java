@@ -34,6 +34,7 @@ import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDataAware;
+import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
@@ -101,14 +102,26 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 		}
 		for (String defaultType : defaultJavaLangClasses) {
+
 			SymbolType st = new SymbolType(defaultType);
-			symbolTable.pushSymbol(getKeyName(defaultType, false),
+			symbolTable.pushSymbol(getSymbolName(defaultType, false),
 					org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
 					st, null, actions);
 		}
 	}
 
-	private String getKeyName(String name, boolean imported) {
+	/**
+	 * Infers the simple name to be pushed into the symbol table
+	 * 
+	 * @param name
+	 *            full name of a given class
+	 * @param imported
+	 *            if it appears as an import declaration. It is important,
+	 *            because the simple name is the part after the $ symbol if it
+	 *            is an inner class.
+	 * @return the simple name to be pushed into the symbol table
+	 */
+	private String getSymbolName(String name, boolean imported) {
 		int index = name.lastIndexOf(".");
 		String simpleName = name;
 		if (index != -1) {
@@ -120,6 +133,16 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				simpleName = simpleName.substring(index + 1);
 			}
 		} else {
+			String[] splittedString = simpleName.split("\\$\\d");
+			String aux = splittedString[splittedString.length - 1];
+
+			if (!aux.equals("")) {
+				if (aux.charAt(0) == '$') {
+					simpleName = aux.substring(1);
+				} else {
+					simpleName = aux;
+				}
+			}
 			simpleName = simpleName.replaceAll("\\$", ".");
 		}
 		return simpleName;
@@ -133,17 +156,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		return classLoader;
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private String getContext(TypeDeclaration type, T context) {
-
-		org.walkmod.javalang.compiler.symbols.ReferenceType TYPE = org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE;
-
-		List<SymbolAction> actions = new LinkedList<SymbolAction>();
-
-		if (actionProvider != null) {
-			actions.addAll(actionProvider.getActions(type));
-		}
-
+	private SymbolType buildSymbolType(TypeDeclaration type) {
 		String name = type.getName();
 		Node node = type.getParentNode();
 		SymbolType st = null;
@@ -165,46 +178,80 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		}
 		st = new SymbolType(name);
 		type.setSymbolData(st);
+		return st;
+	}
 
-		String keyName = getKeyName(name, false);
+	private void pushCanonicalName(Symbol<?> added, SymbolType st) {
+		String fullName = st.getName().replaceAll("\\$", ".");
+		Symbol<?> importedPkgSymbol = symbolTable.findSymbol(fullName,
+				ReferenceType.TYPE);
+		if (importedPkgSymbol == null) {
+			Symbol<?> aux = symbolTable.pushSymbol(fullName,
+					ReferenceType.TYPE, added.getType(), added.getLocation());
+			aux.setInnerScope(added.getInnerScope());
+		} else if (importedPkgSymbol.getLocation() == null) {
+			importedPkgSymbol.setInnerScope(added.getInnerScope());
+		}
+	}
 
-		Symbol oldSymbol = symbolTable.findSymbol(keyName, TYPE);
+	private <K extends Node & SymbolDefinition> void overrideSymbol(
+			Symbol<K> symbol, K location, SymbolType st, Scope scope) {
+		symbol.setLocation(location);
+		symbol.setInnerScope(scope);
+		symbol.setType(st);
+	}
+
+	private String getInnerName(SymbolType st) {
+		String preffix = ((SymbolDataAware<?>) startingNode).getSymbolData()
+				.getName();
+		return getSymbolName(st.getName().substring(preffix.length() + 1),
+				false);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private String getContext(TypeDeclaration type, T context) {
+
+		List<SymbolAction> actions = new LinkedList<SymbolAction>();
+
+		if (actionProvider != null) {
+			actions.addAll(actionProvider.getActions(type));
+		}
+
+		SymbolType st = buildSymbolType(type);
+		String keyName = getSymbolName(st.getName(), false);
+
+		Symbol oldSymbol = symbolTable.findSymbol(keyName, ReferenceType.TYPE);
 		Symbol added = null;
 		if (oldSymbol == null || !oldSymbol.getType().equals(st)) {
 
-			added = symbolTable.pushSymbol(keyName, TYPE, st, type, actions);
-
+			added = symbolTable.pushSymbol(keyName, ReferenceType.TYPE, st,
+					type, actions);
 			added.setInnerScope(new Scope(added));
 
 		} else {
+
 			Node location = oldSymbol.getLocation();
-			if (location == null || location instanceof ImportDeclaration) {
-				oldSymbol.setLocation(type);
-				oldSymbol.setInnerScope(new Scope(oldSymbol));
-				oldSymbol.setType(st);
+			if ((location == null || location instanceof ImportDeclaration)
+					&& !st.belongsToAnonymousClass()) {
 				added = oldSymbol;
+				overrideSymbol(added, type, st, new Scope(added));
+
 			} else {
 				if (startingNode != null && startingNode != type) {
 
-					String preffix = ((SymbolDataAware<?>) startingNode)
-							.getSymbolData().getName();
-					String simpleName = getKeyName(
-							name.substring(preffix.length() + 1), false);
+					String innerClassName = getInnerName(st);
 
 					Symbol inheritedInnerClass = symbolTable.getScopes().peek()
-							.getSymbol(simpleName, TYPE);
+							.getSymbol(innerClassName, ReferenceType.TYPE);
 					if (inheritedInnerClass != null) {
 						// we override the definition
 						added = inheritedInnerClass;
-						added.setLocation(type);
-						added.setInnerScope(oldSymbol.getInnerScope());
-						added.setType(st);
+						overrideSymbol(added, type, st,
+								oldSymbol.getInnerScope());
 
 					} else {
-						added = symbolTable.pushSymbol(
-								getKeyName(
-										name.substring(preffix.length() + 1),
-										false), TYPE, st, type, actions);
+						added = symbolTable.pushSymbol(innerClassName,
+								ReferenceType.TYPE, st, type, actions);
 						added.setInnerScope(oldSymbol.getInnerScope());
 					}
 
@@ -212,18 +259,10 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 			}
 
 		}
-		if (added != null && !name.matches(".*\\$\\d.*")) {
-			String fullName = name.replaceAll("\\$", ".");
-			Symbol importedPkgSymbol = symbolTable.findSymbol(fullName, TYPE);
-			if (importedPkgSymbol == null) {
-				Symbol<?> aux = symbolTable.pushSymbol(fullName, TYPE,
-						added.getType(), type);
-				aux.setInnerScope(added.getInnerScope());
-			} else if (importedPkgSymbol.getLocation() == null) {
-				importedPkgSymbol.setInnerScope(added.getInnerScope());
-			}
+		if (added != null && !st.belongsToAnonymousClass()) {
+			pushCanonicalName(added, st);
 		}
-		return name;
+		return st.getName();
 	}
 
 	public void visit(ClassOrInterfaceDeclaration type, T context) {
@@ -294,7 +333,15 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 			restore = true;
 		}
 		List<BodyDeclaration> members = n.getAnonymousClassBody();
-		processMembers(members, context);
+		if (members != null) {
+			SymbolType st = symbolTable.getType("this", ReferenceType.VARIABLE);
+			n.setSymbolData(st);
+			String name = st.getName();
+			String oldCtx = contextName;
+			contextName = name;
+			processMembers(members, context);
+			contextName = oldCtx;
+		}
 		if (restore) {
 			startingNode = null;
 		}
@@ -348,7 +395,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 					SymbolType st = new SymbolType(innerClasses[i]);
 					symbolTable
 							.pushSymbol(
-									getKeyName(fullName, imported),
+									getSymbolName(fullName, imported),
 									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
 									st, node);
 				}
@@ -368,7 +415,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 					SymbolType st = new SymbolType(clazz);
 					symbolTable
 							.pushSymbol(
-									getKeyName(name, imported),
+									getSymbolName(name, imported),
 									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
 									st, node, actions);
 
@@ -426,7 +473,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 						.forName(internalName, false, classLoader);
 
 				if (!Modifier.isPrivate(clazz.getModifiers())) {
-					String keyName = getKeyName(internalName, imported);
+					String keyName = getSymbolName(internalName, imported);
 					SymbolType st = new SymbolType(clazz);
 					Symbol<?> pushedSymbol = symbolTable
 							.pushSymbol(
@@ -543,8 +590,10 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 							name = name.replaceAll("/", ".");
 							name = name.substring(0, name.length() - 6);
-
-							defaultJavaLangClasses.add(name);
+							String[] split = name.split("\\$\\d");
+							if (split.length == 1) {
+								defaultJavaLangClasses.add(split[0]);
+							}
 						}
 					}
 

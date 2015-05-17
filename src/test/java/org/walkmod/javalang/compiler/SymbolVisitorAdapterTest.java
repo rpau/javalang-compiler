@@ -511,4 +511,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(type.getMembers());
 		Assert.assertTrue(!type.getMembers().isEmpty());
 	}
+	
+	@Test
+	public void testInnerClassInsideAnnonymousClass() throws Exception{
+		run("public class A{ public Object foo() {  A a = new A() { public Object foo() { return new B(); } class B{ int c; }}; return a; }}");
+		Assert.assertTrue(true);
+	}
 }

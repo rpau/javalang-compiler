@@ -516,5 +516,21 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public Constructor<?> getConstructor() {
 		return constructor;
 	}
+	
+	public boolean belongsToAnonymousClass(){
+		return belongsToAnonymous(getClazz());
+	}
+	
+	private boolean belongsToAnonymous(Class<?> clazz){
+		if (clazz == null || clazz .equals(Object.class)){
+			return false;
+		}
+		if(clazz.isAnonymousClass()){
+			return true;
+		}
+		else{
+			return belongsToAnonymous(clazz.getDeclaringClass());
+		}
+	}
 
 }
