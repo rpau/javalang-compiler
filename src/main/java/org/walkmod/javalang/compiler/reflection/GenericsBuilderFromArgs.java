@@ -51,7 +51,7 @@ public class GenericsBuilderFromArgs implements
 	}
 
 	public GenericsBuilderFromArgs(Method method,
-			List<Expression> argumentValues, TypesLoaderVisitor<?> typeTable) {
+			List<Expression> argumentValues) {
 		this.method = method;
 		this.argumentValues = argumentValues;
 	

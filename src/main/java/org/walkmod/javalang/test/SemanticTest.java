@@ -34,7 +34,7 @@ public abstract class SemanticTest {
 
 	private static String SOURCES_DIR = "./src/test/resources/tmp/";
 	private static String CLASSES_DIR = "./src/test/resources/tmp/classes";
-	private TypesLoaderVisitor<Map<String, Object>> tt = null;
+	private TypesLoaderVisitor tt = null;
 	private CompilationUnit cu = null;
 	private ClassLoader cl = null;
 	private SymbolTable symTable = null;
@@ -91,13 +91,13 @@ public abstract class SemanticTest {
 		return cl;
 	}
 
-	public TypesLoaderVisitor<Map<String, Object>> getTypeTable() throws Exception {
+	public TypesLoaderVisitor getTypeTable() throws Exception {
 		if (tt == null) {
 			getSymbolTable().pushScope();
-			tt = new TypesLoaderVisitor<Map<String, Object>>(getSymbolTable(),null, null);
+			tt = new TypesLoaderVisitor(getSymbolTable(),null, null);
 			tt.setClassLoader(getClassLoader());
 			
-			cu.accept(tt, new HashMap<String, Object>());
+			cu.accept(tt, null);
 		}
 		return tt;
 	}

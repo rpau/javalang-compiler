@@ -24,7 +24,6 @@ import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
-import org.walkmod.javalang.compiler.reflection.FieldInspector;
 
 public class Scope {
 
@@ -32,24 +31,24 @@ public class Scope {
 
 	private List<SymbolAction> actions;
 
-	private boolean isSymbolDefinitionScope = false;
+	private Symbol<?> rootSymbol = null;
 
 	private int innerAnonymousClassCounter = 0;
 
 	public Scope() {
 	}
 
-	public Scope(boolean isSymbolDefinitionScope) {
-		this(isSymbolDefinitionScope, null);
+	public Scope(Symbol<?> rootSymbol) {
+		this.rootSymbol = rootSymbol;
 	}
-
+	
 	public Scope(List<SymbolAction> actions) {
-		this(false, actions);
-	}
-
-	public Scope(boolean isSymbolDefinitionScope, List<SymbolAction> actions) {
 		this.actions = actions;
-		this.isSymbolDefinitionScope = isSymbolDefinitionScope;
+		
+	}
+	
+	public Symbol<?> getRootSymbol(){
+		return rootSymbol;
 	}
 
 	public List<Symbol<?>> getSymbols() {
@@ -199,9 +198,6 @@ public class Scope {
 		}
 	}
 
-	public boolean isSymbolDefinitionScope() {
-		return isSymbolDefinitionScope;
-	}
 
 	public int getInnerAnonymousClassCounter() {
 		return innerAnonymousClassCounter;

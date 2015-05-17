@@ -40,7 +40,7 @@ public class TypeTableTest {
 		SymbolTable st = new SymbolTable();
 		st.pushScope();
 
-		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
 				null);
 
 		ttl.clear();
@@ -61,7 +61,7 @@ public class TypeTableTest {
 
 		SymbolTable st = new SymbolTable();
 		st.pushScope();
-		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
 				null);
 		ttl.clear();
 
@@ -85,7 +85,7 @@ public class TypeTableTest {
 
 		SymbolTable st = new SymbolTable();
 		st.pushScope();
-		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
 				null);
 
 		ttl.clear();
@@ -105,7 +105,7 @@ public class TypeTableTest {
 
 		SymbolTable st = new SymbolTable();
 		st.pushScope();
-		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null,
+		TypesLoaderVisitor ttl = new TypesLoaderVisitor(st, null,
 				null);
 
 		ttl.clear();

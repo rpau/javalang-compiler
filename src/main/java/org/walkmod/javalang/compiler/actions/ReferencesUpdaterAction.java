@@ -20,6 +20,7 @@ import java.util.Stack;
 
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
+import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -34,13 +35,17 @@ public class ReferencesUpdaterAction extends SymbolAction {
 			def.setScopeLevel(scope);
 		}
 	}
-	
-	private void updateDefinitions(SymbolTable table, SymbolReference emitter){
-		Stack<SymbolDefinition> defs = table.getDefinitionsStackTrace();
-		Iterator<SymbolDefinition> it = defs.iterator();
-		while(it.hasNext()){
-			SymbolDefinition sd = it.next();
-			sd.addBodyReference(emitter);
+
+	private void updateDefinitions(SymbolTable table, SymbolReference emitter) {
+		Stack<Scope> defs = table.getScopes();
+		Iterator<Scope> it = defs.iterator();
+		while (it.hasNext()) {
+			Scope scope = it.next();
+			Symbol<?> rootSymbol = scope.getRootSymbol();
+			if (rootSymbol != null) {
+				SymbolDefinition sd = rootSymbol.getLocation();
+				sd.addBodyReference(emitter);
+			}
 		}
 	}
 

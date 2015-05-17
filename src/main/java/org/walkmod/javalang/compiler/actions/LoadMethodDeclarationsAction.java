@@ -21,6 +21,7 @@ import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
+import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
@@ -141,7 +142,9 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 			} else if (node instanceof ObjectCreationExpr) {
 				members = ((ObjectCreationExpr) node).getAnonymousClassBody();
 			}
-
+			else if (node instanceof EnumConstantDeclaration) {
+				members = ((EnumConstantDeclaration) node).getClassBody();
+			}
 			if (members != null) {
 
 				for (BodyDeclaration member : members) {

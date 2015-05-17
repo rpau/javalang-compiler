@@ -37,6 +37,8 @@ public class Symbol<T extends Node & SymbolDefinition> {
 	private Map<String, Object> attributes = new HashMap<String, Object>();
 
 	private ReferenceType referenceType = ReferenceType.VARIABLE;
+	
+	private Scope innerScope;
 
 	public Symbol(String name, SymbolType type, T location) {
 		this(name, type, location, ReferenceType.VARIABLE,
@@ -56,6 +58,10 @@ public class Symbol<T extends Node & SymbolDefinition> {
 		setReferenceType(referenceType);
 		actions = new LinkedList<SymbolAction>();
 		actions.add(action);
+	}
+	
+	public void setInnerScope(Scope innerScope){
+		this.innerScope = innerScope;
 	}
 
 	public Symbol(String name, SymbolType type, T location, SymbolAction action) {
@@ -111,6 +117,14 @@ public class Symbol<T extends Node & SymbolDefinition> {
 	@Override
 	public String toString() {
 		return name;
+	}
+	
+	public Scope getInnerScope(){
+		return innerScope;
+	}
+	
+	public List<SymbolAction> getActions(){
+		return actions;
 	}
 
 	public void invokeActions(SymbolTable table, SymbolEvent event, SymbolReference reference)

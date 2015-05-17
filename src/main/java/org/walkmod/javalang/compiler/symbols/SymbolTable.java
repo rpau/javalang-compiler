@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.nio.channels.SelectableChannel;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -34,16 +35,12 @@ public class SymbolTable {
 
 	private Stack<Scope> indexStructure;
 
-	private Stack<SymbolDefinition> definitionsStackTrace;
-
-	
 	private SymbolFactory symbolFactory = null;
 
 	private List<SymbolAction> actions;
 
 	public SymbolTable() {
 		indexStructure = new Stack<Scope>();
-		definitionsStackTrace = new Stack<SymbolDefinition>();
 		setSymbolFactory(new DefaultSymbolFactory());
 	}
 
@@ -51,7 +48,9 @@ public class SymbolTable {
 		this.actions = actions;
 	}
 
-	
+	public Stack<Scope> getScopes() {
+		return indexStructure;
+	}
 
 	public void setSymbolFactory(SymbolFactory symbolFactory) {
 		this.symbolFactory = symbolFactory;
@@ -75,13 +74,13 @@ public class SymbolTable {
 		int j = indexStructure.size() - 1;
 		Symbol<?> result = null;
 		Scope selectedScope = null;
-		int k = definitionsStackTrace.size() - 1;
 		if (symbolScope != null) {
 
 			while (j > 0 && selectedScope == null) {
 				Scope scope = indexStructure.get(j);
-				if (scope.isSymbolDefinitionScope()) {
-					SymbolDefinition sd = definitionsStackTrace.get(k);
+				Symbol<?> rootSymbol = scope.getRootSymbol();
+				if (rootSymbol != null) {
+					SymbolDefinition sd = rootSymbol.getLocation();
 					if (sd instanceof TypeDeclaration
 							|| sd instanceof ObjectCreationExpr) {
 						if (symbolScope.equals(((SymbolDataAware<?>) sd)
@@ -89,29 +88,42 @@ public class SymbolTable {
 							selectedScope = scope;
 						}
 					}
-					if (selectedScope == null) {
-						k--;
-					}
 				}
 				if (selectedScope == null) {
 					j--;
 				}
 			}
 
+			if (selectedScope == null) {
+				Symbol<?> scopeSymbol = indexStructure.get(0).getSymbol(
+						symbolScope.getClazz().getCanonicalName(),
+						ReferenceType.TYPE);
+				if (scopeSymbol != null) {
+					if (scopeSymbol.getInnerScope() != null) {
+						//it is an inner class
+						return scopeSymbol.getInnerScope().getSymbol(
+								symbolName, symbolScope, args, referenceType);
+					}
+				}
+			}
+
 		}
 		if (selectedScope == null) {
+
 			j = indexStructure.size() - 1;
 		}
 
 		while (j >= 0 && result == null) {
 			Scope scope = indexStructure.get(j);
-			if (selectedScope != null && scope.isSymbolDefinitionScope()) {
-				SymbolDefinition sd = definitionsStackTrace.get(k);
+			Symbol<?> rootSymbol = scope.getRootSymbol();
+
+			if (selectedScope != null && rootSymbol != null) {
+				SymbolDefinition sd = rootSymbol.getLocation();
 				if (sd instanceof SymbolDataAware<?>) {
 					symbolScope = (SymbolType) ((SymbolDataAware<?>) sd)
 							.getSymbolData();
 				}
-				k--;
+
 			}
 			result = scope.getSymbol(symbolName, symbolScope, args,
 					referenceType);
@@ -227,15 +239,16 @@ public class SymbolTable {
 		Object definition = symbol.getLocation();
 		if (name.equals("this")
 				&& (definition instanceof ObjectCreationExpr || definition instanceof EnumConstantDeclaration)) {
-			int max = this.definitionsStackTrace.size() - 2;
+
 			int j = indexStructure.size() - 2;
 			String suffixName = null;
 
 			// we upgrade the class counter in the closest inner class
 			while (j > 0 && suffixName == null) {
 				Scope sc = indexStructure.get(j);
-				if (sc.isSymbolDefinitionScope()) {
-					SymbolDefinition sd = definitionsStackTrace.get(max);
+				Symbol<?> rootSymbol = sc.getRootSymbol();
+				if (rootSymbol != null) {
+					SymbolDefinition sd = rootSymbol.getLocation();
 					if (sd instanceof ObjectCreationExpr
 							|| sd instanceof TypeDeclaration) {
 
@@ -247,7 +260,7 @@ public class SymbolTable {
 								((SymbolDataAware<?>) sd).getSymbolData()
 										.getName() + suffixName);
 					}
-					max--;
+
 				}
 				j--;
 			}
@@ -261,83 +274,94 @@ public class SymbolTable {
 				throw new SymbolTableException(e);
 			}
 			return true;
-		}
-		else {
+		} else {
 			return false;
 		}
 
 	}
 
-	public boolean pushSymbol(String symbolName, ReferenceType referenceType,
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location);
-		return pushSymbol(symbol);
+		if (pushSymbol(symbol)) {
+			return symbol;
+		}
+		return null;
 	}
 
-	public boolean pushSymbol(String symbolName, ReferenceType referenceType,
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location, SymbolAction action) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location, action);
-		return pushSymbol(symbol);
+		if (pushSymbol(symbol)) {
+			return symbol;
+		}
+		return null;
 	}
 
-	public boolean pushSymbol(String symbolName, ReferenceType referenceType,
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location, List<SymbolAction> actions) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location, actions);
-		return pushSymbol(symbol);
+		if (pushSymbol(symbol)) {
+			return symbol;
+		}
+		return null;
 	}
 
-	public boolean pushSymbols(Set<String> names, ReferenceType referenceType,
-			SymbolType symbolType, Node location, List<SymbolAction> actions) {
-		boolean allAdded = true;
+	public List<Symbol<?>> pushSymbols(Set<String> names,
+			ReferenceType referenceType, SymbolType symbolType, Node location,
+			List<SymbolAction> actions) {
+		List<Symbol<?>> pushedSymbols = new LinkedList<Symbol<?>>();
+
 		for (String name : names) {
-			allAdded = allAdded && pushSymbol(name, referenceType, symbolType, location, actions);
+			Symbol<?> s = pushSymbol(name, referenceType, symbolType, location,
+					actions);
+			if (s != null) {
+				pushedSymbols.add(s);
+			}
 		}
-		return allAdded;
+		return pushedSymbols;
 	}
 
 	public void popScope() {
-		Scope scope = indexStructure.peek();
+		popScope(false);
+	}
 
-		List<Symbol<?>> symbols = scope.getSymbols();
-		for (Symbol<?> symbol : symbols) {
-			try {
-				invokeActions(scope, symbol, SymbolEvent.POP, null);
-			} catch (Exception e) {
-				throw new SymbolTableException(e);
+	public void popScope(boolean silent) {
+		Scope scope = indexStructure.peek();
+		if (!silent) {
+			List<Symbol<?>> symbols = scope.getSymbols();
+			for (Symbol<?> symbol : symbols) {
+				try {
+					invokeActions(scope, symbol, SymbolEvent.POP, null);
+				} catch (Exception e) {
+					throw new SymbolTableException(e);
+				}
 			}
 		}
 		indexStructure.pop();
-		if (scope.isSymbolDefinitionScope()) {
-			definitionsStackTrace.pop();
-		}
 	}
 
 	public void pushScope() {
 		pushScope(null, null);
 	}
 
-	public void pushScope(SymbolDefinition symbolDefinition) {
-		pushScope(symbolDefinition, null);
+	public void pushScope(Scope scope) {
+		pushScope(scope, null);
 	}
 
 	public void addActionsToScope(List<SymbolAction> actions) {
 		indexStructure.peek().addActions(actions);
 	}
 
-	public void pushScope(SymbolDefinition symbolDefinition,
-			List<SymbolAction> actions) {
-		Scope newScope = new Scope(symbolDefinition != null, actions);
-		indexStructure.push(newScope);
-		if (symbolDefinition != null) {
-			definitionsStackTrace.push(symbolDefinition);
+	public void pushScope(Scope scope, List<SymbolAction> actions) {
+		if (scope == null) {
+			scope = new Scope(actions);
 		}
-	}
+		indexStructure.push(scope);
 
-	public Stack<SymbolDefinition> getDefinitionsStackTrace() {
-		return definitionsStackTrace;
 	}
 
 }

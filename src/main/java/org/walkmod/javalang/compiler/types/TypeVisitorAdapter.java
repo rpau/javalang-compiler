@@ -97,6 +97,7 @@ import org.walkmod.javalang.compiler.reflection.SymbolDataOfMethodReferenceBuild
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
@@ -827,7 +828,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		Expression init = n.getInit();
 		if (init != null) {
-			symbolTable.pushScope(n);
+			Symbol<?> aux = symbolTable.findSymbol(n.getId().getName(), ReferenceType.VARIABLE);
+			Scope innerscope = new Scope();
+			aux.setInnerScope(innerscope);
+			symbolTable.pushScope(innerscope);
 			if (init instanceof LambdaExpr
 					|| init instanceof MethodReferenceExpr) {
 				ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
@@ -883,6 +887,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				.appendPredicate(new InvokableMethodsPredicate())
 				.appendPredicate(new CompatibleArgsPredicate(typeArgs));
 		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+		
 		try {
 			SymbolType st = MethodInspector.findMethodType(
 					symbolTable.getType("this", ReferenceType.VARIABLE),

@@ -38,9 +38,9 @@ import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class LoadTypeDeclarationsAction extends SymbolAction {
 
-	private TypesLoaderVisitor<?> typeTable;
+	private TypesLoaderVisitor typeTable;
 
-	public LoadTypeDeclarationsAction(TypesLoaderVisitor<?> typeTable) {
+	public LoadTypeDeclarationsAction(TypesLoaderVisitor typeTable) {
 		this.typeTable = typeTable;
 	}
 
@@ -51,7 +51,8 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 		if (node instanceof TypeDeclaration
 				|| node instanceof ObjectCreationExpr) {
 			if (symbol.getName().equals("this")) {
-				LoadInheritedNestedClasses<?> vis = new LoadInheritedNestedClasses<Object>(table);
+				LoadInheritedNestedClasses<?> vis = new LoadInheritedNestedClasses<Object>(
+						table);
 				node.accept(vis, null);
 			}
 		}
@@ -71,6 +72,7 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 			loadExtendsOrImplements(n.getExtends());
 			loadExtendsOrImplements(n.getImplements());
 			n.accept(typeTable, null);
+
 		}
 
 		@Override
@@ -83,17 +85,16 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 			n.accept(typeTable, null);
 			loadExtendsOrImplements(n.getImplements());
 		}
-		
+
 		@Override
 		public void visit(EmptyTypeDeclaration n, A ctx) {
 			n.accept(typeTable, null);
 		}
-		
+
 		@Override
 		public void visit(ObjectCreationExpr n, A ctx) {
 			n.accept(typeTable, null);
 		}
-
 
 		private void loadExtendsOrImplements(
 				List<ClassOrInterfaceType> extendsList) {
@@ -110,7 +111,7 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 						Object location = s.getLocation();
 						if (location != null
 								&& location instanceof TypeDeclaration) {
-							
+
 							((TypeDeclaration) location).accept(this, null);
 
 						} else {
@@ -120,11 +121,24 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 							innerClasses.remove(clazz);
 							for (Class<?> innerClass : innerClasses) {
 								try {
-									symbolTable.pushSymbol(innerClass
-											.getSimpleName(),
-											ReferenceType.TYPE, SymbolType
-													.valueOf(innerClass, null),
-											null);
+									Symbol<?> aux = symbolTable.findSymbol(
+											innerClass.getSimpleName(),
+											ReferenceType.TYPE);
+									boolean add = aux == null;
+									if (!add) {
+										Node oldLoc = aux.getLocation();
+										add = (oldLoc == null || !(oldLoc instanceof TypeDeclaration));
+									}
+
+									if (add) {
+
+										symbolTable.pushSymbol(innerClass
+												.getSimpleName(),
+												ReferenceType.TYPE, SymbolType
+														.valueOf(innerClass,
+																null), null);
+
+									}
 								} catch (InvalidTypeException e) {
 									throw new RuntimeException(e);
 								}

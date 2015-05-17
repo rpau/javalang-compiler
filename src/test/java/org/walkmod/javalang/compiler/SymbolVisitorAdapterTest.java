@@ -502,4 +502,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 				.getName());
 
 	}
+
+	@Test
+	public void testInnerClassAttributesReferences() throws Exception {
+		CompilationUnit cu = run("public class A{ public Object foo() { return C.INSTANCE; } private static class C { private static C INSTANCE; }}");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+				.getTypes().get(0).getMembers().get(1);
+		Assert.assertNotNull(type.getMembers());
+		Assert.assertTrue(!type.getMembers().isEmpty());
+	}
 }

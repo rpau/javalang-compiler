@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.walkmod.javalang.JavadocManager;
 import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.ast.PackageDeclaration;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.TypeParameter;
@@ -83,8 +84,9 @@ import org.walkmod.javalang.compiler.actions.LoadTypeParamsAction;
 import org.walkmod.javalang.compiler.actions.ReferencesUpdaterAction;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.providers.SymbolActionProviderAware;
-import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
+import org.walkmod.javalang.compiler.types.ScopeLoader;
 import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
@@ -95,7 +97,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	private ClassLoader classLoader;
 
-	private TypesLoaderVisitor<Map<String, Object>> typeTable;
+	private TypesLoaderVisitor<?> typeTable;
 
 	private TypeVisitorAdapter<A> expressionTypeAnalyzer;
 
@@ -148,25 +150,32 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		symbolTable = new SymbolTable();
 		symbolTable.setActions(actions);
 		symbolTable.pushScope();
-		typeTable = new TypesLoaderVisitor<Map<String, Object>>(symbolTable, actionProvider, actions);
+		typeTable = new TypesLoaderVisitor<A>(symbolTable, actionProvider,
+				actions);
 		symbolResolver = ASTSymbolTypeResolver.getInstance();
 		symbolResolver.setSymbolTable(symbolTable);
 		typeTable.clear();
 		typeTable.setClassLoader(classLoader);
-		
-		typeTable.visit(unit, arg);
-		symbolTable.pushScope();
-		expressionTypeAnalyzer = new TypeVisitorAdapter<A>(symbolTable, this);
 
-		if (unit.getPackage() != null) {
-			unit.getPackage().accept(this, arg);
+		typeTable.visit(unit, null);
+		expressionTypeAnalyzer = new TypeVisitorAdapter<A>(symbolTable, this);
+		ScopeLoader scopeLoader = new ScopeLoader(typeTable,
+				expressionTypeAnalyzer, actionProvider);
+		PackageDeclaration pkg = unit.getPackage();
+		if (pkg != null) {
+			pkg.accept(this, arg);
 		}
 		if (unit.getTypes() != null) {
+
+			for (TypeDeclaration typeDeclaration : unit.getTypes()) {
+				typeDeclaration.accept(scopeLoader, symbolTable);
+			}
+
 			for (TypeDeclaration typeDeclaration : unit.getTypes()) {
 				typeDeclaration.accept(this, arg);
 			}
 		}
-		symbolTable.popScope();
+
 		symbolTable.popScope();
 	}
 
@@ -258,44 +267,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	public void visit(EnumDeclaration n, A arg) {
-		try {
-			symbolTable.pushScope(n);
-			loadThisSymbol(n, arg);
-			super.visit(n, arg);
-			symbolTable.popScope();
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
-		}
-	}
 
-	private void loadThisSymbol(TypeDeclaration declaration, A arg)
-			throws ClassNotFoundException {
-		SymbolType type = symbolTable.getType(declaration.getName(),
-				ReferenceType.TYPE);
-		
-
-		List<SymbolAction> actions = new LinkedList<SymbolAction>();
-		actions.add(new LoadTypeParamsAction());
-		actions.add(new LoadTypeDeclarationsAction(typeTable));
-		actions.add(new LoadFieldDeclarationsAction(actionProvider));
-		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider,
-				expressionTypeAnalyzer));
-
-		if (actionProvider != null) {
-			actions.addAll(actionProvider.getActions(declaration));
-		}
-
-		
-		symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type,
-				declaration, actions);
-		if (declaration instanceof ClassOrInterfaceDeclaration) {
-			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
-				symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
-						new SymbolType(type.getClazz().getSuperclass()), null,
-						(List<SymbolAction>)null);
-			}
-		}
-		declaration.setSymbolData(type);
+		pushScope(n);
+		super.visit(n, arg);
+		symbolTable.popScope();
 
 	}
 
@@ -305,12 +280,12 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		boolean anonymousClass = n.getAnonymousClassBody() != null;
 		if (anonymousClass) {
 			String className = symbolTable
-					.findSymbol("this", ReferenceType.VARIABLE).getType().getName();
+					.findSymbol("this", ReferenceType.VARIABLE).getType()
+					.getName();
 			List<SymbolAction> actions = new LinkedList<SymbolAction>();
 			actions.add(new LoadTypeParamsAction());
 			actions.add(new LoadTypeDeclarationsAction(typeTable));
-			actions.add(new LoadFieldDeclarationsAction(
-					actionProvider));
+			actions.add(new LoadFieldDeclarationsAction(actionProvider));
 			actions.add(new LoadMethodDeclarationsAction(typeTable,
 					actionProvider, expressionTypeAnalyzer));
 
@@ -326,15 +301,18 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 					actions);
 			n.setSymbolData(type);
 
-			symbolTable
-					.pushSymbol("super", ReferenceType.VARIABLE,
-							new SymbolType(type.getClazz().getSuperclass()), n,
-							(List<SymbolAction>)null);
+			symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
+					new SymbolType(type.getClazz().getSuperclass()), n,
+					(List<SymbolAction>) null);
 		}
 	}
 
 	private void loadThisSymbol(EnumConstantDeclaration n, A arg) {
-		SymbolType type = symbolTable.getType(n.getName(), ReferenceType.TYPE);
+		SymbolType parentType = symbolTable.getType("this",
+				ReferenceType.VARIABLE);
+
+		SymbolType type = symbolTable.getType(n.getName(),
+				ReferenceType.ENUM_LITERAL);
 
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(new LoadTypeParamsAction());
@@ -342,23 +320,27 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		actions.add(new LoadFieldDeclarationsAction(actionProvider));
 		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider,
 				expressionTypeAnalyzer));
-		actions.add(new LoadEnumConstantLiteralsAction());
 
 		if (actionProvider != null) {
 			actions.addAll(actionProvider.getActions(n));
 		}
 
-		symbolTable
-				.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
+		symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type.clone(), n,
+				actions);
 		n.setSymbolData(type);
 
-		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, new SymbolType(
-				type.getClazz().getSuperclass()), n, (List<SymbolAction>)null);
+		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, parentType,
+				n.getParentNode(), (List<SymbolAction>) null);
 	}
 
 	@Override
 	public void visit(ConstructorDeclaration n, A arg) {
-		symbolTable.pushScope(n);
+
+		List<Symbol<?>> symbols = symbolTable.getScopes().peek()
+				.getSymbolsByLocation(n);
+		Scope scope = new Scope(symbols.get(0));
+		symbols.get(0).setInnerScope(scope);
+		symbolTable.pushScope(scope);
 		LoadTypeParamsAction action = new LoadTypeParamsAction();
 		action.load(symbolTable, n.getTypeParameters(),
 				(SymbolType) n.getSymbolData());
@@ -370,7 +352,14 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ObjectCreationExpr n, A arg) {
 		List<BodyDeclaration> body = n.getAnonymousClassBody();
 		if (body != null) {
-			symbolTable.pushScope(n);
+
+			SymbolType st = ASTSymbolTypeResolver.getInstance().valueOf(
+					n.getType());
+			Symbol<?> aux = new Symbol<ObjectCreationExpr>("", st, n,
+					ReferenceType.TYPE);
+			Scope scope = new Scope(aux);
+			aux.setInnerScope(scope);
+			symbolTable.pushScope(scope);
 			try {
 				loadThisSymbol(n, arg);
 			} catch (ClassNotFoundException e) {
@@ -381,31 +370,28 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		}
 	}
 
+	public void pushScope(TypeDeclaration n) {
+		Symbol<?> s = symbolTable.findSymbol(n.getName(), ReferenceType.TYPE);
+		Scope scope = s.getInnerScope();
+		symbolTable.pushScope(scope);
+	}
+
 	@Override
 	public void visit(ClassOrInterfaceDeclaration n, A arg) {
 
-		try {
-			symbolTable.pushScope(n);
-			loadThisSymbol(n, arg);
-			super.visit(n, arg);
-			n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
-			symbolTable.popScope();
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
-		}
+		pushScope(n);
+		super.visit(n, arg);
+		symbolTable.popScope();
+
 	}
 
 	@Override
 	public void visit(AnnotationDeclaration n, A arg) {
-		try {
-			symbolTable.pushScope(n);
-			loadThisSymbol(n, arg);
-			super.visit(n, arg);
-			n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
-			symbolTable.popScope();
-		} catch (ClassNotFoundException e) {
-			throw new NoSuchExpressionTypeException(e);
-		}
+
+		pushScope(n);
+		super.visit(n, arg);
+		symbolTable.popScope();
+
 	}
 
 	@Override
@@ -424,7 +410,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			}
 		}
 		if (n.getClassBody() != null) {
-			symbolTable.pushScope(n);
+			Symbol<?> s = symbolTable.findSymbol(n.getName(),
+					ReferenceType.ENUM_LITERAL);
+			s.setInnerScope(new Scope(s));
+			symbolTable.pushScope(s.getInnerScope());
 			loadThisSymbol(n, arg);
 			for (BodyDeclaration member : n.getClassBody()) {
 				member.accept(this, arg);
@@ -436,7 +425,11 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(VariableDeclarator n, A arg) {
 
 		if (n.getInit() != null) {
-			symbolTable.pushScope(n);
+			Symbol<?> aux = symbolTable.findSymbol(n.getId().getName(),
+					ReferenceType.VARIABLE);
+			Scope scope = new Scope();
+			aux.setInnerScope(scope);
+			symbolTable.pushScope(scope);
 			n.getInit().accept(expressionTypeAnalyzer, arg);
 			symbolTable.popScope();
 		}
@@ -490,7 +483,11 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(MethodDeclaration n, A arg) {
-		symbolTable.pushScope(n);
+		List<Symbol<?>> symbols = symbolTable.getScopes().peek()
+				.getSymbolsByLocation(n);
+		Scope scope = new Scope(symbols.get(0));
+		symbols.get(0).setInnerScope(scope);
+		symbolTable.pushScope(scope);
 		List<TypeParameter> typeParams = n.getTypeParameters();
 		LoadTypeParamsAction action = new LoadTypeParamsAction();
 		action.load(symbolTable, typeParams, (SymbolType) n.getSymbolData());
@@ -594,14 +591,12 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		if (n.getScope() != null) {
 			n.getScope().accept(this, arg);
 			SymbolType scopeType = (SymbolType) n.getScope().getSymbolData();
-			SymbolType thisType = symbolTable.getType("this",
+
+			lookupSymbol(n.getField(), arg, n, scopeType,
 					ReferenceType.VARIABLE);
 
-			if (thisType != null && thisType.equals(scopeType)) {
-				lookupSymbol(n.getField(), arg, n, scopeType,
-						ReferenceType.VARIABLE);
-			}
 		} else {
+
 			lookupSymbol(n.getField(), arg, n, null, ReferenceType.VARIABLE);
 		}
 	}

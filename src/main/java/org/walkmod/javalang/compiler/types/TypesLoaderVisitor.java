@@ -46,12 +46,25 @@ import org.walkmod.javalang.compiler.actions.LoadStaticImportsAction;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
+/**
+ * Inserts into the symbol table the set of types that can be used from an
+ * specific class. These types can be resolved through the package, import
+ * declarations or inner classes.
+ * 
+ * Each type is loaded into the symbol table for all possible simple names that
+ * can solve this type.
+ * 
+ * 
+ * @author rpau
+ *
+ */
 public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 	private String contextName = null;
@@ -120,7 +133,10 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		return classLoader;
 	}
 
-	private String getContext(TypeDeclaration type) {
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private String getContext(TypeDeclaration type, T context) {
+
+		org.walkmod.javalang.compiler.symbols.ReferenceType TYPE = org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE;
 
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 
@@ -143,38 +159,70 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				if (packageName != null && packageName.equals(contextName)) {
 					name = contextName + "." + name;
 				} else {
-					name = contextName/* .replace("$", ".") */+ "$" + name;
+					name = contextName + "$" + name;
 				}
 			}
 		}
 		st = new SymbolType(name);
 		type.setSymbolData(st);
+
 		String keyName = getKeyName(name, false);
 
-		Symbol<?> oldType = symbolTable.findSymbol(keyName,
-				org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
+		Symbol oldSymbol = symbolTable.findSymbol(keyName, TYPE);
+		Symbol added = null;
+		if (oldSymbol == null || !oldSymbol.getType().equals(st)) {
 
-		if (oldType == null || !oldType.getType().equals(st)) {
-			symbolTable.pushSymbol(getKeyName(name, false),
-					org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-					st, type, actions);
+			added = symbolTable.pushSymbol(keyName, TYPE, st, type, actions);
+
+			added.setInnerScope(new Scope(added));
+
 		} else {
-			if (!(oldType.getLocation() instanceof ImportDeclaration)) {
+			Node location = oldSymbol.getLocation();
+			if (location == null || location instanceof ImportDeclaration) {
+				oldSymbol.setLocation(type);
+				oldSymbol.setInnerScope(new Scope(oldSymbol));
+				oldSymbol.setType(st);
+				added = oldSymbol;
+			} else {
 				if (startingNode != null && startingNode != type) {
 
 					String preffix = ((SymbolDataAware<?>) startingNode)
 							.getSymbolData().getName();
-					symbolTable
-							.pushSymbol(
-									getKeyName(name
-											.substring(preffix.length() + 1),
-											false),
-									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-									st, type, actions);
+					String simpleName = getKeyName(
+							name.substring(preffix.length() + 1), false);
+
+					Symbol inheritedInnerClass = symbolTable.getScopes().peek()
+							.getSymbol(simpleName, TYPE);
+					if (inheritedInnerClass != null) {
+						// we override the definition
+						added = inheritedInnerClass;
+						added.setLocation(type);
+						added.setInnerScope(oldSymbol.getInnerScope());
+						added.setType(st);
+
+					} else {
+						added = symbolTable.pushSymbol(
+								getKeyName(
+										name.substring(preffix.length() + 1),
+										false), TYPE, st, type, actions);
+						added.setInnerScope(oldSymbol.getInnerScope());
+					}
+
 				}
 			}
-		}
 
+		}
+		if (added != null && !name.matches(".*\\$\\d.*")) {
+			String fullName = name.replaceAll("\\$", ".");
+			Symbol importedPkgSymbol = symbolTable.findSymbol(fullName, TYPE);
+			if (importedPkgSymbol == null) {
+				Symbol<?> aux = symbolTable.pushSymbol(fullName, TYPE,
+						added.getType(), type);
+				aux.setInnerScope(added.getInnerScope());
+			} else if (importedPkgSymbol.getLocation() == null) {
+				importedPkgSymbol.setInnerScope(added.getInnerScope());
+			}
+		}
 		return name;
 	}
 
@@ -184,7 +232,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 			startingNode = type;
 			restore = true;
 		}
-		String name = getContext(type);
+		String name = getContext(type, context);
 		String oldCtx = contextName;
 		contextName = name;
 		List<BodyDeclaration> members = type.getMembers();
@@ -201,7 +249,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 			startingNode = type;
 			restore = true;
 		}
-		String name = getContext(type);
+		String name = getContext(type, context);
 		String oldCtx = contextName;
 		contextName = name;
 		List<BodyDeclaration> members = type.getMembers();
@@ -218,7 +266,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 			startingNode = type;
 			restore = true;
 		}
-		String name = getContext(type);
+		String name = getContext(type, context);
 		String oldCtx = contextName;
 		contextName = name;
 		List<BodyDeclaration> members = type.getMembers();
@@ -380,11 +428,12 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				if (!Modifier.isPrivate(clazz.getModifiers())) {
 					String keyName = getKeyName(internalName, imported);
 					SymbolType st = new SymbolType(clazz);
-					if (symbolTable
+					Symbol<?> pushedSymbol = symbolTable
 							.pushSymbol(
 									keyName,
 									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-									st, node, actions)) {
+									st, node, actions);
+					if (pushedSymbol != null) {
 						loadNestedClasses(clazz, imported, node);
 					}
 
@@ -545,8 +594,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		startingNode = null;
 	}
 
-	public Class<?> loadClass(Type t, SymbolTable st)
-			throws ClassNotFoundException {
+	public Class<?> loadClass(Type t) throws ClassNotFoundException {
 
 		Class<?> result = ASTSymbolTypeResolver.getInstance().valueOf(t)
 				.getClazz();

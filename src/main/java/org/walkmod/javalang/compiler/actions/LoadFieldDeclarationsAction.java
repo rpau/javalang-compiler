@@ -23,6 +23,7 @@ import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
@@ -56,7 +57,8 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 		if (symbol.getName().equals("this")) {
 			Node node = symbol.getLocation();
 			if (node instanceof TypeDeclaration
-					|| node instanceof ObjectCreationExpr) {
+					|| node instanceof ObjectCreationExpr
+					|| node instanceof EnumConstantDeclaration) {
 				node.accept(new FieldsPopulator<Object>(table), null);
 			}
 
@@ -74,6 +76,11 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 		@Override
 		public void visit(ObjectCreationExpr o, T ctx) {
 			loadFields(o.getAnonymousClassBody());
+		}
+		
+		@Override
+		public void visit(EnumConstantDeclaration o, T ctx) {
+			loadFields(o.getClassBody());
 		}
 
 		@Override

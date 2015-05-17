@@ -275,4 +275,18 @@ public class ASTSymbolTypeResolver extends
 		return parserType.accept(this, tps);
 	}
 
+	@Override
+	public SymbolType[] valueOf(List<Type> nodes) {
+		if(nodes == null){
+			return new SymbolType[0];
+		}
+		SymbolType[] result = new SymbolType[nodes.size()];
+		int i = 0;
+		for(Type node: nodes){
+			result[i] = valueOf(node);
+			i++;
+		}
+		return result;
+	}
+
 }
