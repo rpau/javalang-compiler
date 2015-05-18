@@ -225,7 +225,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		if (oldSymbol == null || !oldSymbol.getType().equals(st)) {
 
 			added = symbolTable.pushSymbol(keyName, ReferenceType.TYPE, st,
-					type, actions);
+					type, actions, true);
 			added.setInnerScope(new Scope(added));
 
 		} else {
@@ -241,19 +241,10 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 					String innerClassName = getInnerName(st);
 
-					Symbol inheritedInnerClass = symbolTable.getScopes().peek()
-							.getSymbol(innerClassName, ReferenceType.TYPE);
-					if (inheritedInnerClass != null) {
-						// we override the definition
-						added = inheritedInnerClass;
-						overrideSymbol(added, type, st,
-								oldSymbol.getInnerScope());
-
-					} else {
-						added = symbolTable.pushSymbol(innerClassName,
-								ReferenceType.TYPE, st, type, actions);
-						added.setInnerScope(oldSymbol.getInnerScope());
-					}
+					added = symbolTable.pushSymbol(innerClassName,
+							ReferenceType.TYPE, st, type, actions, true);
+					added.setInnerScope(oldSymbol.getInnerScope());
+					
 
 				}
 			}
@@ -364,10 +355,11 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 			} else {
 				String typeName = id.getName().toString();
 				QualifiedNameExpr type = (QualifiedNameExpr) id.getName();
-
+				
+				
 				symbolTable.pushSymbol(typeName, ReferenceType.TYPE,
 						new SymbolType(type.getQualifier().toString()), id,
-						actions);
+						actions, true);
 			}
 		} else {
 			if (classLoader != null) {
@@ -378,7 +370,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				} else {
 
 					symbolTable.pushSymbol(typeName, ReferenceType.TYPE,
-							new SymbolType(typeName), id, actions);
+							new SymbolType(typeName), id, actions, true);
 				}
 
 			}
@@ -397,7 +389,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 							.pushSymbol(
 									getSymbolName(fullName, imported),
 									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-									st, node);
+									st, node, true);
 				}
 			}
 
@@ -417,7 +409,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 							.pushSymbol(
 									getSymbolName(name, imported),
 									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-									st, node, actions);
+									st, node, actions, true);
 
 					if (clazz.isMemberClass()) {
 						String cname = clazz.getCanonicalName();
@@ -426,7 +418,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 									.pushSymbol(
 											cname,
 											org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-											st, node, actions);
+											st, node, actions, true);
 
 							Package pkg = clazz.getPackage();
 							if (pkg != null) {
@@ -436,7 +428,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 											.pushSymbol(
 													clazz.getSimpleName(),
 													org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-													st, node, actions);
+													st, node, actions, true);
 								}
 							}
 						}
@@ -479,7 +471,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 							.pushSymbol(
 									keyName,
 									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-									st, node, actions);
+									st, node, actions, true);
 					if (pushedSymbol != null) {
 						loadNestedClasses(clazz, imported, node);
 					}
@@ -518,7 +510,12 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 				name = name.replaceAll("/", ".");
 				name = name.substring(0, name.length() - 6);
-				addType(name, false, null, actions);
+
+				String[] split = name.split("\\$\\d");
+				if (split.length == 1) {
+					addType(name, false, null, actions);
+				}
+			
 			}
 		}
 	}
@@ -556,9 +553,12 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 							if (!"".equals(packageName)) {
 								name = packageName + "." + simpleName;
 							}
-							if (!resource.getName().contains("$")) {
+							
+							String[] split = resource.getName().split("\\$\\d");
+							if (split.length == 1) {
 								addType(name, false, null, actions);
 							}
+							
 						}
 					}
 				}

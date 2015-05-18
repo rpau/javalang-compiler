@@ -41,13 +41,13 @@ public class Scope {
 	public Scope(Symbol<?> rootSymbol) {
 		this.rootSymbol = rootSymbol;
 	}
-	
+
 	public Scope(List<SymbolAction> actions) {
 		this.actions = actions;
-		
+
 	}
-	
-	public Symbol<?> getRootSymbol(){
+
+	public Symbol<?> getRootSymbol() {
 		return rootSymbol;
 	}
 
@@ -61,17 +61,13 @@ public class Scope {
 		return result;
 	}
 
-	public Symbol<?> getSymbol(String name) {
-		return getSymbol(name, null, ReferenceType.VARIABLE);
+	public Symbol<?> findSymbol(String name) {
+		return findSymbol(name, null, ReferenceType.VARIABLE);
 	}
 
-	public Symbol<?> getSymbol(String name, ReferenceType... referenceType) {
+	public Symbol<?> findSymbol(String name, ReferenceType... referenceType) {
 		List<Symbol<?>> list = symbols.get(name);
-		if (list == null) {
-
-			return null;
-
-		} else {
+		if (list != null) {
 			Iterator<Symbol<?>> it = list.iterator();
 			while (it.hasNext()) {
 				Symbol<?> s = it.next();
@@ -86,10 +82,10 @@ public class Scope {
 						return s;
 					}
 				}
-
 			}
-			return null;
 		}
+
+		return null;
 	}
 
 	public List<Symbol<?>> getSymbols(String name) {
@@ -137,7 +133,7 @@ public class Scope {
 	public Symbol<?> getSymbol(String name, SymbolType scope,
 			SymbolType[] args, ReferenceType... referenceType) {
 		if (args == null) {
-			return getSymbol(name, referenceType);
+			return findSymbol(name, referenceType);
 		} else {
 			List<Symbol<?>> values = symbols.get(name);
 			if (values != null) {
@@ -150,6 +146,7 @@ public class Scope {
 					}
 				}
 			}
+
 		}
 		return null;
 	}
@@ -178,10 +175,27 @@ public class Scope {
 
 	public <T extends Node & SymbolDefinition> boolean addSymbol(
 			Symbol<T> symbol) {
+		return addSymbol(symbol, false);
+	}
+
+	public <T extends Node & SymbolDefinition> boolean addSymbol(
+			Symbol<T> symbol, boolean override) {
 		List<Symbol<?>> values = symbols.get(symbol.getName());
 		if (values == null) {
 			values = new LinkedList<Symbol<?>>();
 			symbols.put(symbol.getName(), values);
+		} else {
+			if (override) {
+				Iterator<Symbol<?>> it = values.iterator();
+				while (it.hasNext()) {
+					Symbol<?> value = it.next();
+					if (!value.getReferenceType().equals(ReferenceType.METHOD)
+							&& value.getReferenceType().equals(
+									symbol.getReferenceType())) {
+						it.remove();
+					}
+				}
+			}
 		}
 		return values.add(symbol);
 	}
@@ -197,7 +211,6 @@ public class Scope {
 			this.actions.addAll(actions);
 		}
 	}
-
 
 	public int getInnerAnonymousClassCounter() {
 		return innerAnonymousClassCounter;

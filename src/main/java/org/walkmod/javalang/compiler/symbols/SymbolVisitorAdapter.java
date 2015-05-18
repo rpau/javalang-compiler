@@ -83,7 +83,6 @@ import org.walkmod.javalang.compiler.providers.SymbolActionProviderAware;
 import org.walkmod.javalang.compiler.types.ScopeLoader;
 import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
-import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
@@ -371,7 +370,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		if (n.getInit() != null) {
 			Symbol<?> aux = symbolTable.findSymbol(n.getId().getName(),
 					ReferenceType.VARIABLE);
-			Scope scope = new Scope();
+			Scope scope = new Scope(aux);
 			aux.setInnerScope(scope);
 			symbolTable.pushScope(scope);
 			n.getInit().accept(expressionTypeAnalyzer, arg);

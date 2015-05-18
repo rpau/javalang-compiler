@@ -10,6 +10,7 @@ import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
+import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.LoadEnumConstantLiteralsAction;
 import org.walkmod.javalang.compiler.actions.LoadFieldDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadMethodDeclarationsAction;
@@ -42,7 +43,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 	private Scope process(TypeDeclaration declaration, SymbolTable symbolTable) {
 		Symbol<?> sym = symbolTable.findSymbol(declaration.getName(),
 				ReferenceType.TYPE);
-		
+
 		symbolTable.pushScope(sym.getInnerScope());
 
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
@@ -57,9 +58,15 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				declaration, actions);
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
-				symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
-						new SymbolType(sym.getType().getClazz().getSuperclass()), null,
+				Symbol<?> superSymbol = symbolTable.pushSymbol("super",
+						ReferenceType.VARIABLE, new SymbolType(sym.getType()
+								.getClazz().getSuperclass()), null,
 						(List<SymbolAction>) null);
+				Symbol<?> superType = symbolTable.findSymbol(superSymbol
+						.getType().getClazz().getCanonicalName(), ReferenceType.TYPE);
+				if (superType != null) {
+					superSymbol.setInnerScope(superType.getInnerScope());
+				}
 			}
 		}
 		List<BodyDeclaration> members = declaration.getMembers();
@@ -71,13 +78,13 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 			}
 		}
 
-		
 		symbolTable.popScope(true);
 		return sym.getInnerScope();
 	}
 
 	@Override
 	public Scope visit(ClassOrInterfaceDeclaration n, SymbolTable symbolTable) {
+		
 		return process(n, symbolTable);
 
 	}
@@ -91,9 +98,9 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 	public Scope visit(AnnotationDeclaration n, SymbolTable symbolTable) {
 		return process(n, symbolTable);
 	}
-	
+
 	@Override
-	public Scope visit(ObjectCreationExpr n, SymbolTable symbolTable){
+	public Scope visit(ObjectCreationExpr n, SymbolTable symbolTable) {
 		List<BodyDeclaration> body = n.getAnonymousClassBody();
 		if (body != null) {
 
@@ -110,7 +117,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				String className = symbolTable
 						.findSymbol("this", ReferenceType.VARIABLE).getType()
 						.getName();
-				
+
 				List<SymbolAction> actions = new LinkedList<SymbolAction>();
 				actions.add(new LoadTypeParamsAction());
 				actions.add(new LoadTypeDeclarationsAction(typeTable));
@@ -132,26 +139,26 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
 						new SymbolType(type.getClazz().getSuperclass()), n,
 						(List<SymbolAction>) null);
-				for(BodyDeclaration member : members){
-					if(member instanceof TypeDeclaration){
-						process((TypeDeclaration)member, symbolTable);
+				for (BodyDeclaration member : members) {
+					if (member instanceof TypeDeclaration) {
+						process((TypeDeclaration) member, symbolTable);
 					}
 				}
-				
+
 			}
-			
+
 			symbolTable.popScope(true);
 			return scope;
 		}
 		return null;
 	}
-	
-	public Scope visit(EnumConstantDeclaration n, SymbolTable symbolTable){
+
+	public Scope visit(EnumConstantDeclaration n, SymbolTable symbolTable) {
 		Symbol<?> s = symbolTable.findSymbol(n.getName(),
 				ReferenceType.ENUM_LITERAL);
 		s.setInnerScope(new Scope(s));
 		symbolTable.pushScope(s.getInnerScope());
-		
+
 		SymbolType parentType = symbolTable.getType("this",
 				ReferenceType.VARIABLE);
 
@@ -175,7 +182,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, parentType,
 				n.getParentNode(), (List<SymbolAction>) null);
-		
+
 		symbolTable.popScope(true);
 		return s.getInnerScope();
 	}

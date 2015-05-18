@@ -95,12 +95,14 @@ public class RemoveUnusedSymbolsProvider implements SymbolActionProvider {
 	private void buildActionList(Node n, List<? extends Node> children) {
 
 		List<? extends Node> lastsiblings = siblings.peek();
-		while (!lastsiblings.contains(n)) {
+		while (!lastsiblings.contains(n) && !siblings.isEmpty()) {
 			siblings.pop();
 			lastsiblings = siblings.peek();
 		}
+		
 		RemoveUnusedSymbolsAction unusedSymbols = new RemoveUnusedSymbolsAction(
 				siblings.peek());
+		
 		actions = new LinkedList<SymbolAction>();
 		actions.add(unusedSymbols);
 		siblings.push(children);

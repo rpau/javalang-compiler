@@ -829,7 +829,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		Expression init = n.getInit();
 		if (init != null) {
 			Symbol<?> aux = symbolTable.findSymbol(n.getId().getName(), ReferenceType.VARIABLE);
-			Scope innerscope = new Scope();
+			Scope innerscope = new Scope(aux);
 			aux.setInnerScope(innerscope);
 			symbolTable.pushScope(innerscope);
 			if (init instanceof LambdaExpr

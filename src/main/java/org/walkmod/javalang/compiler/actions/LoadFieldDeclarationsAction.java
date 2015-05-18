@@ -77,7 +77,7 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 		public void visit(ObjectCreationExpr o, T ctx) {
 			loadFields(o.getAnonymousClassBody());
 		}
-		
+
 		@Override
 		public void visit(EnumConstantDeclaration o, T ctx) {
 			loadFields(o.getClassBody());
@@ -85,15 +85,15 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 
 		@Override
 		public void visit(ClassOrInterfaceDeclaration n, T ctx) {
-			loadFields(n.getMembers());
 			loadExtendsOrImplements(n.getExtends());
 			loadExtendsOrImplements(n.getImplements());
+			loadFields(n.getMembers());
 		}
 
 		@Override
 		public void visit(EnumDeclaration n, T ctx) {
-			loadFields(n.getMembers());
 			loadExtendsOrImplements(n.getImplements());
+			loadFields(n.getMembers());
 		}
 
 		@Override
@@ -124,11 +124,24 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 									.getNonPrivateFields(clazz);
 							for (Field field : fields) {
 								try {
-									table.pushSymbol(field.getName(),
-											ReferenceType.VARIABLE, SymbolType
-													.valueOf(field
-															.getGenericType(),
-															null), null);
+									Symbol<?> previousSymbol = table
+											.getScopes()
+											.peek()
+											.findSymbol(field.getName(),
+													ReferenceType.VARIABLE);
+									if (previousSymbol == null) {
+
+										table.pushSymbol(field.getName(),
+												ReferenceType.VARIABLE,
+												SymbolType.valueOf(
+														field.getGenericType(),
+														null), null);
+									} else {
+										previousSymbol.setType(SymbolType
+												.valueOf(
+														field.getGenericType(),
+														null));
+									}
 								} catch (InvalidTypeException e) {
 									throw new RuntimeException(e);
 								}
@@ -139,6 +152,7 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 			}
 		}
 
+		@SuppressWarnings("unchecked")
 		public void loadFields(List<BodyDeclaration> members) {
 
 			if (members != null) {
@@ -149,9 +163,20 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 						FieldDeclaration fd = (FieldDeclaration) member;
 						Type type = fd.getType();
 						List<SymbolAction> actions = null;
-						if (actionProvider != null) {
-							actions = actionProvider.getActions(fd);
+
+						Symbol<?> root = table.getScopes().peek()
+								.getRootSymbol();
+						if (root != null) {
+							Node location = root.getLocation();
+							if (location != null) {
+								if (location == member.getParentNode()) {
+									if (actionProvider != null) {
+										actions = actionProvider.getActions(fd);
+									}
+								}
+							}
 						}
+
 						SymbolType resolvedType = ASTSymbolTypeResolver
 								.getInstance().valueOf(type);
 
@@ -166,9 +191,22 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 								symType.setArrayCount(var.getId()
 										.getArrayCount());
 							}
-							table.pushSymbol(var.getId().getName(),
-									ReferenceType.VARIABLE, symType, var,
-									actions);
+							@SuppressWarnings("rawtypes")
+							Symbol previousSymbol = table
+									.getScopes()
+									.peek()
+									.findSymbol(var.getId().getName(),
+											ReferenceType.VARIABLE);
+
+							if (previousSymbol == null) {
+
+								table.pushSymbol(var.getId().getName(),
+										ReferenceType.VARIABLE, symType, var,
+										actions);
+							} else {
+								previousSymbol.setType(symType);
+								previousSymbol.setLocation(var);
+							}
 						}
 
 					}

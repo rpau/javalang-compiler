@@ -520,7 +520,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	
 	@Test
 	public void testScopes() throws Exception{
-		CompilationUnit cu = run("public class Foo { private int c; class A { int c; } class B extends A { public int x = c; }}");
+		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private int c; class A { int c; } class B extends A { public int x = c; }}");
 		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
 				.getTypes().get(0);
 		Assert.assertEquals(2, type.getMembers().size());

@@ -83,9 +83,10 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	}
 
 	public SymbolType(Class<?> clazz) {
-		setParameterizedTypes(resolveGenerics(clazz));
+
 		setClazz(clazz);
 		setName(clazz.getName());
+		setParameterizedTypes(resolveGenerics(clazz));
 		setArrayCount(resolveDimmensions(clazz));
 	}
 
@@ -109,16 +110,18 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		List<SymbolType> result = null;
 		TypeVariable<?>[] typeParams = clazz.getTypeParameters();
 		if (typeParams.length > 0) {
-			
+
 			for (TypeVariable<?> td : typeParams) {
 				Type[] bounds = td.getBounds();
 				for (int i = 0; i < bounds.length; i++) {
-					if (bounds[i] instanceof Class) {
-						SymbolType st = new SymbolType((Class<?>) bounds[i]);
-						if(result == null){
+					try {
+						SymbolType st = valueOf(bounds[i], null);
+						if (result == null) {
 							result = new LinkedList<SymbolType>();
 						}
 						result.add(st);
+					} catch (InvalidTypeException e) {
+						throw new RuntimeException(e);
 					}
 				}
 			}
@@ -516,19 +519,18 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public Constructor<?> getConstructor() {
 		return constructor;
 	}
-	
-	public boolean belongsToAnonymousClass(){
+
+	public boolean belongsToAnonymousClass() {
 		return belongsToAnonymous(getClazz());
 	}
-	
-	private boolean belongsToAnonymous(Class<?> clazz){
-		if (clazz == null || clazz .equals(Object.class)){
+
+	private boolean belongsToAnonymous(Class<?> clazz) {
+		if (clazz == null || clazz.equals(Object.class)) {
 			return false;
 		}
-		if(clazz.isAnonymousClass()){
+		if (clazz.isAnonymousClass()) {
 			return true;
-		}
-		else{
+		} else {
 			return belongsToAnonymous(clazz.getDeclaringClass());
 		}
 	}

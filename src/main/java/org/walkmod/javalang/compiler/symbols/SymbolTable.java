@@ -94,7 +94,7 @@ public class SymbolTable {
 			}
 
 			if (selectedScope == null) {
-				Symbol<?> scopeSymbol = indexStructure.get(0).getSymbol(
+				Symbol<?> scopeSymbol = indexStructure.get(0).findSymbol(
 						symbolScope.getClazz().getCanonicalName(),
 						ReferenceType.TYPE);
 				if (scopeSymbol != null) {
@@ -227,8 +227,12 @@ public class SymbolTable {
 		}
 		return 0;
 	}
+	
+	public boolean pushSymbol(Symbol<?> symbol){
+		return pushSymbol(symbol, false);
+	}
 
-	public boolean pushSymbol(Symbol<?> symbol) {
+	public boolean pushSymbol(Symbol<?> symbol, boolean override) {
 		Scope lastScope = indexStructure.peek();
 		String name = symbol.getName().toString();
 
@@ -267,7 +271,7 @@ public class SymbolTable {
 
 		}
 		// if not, we add it
-		if (lastScope.addSymbol(symbol)) {
+		if (lastScope.addSymbol(symbol, override)) {
 			try {
 				invokeActions(lastScope, symbol, SymbolEvent.PUSH, null);
 			} catch (Exception e) {
@@ -282,9 +286,14 @@ public class SymbolTable {
 
 	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location) {
+		return pushSymbol(symbolName, referenceType, symbolType, location, false);
+	}
+	
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
+			SymbolType symbolType, Node location, boolean override){
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location);
-		if (pushSymbol(symbol)) {
+		if (pushSymbol(symbol, override)) {
 			return symbol;
 		}
 		return null;
@@ -294,7 +303,7 @@ public class SymbolTable {
 			SymbolType symbolType, Node location, SymbolAction action) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location, action);
-		if (pushSymbol(symbol)) {
+		if (pushSymbol(symbol, false)) {
 			return symbol;
 		}
 		return null;
@@ -302,9 +311,14 @@ public class SymbolTable {
 
 	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location, List<SymbolAction> actions) {
+		return pushSymbol(symbolName, referenceType, symbolType, location, actions, false);
+	}
+	
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
+			SymbolType symbolType, Node location, List<SymbolAction> actions, boolean override) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location, actions);
-		if (pushSymbol(symbol)) {
+		if (pushSymbol(symbol, override)) {
 			return symbol;
 		}
 		return null;
