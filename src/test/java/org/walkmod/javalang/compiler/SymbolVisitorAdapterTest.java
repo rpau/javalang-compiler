@@ -511,19 +511,32 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(type.getMembers());
 		Assert.assertTrue(!type.getMembers().isEmpty());
 	}
-	
+
 	@Test
-	public void testInnerClassInsideAnnonymousClass() throws Exception{
+	public void testInnerClassInsideAnnonymousClass() throws Exception {
 		run("public class A{ public Object foo() {  A a = new A() { public Object foo() { return new B(); } class B{ int c; }}; return a; }}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testScopes() throws Exception{
+	public void testScopes() throws Exception {
 		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private int c; class A { int c; } class B extends A { public int x = c; }}");
 		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
 				.getTypes().get(0);
 		Assert.assertEquals(2, type.getMembers().size());
 	}
+
+	@Test
+	public void testTypeDeclarationStmts() throws Exception {
+		run("public class A { public Object foo() { class B { int c = 0; int x = c;} return new B(); }}");
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testTypeDeclarationStmtsWithAnonymousClass() throws Exception {
+		run("public class A { public Object foo() { class B { public A get() {return new A() {public String toString(){ return \"hello\";}};}} return new B(); }}");
+		Assert.assertTrue(true);
+	}
 	
+
 }

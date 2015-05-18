@@ -70,6 +70,7 @@ import org.walkmod.javalang.ast.stmt.SwitchEntryStmt;
 import org.walkmod.javalang.ast.stmt.SwitchStmt;
 import org.walkmod.javalang.ast.stmt.SynchronizedStmt;
 import org.walkmod.javalang.ast.stmt.ThrowStmt;
+import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
 import org.walkmod.javalang.ast.stmt.WhileStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
@@ -295,6 +296,22 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			member.accept(this, arg);
 		}
 		symbolTable.popScope();
+	}
+
+	@Override
+	public void visit(TypeDeclarationStmt n, A arg) {
+		Symbol<?> s = symbolTable.pushSymbol(n.getTypeDeclaration().getName(),
+				ReferenceType.TYPE,
+				new SymbolType(symbolTable.generateAnonymousClass()
+						+ n.getTypeDeclaration().getName()), n);
+		n.getTypeDeclaration().setSymbolData(s.getType());
+		s.setInnerScope(new Scope(s));
+		ScopeLoader scopeLoader = new ScopeLoader(typeTable,
+				expressionTypeAnalyzer, actionProvider);
+		Scope scope = n.getTypeDeclaration().accept(scopeLoader, symbolTable);
+		s.setInnerScope(scope);
+		n.setSymbolData(s.getType());
+		super.visit(n, arg);
 	}
 
 	@Override

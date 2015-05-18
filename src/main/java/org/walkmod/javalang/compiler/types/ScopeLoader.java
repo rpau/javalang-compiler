@@ -10,7 +10,6 @@ import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
-import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.LoadEnumConstantLiteralsAction;
 import org.walkmod.javalang.compiler.actions.LoadFieldDeclarationsAction;
 import org.walkmod.javalang.compiler.actions.LoadMethodDeclarationsAction;
@@ -63,7 +62,8 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 								.getClazz().getSuperclass()), null,
 						(List<SymbolAction>) null);
 				Symbol<?> superType = symbolTable.findSymbol(superSymbol
-						.getType().getClazz().getCanonicalName(), ReferenceType.TYPE);
+						.getType().getClazz().getCanonicalName(),
+						ReferenceType.TYPE);
 				if (superType != null) {
 					superSymbol.setInnerScope(superType.getInnerScope());
 				}
@@ -84,7 +84,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 	@Override
 	public Scope visit(ClassOrInterfaceDeclaration n, SymbolTable symbolTable) {
-		
+
 		return process(n, symbolTable);
 
 	}
@@ -153,6 +153,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 		return null;
 	}
 
+	@Override
 	public Scope visit(EnumConstantDeclaration n, SymbolTable symbolTable) {
 		Symbol<?> s = symbolTable.findSymbol(n.getName(),
 				ReferenceType.ENUM_LITERAL);

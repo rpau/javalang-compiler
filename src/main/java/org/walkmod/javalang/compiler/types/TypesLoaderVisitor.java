@@ -157,10 +157,15 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 	}
 
 	private SymbolType buildSymbolType(TypeDeclaration type) {
+
+		
+		SymbolType st = (SymbolType) type.getSymbolData();
+		if (st != null) {
+			return st;
+		}
 		String name = type.getName();
 		Node node = type.getParentNode();
-		SymbolType st = null;
-
+		
 		if (node instanceof SymbolDataAware<?>) {
 			st = (SymbolType) ((SymbolDataAware<?>) node).getSymbolData();
 

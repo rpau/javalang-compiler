@@ -27,7 +27,7 @@ import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
-import org.walkmod.javalang.compiler.types.TypeSymbolNotFound;
+import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
 import org.walkmod.javalang.exceptions.SymbolTableException;
 
 public class SymbolTable {
@@ -227,48 +227,50 @@ public class SymbolTable {
 		}
 		return 0;
 	}
-	
-	public boolean pushSymbol(Symbol<?> symbol){
+
+	public boolean pushSymbol(Symbol<?> symbol) {
 		return pushSymbol(symbol, false);
+	}
+
+	public String generateAnonymousClass() {
+		int j = indexStructure.size() - 2;
+		String suffixName = null;
+
+		// we upgrade the class counter in the closest inner class
+		while (j > 0 && suffixName == null) {
+			Scope sc = indexStructure.get(j);
+			Symbol<?> rootSymbol = sc.getRootSymbol();
+			if (rootSymbol != null) {
+				SymbolDefinition sd = rootSymbol.getLocation();
+				if (sd instanceof ObjectCreationExpr
+						|| sd instanceof TypeDeclaration
+						|| sd instanceof TypeDeclarationStmt) {
+
+					sc.incrInnerAnonymousClassCounter();
+
+					int num = sc.getInnerAnonymousClassCounter();
+					suffixName = "$" + num;
+					return ((SymbolDataAware<?>) sd).getSymbolData().getName()
+							+ suffixName;
+				}
+
+			}
+			j--;
+		}
+		return null;
+
 	}
 
 	public boolean pushSymbol(Symbol<?> symbol, boolean override) {
 		Scope lastScope = indexStructure.peek();
 		String name = symbol.getName().toString();
 
-		if (symbol.getType().getName() == null) {
-			throw new TypeSymbolNotFound("Null symbol type resoltion for "
-					+ name);
-		}
 		Object definition = symbol.getLocation();
+
 		if (name.equals("this")
 				&& (definition instanceof ObjectCreationExpr || definition instanceof EnumConstantDeclaration)) {
 
-			int j = indexStructure.size() - 2;
-			String suffixName = null;
-
-			// we upgrade the class counter in the closest inner class
-			while (j > 0 && suffixName == null) {
-				Scope sc = indexStructure.get(j);
-				Symbol<?> rootSymbol = sc.getRootSymbol();
-				if (rootSymbol != null) {
-					SymbolDefinition sd = rootSymbol.getLocation();
-					if (sd instanceof ObjectCreationExpr
-							|| sd instanceof TypeDeclaration) {
-
-						sc.incrInnerAnonymousClassCounter();
-
-						int num = sc.getInnerAnonymousClassCounter();
-						suffixName = "$" + num;
-						symbol.getType().setName(
-								((SymbolDataAware<?>) sd).getSymbolData()
-										.getName() + suffixName);
-					}
-
-				}
-				j--;
-			}
-
+			symbol.getType().setName(generateAnonymousClass());
 		}
 		// if not, we add it
 		if (lastScope.addSymbol(symbol, override)) {
@@ -286,11 +288,12 @@ public class SymbolTable {
 
 	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location) {
-		return pushSymbol(symbolName, referenceType, symbolType, location, false);
+		return pushSymbol(symbolName, referenceType, symbolType, location,
+				false);
 	}
-	
+
 	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolType, Node location, boolean override){
+			SymbolType symbolType, Node location, boolean override) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location);
 		if (pushSymbol(symbol, override)) {
@@ -311,11 +314,13 @@ public class SymbolTable {
 
 	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location, List<SymbolAction> actions) {
-		return pushSymbol(symbolName, referenceType, symbolType, location, actions, false);
+		return pushSymbol(symbolName, referenceType, symbolType, location,
+				actions, false);
 	}
-	
+
 	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolType, Node location, List<SymbolAction> actions, boolean override) {
+			SymbolType symbolType, Node location, List<SymbolAction> actions,
+			boolean override) {
 		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
 				symbolType, location, actions);
 		if (pushSymbol(symbol, override)) {
