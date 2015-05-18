@@ -15,7 +15,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
-import java.nio.channels.SelectableChannel;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;

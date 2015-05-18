@@ -517,4 +517,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public class A{ public Object foo() {  A a = new A() { public Object foo() { return new B(); } class B{ int c; }}; return a; }}");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testScopes() throws Exception{
+		CompilationUnit cu = run("public class Foo { private int c; class A { int c; } class B extends A { public int x = c; }}");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+				.getTypes().get(0);
+		Assert.assertEquals(2, type.getMembers().size());
+	}
+	
 }
