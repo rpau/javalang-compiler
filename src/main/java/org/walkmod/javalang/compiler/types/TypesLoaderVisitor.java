@@ -244,7 +244,6 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 					added = symbolTable.pushSymbol(innerClassName,
 							ReferenceType.TYPE, st, type, actions, true);
 					added.setInnerScope(oldSymbol.getInnerScope());
-					
 
 				}
 			}
@@ -355,11 +354,33 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 			} else {
 				String typeName = id.getName().toString();
 				QualifiedNameExpr type = (QualifiedNameExpr) id.getName();
-				
-				
-				symbolTable.pushSymbol(typeName, ReferenceType.TYPE,
-						new SymbolType(type.getQualifier().toString()), id,
-						actions, true);
+				String className = type.getQualifier().toString();
+				Class<?> result = null;
+				boolean finish = false;
+				while (result == null && !finish) {
+					try {
+						result = Class.forName(className, false, classLoader);
+
+						finish = true;
+					} catch (ClassNotFoundException e) {
+						int index = className.lastIndexOf('.');
+						if (index != -1) {
+							String aux = className.substring(0, index) + "$"
+									+ className.substring(index + 1);
+							className = aux;
+						} else {
+							finish = true;
+						}
+					}
+
+				}
+				if (result != null) {
+					symbolTable.pushSymbol(typeName, ReferenceType.TYPE,
+							new SymbolType(result), id, actions, true);
+				} else {
+					throw new RuntimeException("Invalid static import "
+							+ type.getQualifier().toString());
+				}
 			}
 		} else {
 			if (classLoader != null) {
@@ -515,9 +536,37 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				if (split.length == 1) {
 					addType(name, false, null, actions);
 				}
-			
+
 			}
 		}
+	}
+
+	private String resolveStaticImportFromJar(JarFile jar, String[] className) {
+		Enumeration<JarEntry> entries = jar.entries();
+		while (entries.hasMoreElements()) {
+			JarEntry entry = entries.nextElement();
+			String name = entry.getName();
+			String[] particles = name.split("/");
+			boolean correct = true;
+			int i = 0;
+			for (i = 0; i < particles.length - 1 && i < className.length - 1
+					&& correct; i++) {
+				correct = particles[i].equals(className[i]);
+			}
+			if (correct && i == particles.length - 1
+					&& i <= className.length - 1) {
+				String innerClass = className[i];
+				for (int j = i; j < className.length; j++) {
+					innerClass = innerClass + "$" + className[j];
+				}
+				if (particles[i].equals(innerClass + ".class")) {
+					name = name.replaceAll("/", ".");
+					name = name.substring(0, name.length() - 6);
+					return name;
+				}
+			}
+		}
+		return null;
 	}
 
 	private void loadClassesFromPackage(String packageName,
@@ -553,12 +602,12 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 							if (!"".equals(packageName)) {
 								name = packageName + "." + simpleName;
 							}
-							
+
 							String[] split = resource.getName().split("\\$\\d");
 							if (split.length == 1) {
 								addType(name, false, null, actions);
 							}
-							
+
 						}
 					}
 				}
