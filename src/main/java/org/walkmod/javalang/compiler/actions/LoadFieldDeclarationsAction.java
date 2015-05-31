@@ -16,6 +16,7 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.actions;
 
 import java.lang.reflect.Field;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -35,6 +36,7 @@ import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.reflection.FieldInspector;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -59,13 +61,14 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 			if (node instanceof TypeDeclaration
 					|| node instanceof ObjectCreationExpr
 					|| node instanceof EnumConstantDeclaration) {
-				node.accept(new FieldsPopulator<Object>(table), null);
+				node.accept(new FieldsPopulator(table), table.getScopes()
+						.peek());
 			}
 
 		}
 	}
 
-	private class FieldsPopulator<T> extends VoidVisitorAdapter<T> {
+	private class FieldsPopulator extends VoidVisitorAdapter<Scope> {
 
 		private SymbolTable table;
 
@@ -74,31 +77,44 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 		}
 
 		@Override
-		public void visit(ObjectCreationExpr o, T ctx) {
-			loadFields(o.getAnonymousClassBody());
+		public void visit(ObjectCreationExpr o, Scope scope) {
+			table.pushScope(scope);
+			List<ClassOrInterfaceType> types = new LinkedList<ClassOrInterfaceType>();
+			types.add(o.getType());
+			loadExtendsOrImplements(types);
+			loadFields(o.getAnonymousClassBody(), scope);
+			table.popScope(true);
 		}
 
 		@Override
-		public void visit(EnumConstantDeclaration o, T ctx) {
-			loadFields(o.getClassBody());
+		public void visit(EnumConstantDeclaration o, Scope scope) {
+			table.pushScope(scope);
+			loadFields(o.getClassBody(), scope);
+			table.popScope(true);
 		}
 
 		@Override
-		public void visit(ClassOrInterfaceDeclaration n, T ctx) {
+		public void visit(ClassOrInterfaceDeclaration n, Scope scope) {
+			table.pushScope(scope);
 			loadExtendsOrImplements(n.getExtends());
 			loadExtendsOrImplements(n.getImplements());
-			loadFields(n.getMembers());
+			loadFields(n.getMembers(), scope);
+			table.popScope(true);
 		}
 
 		@Override
-		public void visit(EnumDeclaration n, T ctx) {
+		public void visit(EnumDeclaration n, Scope scope) {
+			table.pushScope(scope);
 			loadExtendsOrImplements(n.getImplements());
-			loadFields(n.getMembers());
+			loadFields(n.getMembers(), scope);
+			table.popScope(true);
 		}
 
 		@Override
-		public void visit(AnnotationDeclaration n, T ctx) {
-			loadFields(n.getMembers());
+		public void visit(AnnotationDeclaration n, Scope scope) {
+			table.pushScope(scope);
+			loadFields(n.getMembers(), scope);
+			table.popScope(true);
 		}
 
 		public void loadExtendsOrImplements(
@@ -115,8 +131,8 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 						Object location = s.getLocation();
 						if (location != null
 								&& location instanceof TypeDeclaration) {
-
-							((TypeDeclaration) location).accept(this, null);
+							((TypeDeclaration) location).accept(this,
+									s.getInnerScope());
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
@@ -124,24 +140,11 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 									.getNonPrivateFields(clazz);
 							for (Field field : fields) {
 								try {
-									Symbol<?> previousSymbol = table
-											.getScopes()
-											.peek()
-											.findSymbol(field.getName(),
-													ReferenceType.VARIABLE);
-									if (previousSymbol == null) {
-
-										table.pushSymbol(field.getName(),
-												ReferenceType.VARIABLE,
-												SymbolType.valueOf(
-														field.getGenericType(),
-														null), null);
-									} else {
-										previousSymbol.setType(SymbolType
-												.valueOf(
-														field.getGenericType(),
-														null));
-									}
+									table.pushSymbol(field.getName(),
+											ReferenceType.VARIABLE, SymbolType
+													.valueOf(field
+															.getGenericType(),
+															null), null, true);
 								} catch (InvalidTypeException e) {
 									throw new RuntimeException(e);
 								}
@@ -153,65 +156,57 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 		}
 
 		@SuppressWarnings("unchecked")
-		public void loadFields(List<BodyDeclaration> members) {
+		public void loadFields(List<BodyDeclaration> members, Scope scope) {
+			if (!scope.hasFieldsLoaded()) {
+				if (members != null) {
 
-			if (members != null) {
+					for (BodyDeclaration member : members) {
+						if (member instanceof FieldDeclaration) {
 
-				for (BodyDeclaration member : members) {
-					if (member instanceof FieldDeclaration) {
+							FieldDeclaration fd = (FieldDeclaration) member;
+							Type type = fd.getType();
+							List<SymbolAction> actions = null;
 
-						FieldDeclaration fd = (FieldDeclaration) member;
-						Type type = fd.getType();
-						List<SymbolAction> actions = null;
-
-						Symbol<?> root = table.getScopes().peek()
-								.getRootSymbol();
-						if (root != null) {
-							Node location = root.getLocation();
-							if (location != null) {
-								if (location == member.getParentNode()) {
-									if (actionProvider != null) {
-										actions = actionProvider.getActions(fd);
+							Symbol<?> root = table.getScopes().peek()
+									.getRootSymbol();
+							if (root != null) {
+								Node location = root.getLocation();
+								if (location != null) {
+									if (location == member.getParentNode()) {
+										if (actionProvider != null) {
+											actions = actionProvider
+													.getActions(fd);
+										}
 									}
 								}
 							}
-						}
 
-						SymbolType resolvedType = ASTSymbolTypeResolver
-								.getInstance().valueOf(type);
+							SymbolType resolvedType = ASTSymbolTypeResolver
+									.getInstance().valueOf(type);
 
-						if (resolvedType == null) {
-							resolvedType = new SymbolType(Object.class);
-						}
-						type.setSymbolData(resolvedType);
-
-						for (VariableDeclarator var : fd.getVariables()) {
-							SymbolType symType = resolvedType.clone();
-							if (symType.getArrayCount() == 0) {
-								symType.setArrayCount(var.getId()
-										.getArrayCount());
+							if (resolvedType == null) {
+								resolvedType = new SymbolType(Object.class);
 							}
-							@SuppressWarnings("rawtypes")
-							Symbol previousSymbol = table
-									.getScopes()
-									.peek()
-									.findSymbol(var.getId().getName(),
-											ReferenceType.VARIABLE);
+							type.setSymbolData(resolvedType);
 
-							if (previousSymbol == null) {
+							for (VariableDeclarator var : fd.getVariables()) {
+								SymbolType symType = resolvedType.clone();
+								if (symType.getArrayCount() == 0) {
+									symType.setArrayCount(var.getId()
+											.getArrayCount());
+								}
 
 								table.pushSymbol(var.getId().getName(),
 										ReferenceType.VARIABLE, symType, var,
-										actions);
-							} else {
-								previousSymbol.setType(symType);
-								previousSymbol.setLocation(var);
+										actions, true);
+
 							}
+
 						}
-
 					}
-				}
 
+				}
+				scope.setHasFieldsLoaded(true);
 			}
 		}
 	}

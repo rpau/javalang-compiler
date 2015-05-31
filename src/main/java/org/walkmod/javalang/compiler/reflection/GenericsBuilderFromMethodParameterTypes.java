@@ -19,6 +19,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
+import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
@@ -26,10 +27,15 @@ public class GenericsBuilderFromMethodParameterTypes extends
 		AbstractGenericsBuilderFromParameterTypes implements
 		TypeMappingBuilder<Method> {
 
+	private List<Type> callArgs = null;
+	private SymbolType scope = null;
+
 	public GenericsBuilderFromMethodParameterTypes(
 			Map<String, SymbolType> typeMapping, List<Expression> args,
-			SymbolType[] typeArgs) {
+			SymbolType scope, SymbolType[] typeArgs, List<Type> callArgs) {
 		super(typeMapping, args, typeArgs);
+		this.callArgs = callArgs;
+		this.scope = scope;
 	}
 
 	public GenericsBuilderFromMethodParameterTypes() {
@@ -38,6 +44,17 @@ public class GenericsBuilderFromMethodParameterTypes extends
 	@Override
 	public Method build(Method method) throws Exception {
 		setTypes(method.getGenericParameterTypes());
+		if (scope != null) {
+			ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
+					scope);
+			generics.build(getTypeMapping());
+		}
+		if (callArgs != null) {
+			ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
+					callArgs, method);
+			generics.build(getTypeMapping());
+		}
+
 		super.build();
 		return method;
 	}

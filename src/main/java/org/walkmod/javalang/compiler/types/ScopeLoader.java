@@ -50,11 +50,9 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 		actions.add(new LoadTypeDeclarationsAction(typeTable));
 		actions.add(new LoadFieldDeclarationsAction(actionProvider));
 		actions.add(new LoadEnumConstantLiteralsAction());
-		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider,
+		actions.add(new LoadMethodDeclarationsAction(actionProvider,
 				expressionTypeAnalyzer));
 
-		symbolTable.pushSymbol("this", ReferenceType.VARIABLE, sym.getType(),
-				declaration, actions);
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
 				Symbol<?> superSymbol = symbolTable.pushSymbol("super",
@@ -69,6 +67,11 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				}
 			}
 		}
+		Symbol<TypeDeclaration> thisSymbol = new Symbol<TypeDeclaration>(
+				"this", sym.getType(), declaration, ReferenceType.VARIABLE,
+				actions);
+		thisSymbol.setInnerScope(sym.getInnerScope());
+		symbolTable.pushSymbol(thisSymbol);
 		List<BodyDeclaration> members = declaration.getMembers();
 		if (members != null) {
 			for (BodyDeclaration member : members) {
@@ -122,8 +125,8 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				actions.add(new LoadTypeParamsAction());
 				actions.add(new LoadTypeDeclarationsAction(typeTable));
 				actions.add(new LoadFieldDeclarationsAction(actionProvider));
-				actions.add(new LoadMethodDeclarationsAction(typeTable,
-						actionProvider, expressionTypeAnalyzer));
+				actions.add(new LoadMethodDeclarationsAction(actionProvider,
+						expressionTypeAnalyzer));
 
 				actions.add(new LoadEnumConstantLiteralsAction());
 
@@ -133,12 +136,21 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 				SymbolType type = null;
 				type = new SymbolType(className);
+				Symbol<?> superSymbol = symbolTable.pushSymbol("super",
+						ReferenceType.VARIABLE, new SymbolType(st.getClazz()),
+						n, (List<SymbolAction>) null);
+				Symbol<?> superType = symbolTable.findSymbol(st.getClazz()
+						.getCanonicalName(), ReferenceType.TYPE);
+				if (superType != null) {
+					superSymbol.setInnerScope(superType.getInnerScope());
+				}
+				String name = symbolTable.generateAnonymousClass();
+
+				type = new SymbolType(name);
+				symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n);
+
 				symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type, n,
 						actions);
-
-				symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
-						new SymbolType(type.getClazz().getSuperclass()), n,
-						(List<SymbolAction>) null);
 				for (BodyDeclaration member : members) {
 					if (member instanceof TypeDeclaration) {
 						process((TypeDeclaration) member, symbolTable);
@@ -170,19 +182,22 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 		actions.add(new LoadTypeParamsAction());
 		actions.add(new LoadTypeDeclarationsAction(typeTable));
 		actions.add(new LoadFieldDeclarationsAction(actionProvider));
-		actions.add(new LoadMethodDeclarationsAction(typeTable, actionProvider,
+		actions.add(new LoadMethodDeclarationsAction(actionProvider,
 				expressionTypeAnalyzer));
 
 		if (actionProvider != null) {
 			actions.addAll(actionProvider.getActions(n));
 		}
-
-		symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type.clone(), n,
-				actions);
-		n.setSymbolData(type);
-
 		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, parentType,
 				n.getParentNode(), (List<SymbolAction>) null);
+
+		String name = symbolTable.generateAnonymousClass();
+		type = new SymbolType(name);
+		symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n, actions);
+
+		symbolTable
+				.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
+		n.setSymbolData(type);
 
 		symbolTable.popScope(true);
 		return s.getInnerScope();

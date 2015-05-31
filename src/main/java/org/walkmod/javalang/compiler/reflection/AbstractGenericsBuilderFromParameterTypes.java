@@ -15,10 +15,13 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -77,7 +80,8 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 									if (e instanceof ClassExpr) {
 										className = ((ClassExpr) e).getType()
 												.toString();
-										Class<?> tclazz = TypesLoaderVisitor.getClassLoader().loadClass(
+										Class<?> tclazz = TypesLoaderVisitor
+												.getClassLoader().loadClass(
 														className);
 										typeMapping.put(letter, new SymbolType(
 												tclazz.getName()));
@@ -96,28 +100,82 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 			}
 			pos++;
 		}
-		pos = 0;
-		for (Type type : types) {
 
-			if (type instanceof TypeVariable) {
-				String name = ((TypeVariable<?>) type).getName();
-				SymbolType st = typeMapping.get(name);
-				if (st == null) {
-					typeMapping.put(name, typeArgs[pos]);
-				} else {
-					if (!typeMappingClasses.containsKey(name)) {
-						typeMapping.put(name,
-								(SymbolType) st.merge(typeArgs[pos]));
-					}
-				}
-			}
-			pos++;
+		for (int i = 0; i < types.length && i < typeArgs.length; i++) {
+			typeMappingUpdate(types[i], typeMappingClasses, typeArgs[i]);
 		}
 
 	}
 
+	private void typeMappingUpdate(Type type,
+			Map<String, SymbolType> typeMappingClasses, SymbolType typeArg) {
+		if (type instanceof TypeVariable) {
+			String name = ((TypeVariable<?>) type).getName();
+			SymbolType st = typeMapping.get(name);
+			if (st == null) {
+				typeMapping.put(name, typeArg);
+			} else {
+				if (!typeMappingClasses.containsKey(name)) {
+					if (st.getClazz().equals(Object.class)) {
+						typeMapping.put(name, typeArg);
+					} else {
+						typeMapping.put(name, (SymbolType) st.merge(typeArg));
+					}
+				}
+			}
+		} else if (type instanceof ParameterizedType) {
+			ParameterizedType paramType = (ParameterizedType) type;
+			Type[] args = paramType.getActualTypeArguments();
+			if (typeArg != null) {
+				List<SymbolType> paramsSymbol = typeArg.getParameterizedTypes();
+				if (paramsSymbol != null) {
+					for (int i = 0; i < args.length; i++) {
+						typeMappingUpdate(args[i], typeMappingClasses,
+								paramsSymbol.get(i));
+					}
+				}
+			}
+		} else if (type instanceof WildcardType) {
+			if (typeArg != null) {
+				WildcardType wildcardType = (WildcardType) type;
+				Type[] upper = wildcardType.getUpperBounds();
+				List<SymbolType> bounds = typeArg.getBounds();
+				if (bounds == null) {
+					bounds = new LinkedList<SymbolType>();
+					bounds.add(typeArg);
+				}
+
+				for (int i = 0; i < upper.length; i++) {
+					typeMappingUpdate(upper[i], typeMappingClasses,
+							bounds.get(i));
+				}
+
+				Type[] lower = wildcardType.getLowerBounds();
+				bounds = typeArg.getLowerBounds();
+				if (bounds != null) {
+					for (int i = 0; i < lower.length; i++) {
+						typeMappingUpdate(lower[i], typeMappingClasses,
+								bounds.get(i));
+					}
+				}
+			}
+		} else if (type instanceof GenericArrayType) {
+			if (typeArg != null) {
+				GenericArrayType arrayType = (GenericArrayType) type;
+				SymbolType aux = typeArg.clone();
+				aux.setArrayCount(typeArg.getArrayCount() - 1);
+				typeMappingUpdate(arrayType.getGenericComponentType(),
+						typeMappingClasses, aux);
+			}
+		}
+	}
+
 	public void setTypeMapping(Map<String, SymbolType> typeMapping) {
 		this.typeMapping = typeMapping;
+	}
+
+	public Map<String, SymbolType> getTypeMapping() {
+		return typeMapping;
 	}
 
 	public void setTypes(Type[] types) {

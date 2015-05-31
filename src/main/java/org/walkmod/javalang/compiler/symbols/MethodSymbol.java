@@ -18,8 +18,10 @@ package org.walkmod.javalang.compiler.symbols;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class MethodSymbol extends Symbol {
 
@@ -96,17 +98,36 @@ public class MethodSymbol extends Symbol {
 		}
 	}
 
+	public MethodSymbol buildTypeParameters(Map<String, SymbolType> typeParams) {
+		MethodSymbol result = null;
+		if (referencedMethod != null && typeParams != null) {
+			result = new MethodSymbol(getName(), getType(), getLocation(),
+					isStaticallyImported(), isVarArgs(), getReferencedMethod());
+			try {
+				SymbolType aux = SymbolType.valueOf(getReferencedMethod(),
+						typeParams);
+				result.setType(aux);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+			return result;
+		} else {
+			return this;
+		}
+
+	}
+
 	public SymbolType[] getArgs() {
 		return args;
 	}
 
 	public boolean isStaticallyImported() {
-		return isStaticallyImported();
+		return staticallyImported;
 	}
 
 	public boolean hasCompatibleSignature(SymbolType scope,
 			SymbolType[] otherArgs) {
-		boolean sameScope = (scope == null && this.scope == null)
+		boolean sameScope = (scope == null || this.scope == null)
 				|| staticallyImported;
 		if (scope != null && this.scope != null && !staticallyImported) {
 			sameScope = this.scope.isCompatible(scope);

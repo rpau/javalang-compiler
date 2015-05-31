@@ -29,14 +29,15 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.ast.ConstructorSymbolData;
 import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.reflection.ClassInspector;
-import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.compiler.types.Types;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class SymbolType implements SymbolData, MethodSymbolData,
@@ -44,7 +45,9 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 	private String name;
 
-	private List<SymbolType> bounds = null;
+	private List<SymbolType> upperBounds = null;
+
+	private List<SymbolType> lowerBounds = null;
 
 	private List<SymbolType> parameterizedTypes;
 
@@ -63,21 +66,46 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public SymbolType() {
 	}
 
-	public SymbolType(List<SymbolType> bounds) {
-		this.bounds = bounds;
-		if (!bounds.isEmpty()) {
-			name = bounds.get(0).getName();
-			clazz = bounds.get(0).getClazz();
+	public SymbolType(List<SymbolType> lowerBounds) {
+		this(lowerBounds, null);
+	}
+
+	public SymbolType(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
+		this.upperBounds = upperBounds;
+		this.lowerBounds = lowerBounds;
+		if (upperBounds != null) {
+			if (!upperBounds.isEmpty()) {
+				name = upperBounds.get(0).getName();
+				clazz = upperBounds.get(0).getClazz();
+			}
+		} else if (lowerBounds != null) {
+
+			name = "java.lang.Object";
+			clazz = Object.class;
+
 		}
 	}
 
-	public SymbolType(String name, List<SymbolType> bounds) {
+	public SymbolType(String name, List<SymbolType> upperBounds) {
 
 		this.name = name;
-		if (bounds != null) {
-			this.bounds = bounds;
-			if (!bounds.isEmpty()) {
-				clazz = bounds.get(0).getClazz();
+		if (upperBounds != null) {
+			this.upperBounds = upperBounds;
+			if (!upperBounds.isEmpty()) {
+				clazz = upperBounds.get(0).getClazz();
+			}
+		}
+	}
+
+	public SymbolType(String name, List<SymbolType> upperBounds,
+			List<SymbolType> lowerBounds) {
+
+		this.name = name;
+		this.lowerBounds = lowerBounds;
+		if (upperBounds != null) {
+			this.upperBounds = upperBounds;
+			if (!upperBounds.isEmpty()) {
+				clazz = upperBounds.get(0).getClazz();
 			}
 		}
 	}
@@ -99,11 +127,11 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	}
 
 	public boolean hasBounds() {
-		return bounds != null;
+		return upperBounds != null;
 	}
 
 	public List<SymbolType> getBounds() {
-		return bounds;
+		return upperBounds;
 	}
 
 	private List<SymbolType> resolveGenerics(Class<?> clazz) {
@@ -146,12 +174,16 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		this.name = name;
 	}
 
+	public List<SymbolType> getLowerBounds() {
+		return lowerBounds;
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public List<SymbolType> getParameterizedTypes() {
 		if (parameterizedTypes == null) {
-			if (bounds != null && !bounds.isEmpty()) {
-				return bounds.get(0).getParameterizedTypes();
+			if (upperBounds != null && !upperBounds.isEmpty()) {
+				return upperBounds.get(0).getParameterizedTypes();
 			}
 		}
 		return parameterizedTypes;
@@ -187,16 +219,75 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return false;
 	}
 
+	private Map<String, SymbolType> getTypeMappingVariables() {
+		Map<String, SymbolType> result = null;
+		List<SymbolType> paramTypes = getParameterizedTypes();
+		if (paramTypes != null) {
+			TypeVariable<?>[] vars = getClazz().getTypeParameters();
+			result = new HashMap<String, SymbolType>();
+			for (int i = 0; i < vars.length; i++) {
+				result.put(vars[i].getName(), paramTypes.get(i));
+			}
+		}
+		return result;
+	}
+
 	public boolean isCompatible(SymbolType other) {
-		if (bounds != null) {
-			Iterator<SymbolType> it = bounds.iterator();
-			boolean isCompatible = true;
+		boolean isCompatible = true;
+
+		if (upperBounds != null) {
+			Iterator<SymbolType> it = upperBounds.iterator();
+
 			while (it.hasNext() && isCompatible) {
 				isCompatible = it.next().isCompatible(other);
 			}
+
 			return isCompatible;
 		}
-		return Types.isCompatible(other.getClazz(), getClazz());
+		if (isCompatible && lowerBounds != null) {
+			Iterator<SymbolType> it = lowerBounds.iterator();
+			while (it.hasNext() && isCompatible) {
+				isCompatible = other.isCompatible(it.next());
+			}
+		}
+		if (isCompatible) {
+
+			List<SymbolType> otherParams = other.getParameterizedTypes();
+			if (parameterizedTypes != null && otherParams != null) {
+				Set<Type> paramTypes = ClassInspector
+						.getEquivalentParametrizableClasses(other.getClazz());
+				Iterator<Type> paramTypesIt = paramTypes.iterator();
+				boolean found = false;
+				try {
+					Map<String, SymbolType> otherMap = other
+							.getTypeMappingVariables();
+					while (paramTypesIt.hasNext() && !found) {
+						Type currentType = paramTypesIt.next();
+						SymbolType st = SymbolType.valueOf(currentType,
+								otherMap);
+						found = Types.isCompatible(st.getClazz(), getClazz());
+						if (isCompatible) {
+							otherParams = st.getParameterizedTypes();
+							Iterator<SymbolType> it = parameterizedTypes
+									.iterator();
+							Iterator<SymbolType> otherIt = otherParams
+									.iterator();
+							while (it.hasNext() && found && otherIt.hasNext()) {
+								SymbolType thisType = it.next();
+								SymbolType otherType = otherIt.next();
+								found = thisType.isCompatible(otherType);
+							}
+						}
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				isCompatible = found;
+			} else {
+				isCompatible = Types.isCompatible(other.getClazz(), getClazz());
+			}
+		}
+		return isCompatible;
 	}
 
 	public Class<?> getClazz() {
@@ -265,12 +356,19 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 			result.setParameterizedTypes(list);
 		}
-		if (bounds != null) {
+		if (upperBounds != null) {
 			List<SymbolType> list = new LinkedList<SymbolType>();
-			for (SymbolData type : bounds) {
+			for (SymbolData type : upperBounds) {
 				list.add(((SymbolType) type).clone());
 			}
-			result.bounds = list;
+			result.upperBounds = list;
+		}
+		if (lowerBounds != null) {
+			List<SymbolType> list = new LinkedList<SymbolType>();
+			for (SymbolData type : lowerBounds) {
+				list.add(((SymbolType) type).clone());
+			}
+			result.lowerBounds = list;
 		}
 		return result;
 	}
@@ -304,12 +402,24 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				returnType.setArrayCount(1);
 				returnType.setName(aux.getComponentType().getName());
 			}
+			TypeVariable<?>[] typeParams = aux.getTypeParameters();
+			if (typeParams.length > 0) {
+				List<SymbolType> params = new LinkedList<SymbolType>();
+
+				for (int i = 0; i < typeParams.length; i++) {
+					SymbolType tp = valueOf(typeParams[i], null,
+							updatedTypeMapping, typeMapping);
+					params.add(tp);
+				}
+				returnType.setParameterizedTypes(params);
+			}
 		} else if (type instanceof TypeVariable) {
 
 			String variableName = ((TypeVariable<?>) type).getName();
 			SymbolType aux = typeMapping.get(variableName);
 
 			if (aux == null) {
+
 				Type[] bounds = ((TypeVariable<?>) type).getBounds();
 
 				if (arg != null) {
@@ -326,14 +436,16 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						returnType = new SymbolType("java.lang.Object");
 					} else {
 						List<SymbolType> boundsList = new LinkedList<SymbolType>();
+						returnType = new SymbolType(boundsList);
+						Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(
+								typeMapping);
+						auxMap.put(variableName, returnType);
 						for (Type bound : bounds) {
 							boundsList.add(valueOf(bound, null,
-									updatedTypeMapping, typeMapping));
+									updatedTypeMapping, auxMap));
 						}
-						if (boundsList.size() == 1) {
+						if (bounds.length == 1) {
 							returnType = boundsList.get(0);
-						} else {
-							returnType = new SymbolType(boundsList);
 						}
 					}
 				}
@@ -418,13 +530,28 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			WildcardType wt = (WildcardType) type;
 			Type[] types = wt.getUpperBounds();
 
+			List<SymbolType> upperBounds = null;
+			List<SymbolType> lowerBounds = null;
 			if (types != null && types.length > 0) {
-				List<SymbolType> bounds = new LinkedList<SymbolType>();
+				upperBounds = new LinkedList<SymbolType>();
 				for (int i = 0; i < types.length; i++) {
-					bounds.add(valueOf(types[i], arg, updatedTypeMapping,
+					upperBounds.add(valueOf(types[i], arg, updatedTypeMapping,
 							typeMapping));
 				}
-				returnType = new SymbolType(bounds);
+
+			}
+			types = wt.getLowerBounds();
+			if (types != null && types.length > 0) {
+				lowerBounds = new LinkedList<SymbolType>();
+				for (int i = 0; i < types.length; i++) {
+
+					lowerBounds.add(valueOf(types[i], arg, updatedTypeMapping,
+							typeMapping));
+
+				}
+			}
+			if (upperBounds != null || lowerBounds != null) {
+				returnType = new SymbolType(upperBounds, lowerBounds);
 			}
 		}
 		return returnType;
@@ -452,7 +579,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		java.lang.reflect.Type type = null;
 		if (typeMapping == null) {
 			typeMapping = new HashMap<String, SymbolType>();
-			type = method.getReturnType();
+			type = method.getGenericReturnType();
 		} else {
 			TypeVariable<Method>[] tvs = method.getTypeParameters();
 			type = method.getGenericReturnType();
@@ -492,23 +619,31 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 	@Override
 	public SymbolData merge(SymbolData other) {
+		SymbolType result = null;
 		if (other == null) {
-			return this;
-		}
-		List<Class<?>> bounds = ClassInspector.getTheNearestSuperClasses(
-				getBoundClasses(), other.getBoundClasses());
-		if (bounds.isEmpty()) {
-			return null;
-		} else if (bounds.size() == 1) {
-			return new SymbolType(bounds.get(0));
+			result = this;
 		} else {
-			List<SymbolType> boundsList = new LinkedList<SymbolType>();
-			for (Class<?> bound : bounds) {
-				boundsList.add(new SymbolType(bound));
+			List<Class<?>> bounds = ClassInspector.getTheNearestSuperClasses(
+					getBoundClasses(), other.getBoundClasses());
+			if (bounds.isEmpty()) {
+				result = null;
+			} else if (bounds.size() == 1) {
+				result = new SymbolType(bounds.get(0));
+			} else {
+				List<SymbolType> boundsList = new LinkedList<SymbolType>();
+				for (Class<?> bound : bounds) {
+					boundsList.add(new SymbolType(bound));
+				}
+				result = new SymbolType(boundsList);
 			}
-			return new SymbolType(boundsList);
+			if (lowerBounds != null) {
+				result.lowerBounds = new LinkedList<SymbolType>();
+				for (SymbolType st : lowerBounds) {
+					result.lowerBounds.add(st.clone());
+				}
+			}
 		}
-
+		return result;
 	}
 
 	public void setConstructor(Constructor<?> constructor) {
@@ -533,6 +668,18 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		} else {
 			return belongsToAnonymous(clazz.getDeclaringClass());
 		}
+	}
+
+	@Override
+	public List<Class<?>> getLowerBoundClasses() {
+		List<Class<?>> upperBoundClasses = new LinkedList<Class<?>>();
+		if (lowerBounds != null) {
+			for (SymbolType bound : lowerBounds) {
+				upperBoundClasses.add(bound.getClazz());
+			}
+
+		}
+		return upperBoundClasses;
 	}
 
 }

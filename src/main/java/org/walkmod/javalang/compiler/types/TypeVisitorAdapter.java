@@ -93,6 +93,7 @@ import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromMethodParamet
 import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
+import org.walkmod.javalang.compiler.reflection.ResultBuilderFromCallGenerics;
 import org.walkmod.javalang.compiler.reflection.SymbolDataOfMethodReferenceBuilder;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
@@ -136,7 +137,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		newType.setName(arrayType.getName());
 		newType.setParameterizedTypes(arrayType.getParameterizedTypes());
 		newType.setArrayCount(arrayType.getArrayCount() - 1);
-		
+
 		n.setSymbolData(newType);
 	}
 
@@ -363,7 +364,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(MethodCallExpr n, A arg) {
 		try {
-			SymbolType scope;
+			SymbolType scope = null;
 
 			if (n.getScope() != null) {
 
@@ -374,12 +375,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				LOG.debug("scope: (" + n.getScope().toString() + ")"
 						+ scope.getName() + " method " + n.toString());
 
-			} else {
-				scope = symbolTable.getType("this", ReferenceType.VARIABLE);
-				LOG.debug("scope (this): " + scope.getName() + " method "
-						+ n.toString());
 			}
-
+			if (scope != null && "sun.misc.Unsafe".equals(scope.getName())
+					&& n.getName().equals("getUnsafe")) {
+				n.setSymbolData(scope);
+				return;
+			}
 			SymbolType[] symbolTypes = null;
 			boolean hasFunctionalExpressions = false;
 			if (n.getArgs() != null) {
@@ -410,12 +411,13 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			if (s != null) {
 				MethodSymbol methodSymbol = (MethodSymbol) s;
 				Method m = methodSymbol.getReferencedMethod();
+
 				if (m.getTypeParameters().length > 0
 						&& !m.getReturnType().equals(void.class)) {
 					// it is may return a parameterized type
 					Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 					GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
-							typeMapping, n.getArgs(), symbolTypes);
+							typeMapping, n.getArgs(), scope, symbolTypes, n.getTypeArgs());
 
 					builder.build(m);
 					SymbolType aux = SymbolType.valueOf(m, typeMapping);
@@ -424,6 +426,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					n.setSymbolData(s.getType());
 				}
 			} else {
+				if (scope == null) {
+					scope = symbolTable.getType("this", ReferenceType.VARIABLE);
+					LOG.debug("scope (this): " + scope.getName() + " method "
+							+ n.toString());
+				}
+
 				Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 				// it should be initialized after resolving the method
 
@@ -439,10 +447,11 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				}
 				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
 				builder.appendBuilder(new GenericsBuilderFromMethodParameterTypes(
-						typeMapping, n.getArgs(), symbolTypes));
+						typeMapping, n.getArgs(), scope, symbolTypes,n.getTypeArgs()));
 
 				SymbolType st = MethodInspector.findMethodType(scope, filter,
 						builder, typeMapping);
+				
 				n.setSymbolData(st);
 
 				SymbolDataOfMethodReferenceBuilder<A> typeBuilder = new SymbolDataOfMethodReferenceBuilder<A>(
@@ -465,8 +474,6 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(NameExpr n, A arg) {
-
-
 		SymbolType type = symbolTable.getType(n.getName(),
 				ReferenceType.VARIABLE, ReferenceType.ENUM_LITERAL,
 				ReferenceType.TYPE);
@@ -828,7 +835,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		Expression init = n.getInit();
 		if (init != null) {
-			Symbol<?> aux = symbolTable.findSymbol(n.getId().getName(), ReferenceType.VARIABLE);
+			Symbol<?> aux = symbolTable.findSymbol(n.getId().getName(),
+					ReferenceType.VARIABLE);
 			Scope innerscope = new Scope(aux);
 			aux.setInnerScope(innerscope);
 			symbolTable.pushScope(innerscope);
@@ -871,7 +879,11 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			typeArgs = new SymbolType[argsSize];
 			Iterator<Parameter> it = params.iterator();
 			for (int i = 0; i < typeArgs.length; i++) {
-				typeArgs[i] = (SymbolType) it.next().getSymbolData();
+				Parameter param = it.next();
+				if (param.getSymbolData() == null) {
+					param.getType().accept(this, null);
+					typeArgs[i] = (SymbolType) param.getType().getSymbolData();
+				}
 			}
 		}
 		return typeArgs;
@@ -887,7 +899,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				.appendPredicate(new InvokableMethodsPredicate())
 				.appendPredicate(new CompatibleArgsPredicate(typeArgs));
 		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
-		
+
 		try {
 			SymbolType st = MethodInspector.findMethodType(
 					symbolTable.getType("this", ReferenceType.VARIABLE),

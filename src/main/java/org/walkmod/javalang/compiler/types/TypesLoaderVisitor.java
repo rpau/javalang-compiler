@@ -158,14 +158,13 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 	private SymbolType buildSymbolType(TypeDeclaration type) {
 
-		
 		SymbolType st = (SymbolType) type.getSymbolData();
 		if (st != null) {
 			return st;
 		}
 		String name = type.getName();
 		Node node = type.getParentNode();
-		
+
 		if (node instanceof SymbolDataAware<?>) {
 			st = (SymbolType) ((SymbolDataAware<?>) node).getSymbolData();
 
@@ -228,10 +227,10 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		Symbol oldSymbol = symbolTable.findSymbol(keyName, ReferenceType.TYPE);
 		Symbol added = null;
 		if (oldSymbol == null || !oldSymbol.getType().equals(st)) {
-
-			added = symbolTable.pushSymbol(keyName, ReferenceType.TYPE, st,
-					type, actions, true);
+			added = new Symbol(keyName, st, type,
+					ReferenceType.TYPE, actions);
 			added.setInnerScope(new Scope(added));
+			symbolTable.pushSymbol(added, true);
 
 		} else {
 
@@ -245,10 +244,10 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				if (startingNode != null && startingNode != type) {
 
 					String innerClassName = getInnerName(st);
-
-					added = symbolTable.pushSymbol(innerClassName,
-							ReferenceType.TYPE, st, type, actions, true);
+					added = new Symbol(innerClassName, st, type,
+							ReferenceType.TYPE, actions);
 					added.setInnerScope(oldSymbol.getInnerScope());
+					symbolTable.pushSymbol(added, true);
 
 				}
 			}
@@ -544,34 +543,6 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 			}
 		}
-	}
-
-	private String resolveStaticImportFromJar(JarFile jar, String[] className) {
-		Enumeration<JarEntry> entries = jar.entries();
-		while (entries.hasMoreElements()) {
-			JarEntry entry = entries.nextElement();
-			String name = entry.getName();
-			String[] particles = name.split("/");
-			boolean correct = true;
-			int i = 0;
-			for (i = 0; i < particles.length - 1 && i < className.length - 1
-					&& correct; i++) {
-				correct = particles[i].equals(className[i]);
-			}
-			if (correct && i == particles.length - 1
-					&& i <= className.length - 1) {
-				String innerClass = className[i];
-				for (int j = i; j < className.length; j++) {
-					innerClass = innerClass + "$" + className[j];
-				}
-				if (particles[i].equals(innerClass + ".class")) {
-					name = name.replaceAll("/", ".");
-					name = name.substring(0, name.length() - 6);
-					return name;
-				}
-			}
-		}
-		return null;
 	}
 
 	private void loadClassesFromPackage(String packageName,

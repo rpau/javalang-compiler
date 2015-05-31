@@ -513,9 +513,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 		SymbolType scopeType = null;
 
-		if (n.getScope() == null) {
-			scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
-		} else {
+		if (n.getScope() != null) {
 
 			scopeType = (SymbolType) n.getScope().getSymbolData();
 

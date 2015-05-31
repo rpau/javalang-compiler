@@ -24,7 +24,6 @@ import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
-import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
@@ -74,37 +73,23 @@ public class SymbolTable {
 		Symbol<?> result = null;
 		Scope selectedScope = null;
 		if (symbolScope != null) {
-
-			while (j > 0 && selectedScope == null) {
-				Scope scope = indexStructure.get(j);
-				Symbol<?> rootSymbol = scope.getRootSymbol();
-				if (rootSymbol != null) {
-					SymbolDefinition sd = rootSymbol.getLocation();
-					if (sd instanceof TypeDeclaration
-							|| sd instanceof ObjectCreationExpr) {
-						if (symbolScope.equals(((SymbolDataAware<?>) sd)
-								.getSymbolData())) {
-							selectedScope = scope;
-						}
-					}
-				}
-				if (selectedScope == null) {
-					j--;
-				}
-			}
-
-			if (selectedScope == null) {
-				Symbol<?> scopeSymbol = indexStructure.get(0).findSymbol(
+			Class<?> clazz = symbolScope.getClazz();
+			Symbol<?> scopeSymbol = null;
+			if (clazz.isAnonymousClass()) {
+				scopeSymbol = indexStructure.get(0).findSymbol(
+						symbolScope.getClazz().getName(), ReferenceType.TYPE);
+			} else {
+				scopeSymbol = indexStructure.get(0).findSymbol(
 						symbolScope.getClazz().getCanonicalName(),
 						ReferenceType.TYPE);
-				if (scopeSymbol != null) {
-					if (scopeSymbol.getInnerScope() != null) {
-						// it is an inner class
-						return scopeSymbol.getInnerScope().getSymbol(
-								symbolName, symbolScope, args, referenceType);
-					} else
-						return null;
-				}
+			}
+			if (scopeSymbol != null) {
+				if (scopeSymbol.getInnerScope() != null) {
+					// it is an inner class
+					return scopeSymbol.getInnerScope().findSymbol(symbolName,
+							symbolScope, args, referenceType);
+				} else
+					return null;
 			}
 
 		}
@@ -125,7 +110,7 @@ public class SymbolTable {
 				}
 
 			}
-			result = scope.getSymbol(symbolName, symbolScope, args,
+			result = scope.findSymbol(symbolName, symbolScope, args,
 					referenceType);
 
 			j--;
@@ -263,16 +248,7 @@ public class SymbolTable {
 
 	public boolean pushSymbol(Symbol<?> symbol, boolean override) {
 		Scope lastScope = indexStructure.peek();
-		String name = symbol.getName().toString();
 
-		Object definition = symbol.getLocation();
-
-		if (name.equals("this")
-				&& (definition instanceof ObjectCreationExpr || definition instanceof EnumConstantDeclaration)) {
-
-			symbol.getType().setName(generateAnonymousClass());
-		}
-		// if not, we add it
 		if (lastScope.addSymbol(symbol, override)) {
 			try {
 				invokeActions(lastScope, symbol, SymbolEvent.PUSH, null);

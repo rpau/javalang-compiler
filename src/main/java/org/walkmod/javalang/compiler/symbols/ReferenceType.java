@@ -16,5 +16,5 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
 public enum ReferenceType {
-	VARIABLE, TYPE, METHOD, ENUM_LITERAL
+	VARIABLE, TYPE, METHOD, ENUM_LITERAL, TYPE_PARAM
 }

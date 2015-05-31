@@ -234,17 +234,34 @@ public class ASTSymbolTypeResolver extends
 
 	@Override
 	public SymbolType visit(WildcardType n, List<TypeParameter> arg) {
-		SymbolType result = new SymbolType();
+		SymbolType result = null;
 		if (n.toString().equals("?")) {
-			result.setName("java.lang.Object");
+			result = new SymbolType("java.lang.Object");
 		} else {
+			List<SymbolType> upperBounds = null;
+			List<SymbolType> lowerBounds = null;
 			ReferenceType extendsRef = n.getExtends();
 			ReferenceType superRef = n.getSuper();
 			if (extendsRef != null) {
-				result = extendsRef.accept(this, arg);
+
+				SymbolType aux = extendsRef.accept(this, arg);
+				if (aux != null) {
+					upperBounds = new LinkedList<SymbolType>();
+					upperBounds.add(aux);
+				}
+
 			} else {
-				result = superRef.accept(this, arg);
+
+				SymbolType aux = superRef.accept(this, arg);
+				if (aux != null) {
+					lowerBounds = new LinkedList<SymbolType>();
+					lowerBounds.add(aux);
+				}
 			}
+			if (upperBounds != null || lowerBounds != null) {
+				result = new SymbolType(upperBounds, lowerBounds);
+			}
+			
 		}
 		return result;
 	}
@@ -277,12 +294,12 @@ public class ASTSymbolTypeResolver extends
 
 	@Override
 	public SymbolType[] valueOf(List<Type> nodes) {
-		if(nodes == null){
+		if (nodes == null) {
 			return new SymbolType[0];
 		}
 		SymbolType[] result = new SymbolType[nodes.size()];
 		int i = 0;
-		for(Type node: nodes){
+		for (Type node : nodes) {
 			result[i] = valueOf(node);
 			i++;
 		}

@@ -58,15 +58,15 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 	public CompilationUnit compile(String code, boolean useTypeTable)
 			throws Exception {
-		
+
 		CompilationUnit cu = super.compile(code);
 		initTypes();
 		SymbolVisitorAdapter<Map<String, Object>> semanticVisitor = new SymbolVisitorAdapter<Map<String, Object>>();
 		semanticVisitor.setSymbolTable(getSymbolTable());
-		
+
 		expressionAnalyzer = new TypeVisitorAdapter<Map<String, Object>>(
 				getSymbolTable(), semanticVisitor);
-		
+
 		semanticVisitor.setExpressionTypeAnalyzer(expressionAnalyzer);
 		return cu;
 	}
@@ -106,7 +106,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testArithmeticExpressionsWithEqualTypes() throws Exception {
 		compile("public class A {}");
-		
+
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
 		symTable.pushSymbol("a", ReferenceType.VARIABLE, new SymbolType(
@@ -117,7 +117,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 				.parse(Expression.class, "a+b");
 
 		HashMap<String, Object> ctx = new HashMap<String, Object>();
-		
+
 		expressionAnalyzer.visit(expr, ctx);
 		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
@@ -360,7 +360,9 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.util.List", type.getName());
-		Assert.assertNull(type.getParameterizedTypes());
+		Assert.assertNotNull(type.getParameterizedTypes());
+		Assert.assertEquals("java.lang.Object", type.getParameterizedTypes()
+				.get(0).getName());
 
 	}
 
@@ -432,6 +434,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		compile("import java.util.ArrayList; import java.io.Serializable;"
 				+ " public class A { public static <T> T pick(T a1, T a2) { return a2; }}");
 		SymbolTable symTable = getSymbolTable();
+		ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
 		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
@@ -734,8 +737,8 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 			st = new SymbolType(getClassLoader().loadClass(
 					"Person$ComparisonProvider"));
 
-			symTable.pushSymbol("myComparisonProvider", ReferenceType.VARIABLE, st,
-					null);
+			symTable.pushSymbol("myComparisonProvider", ReferenceType.VARIABLE,
+					st, null);
 
 			MethodCallExpr expr = (MethodCallExpr) ASTManager
 					.parse(Expression.class,

@@ -16,10 +16,12 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -181,17 +183,39 @@ public class ClassInspector {
 			return result;
 		}
 		Class<?>[] declClasses = clazz.getDeclaredClasses();
-		for(int i = 0; i < declClasses.length; i++){
+		for (int i = 0; i < declClasses.length; i++) {
 			if (!Modifier.isPrivate(declClasses[i].getModifiers())) {
 				result.add(declClasses[i]);
 			}
 		}
 		result.addAll(getNonPrivateClassMembers(clazz.getSuperclass()));
 		Class<?>[] interfaces = clazz.getInterfaces();
-		for(int i = 0; i < interfaces.length; i++){
+		for (int i = 0; i < interfaces.length; i++) {
 			result.addAll(getNonPrivateClassMembers(interfaces[i]));
 		}
-		
+
+		return result;
+	}
+
+	public static Set<Type> getEquivalentParametrizableClasses(Type clazz) {
+		Set<Type> result = new LinkedHashSet<Type>();
+		if (clazz instanceof ParameterizedType) {
+			result.add(clazz);
+
+		} else if (clazz instanceof Class<?>) {
+			Class<?> type = (Class<?>) clazz;
+			if (type.getTypeParameters().length > 0) {
+
+				result.add(type);
+				result.addAll(getEquivalentParametrizableClasses(type
+						.getGenericSuperclass()));
+				Type[] interfaces = type.getGenericInterfaces();
+				for (int i = 0; i < interfaces.length; i++) {
+					result.addAll(getEquivalentParametrizableClasses(interfaces[i]));
+				}
+			}
+		}
+
 		return result;
 	}
 

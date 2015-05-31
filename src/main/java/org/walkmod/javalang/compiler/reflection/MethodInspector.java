@@ -16,11 +16,15 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
@@ -37,7 +41,6 @@ public class MethodInspector {
 
 		SymbolType result = null;
 		List<Class<?>> bounds = scope.getBoundClasses();
-
 		b1.setParameterizedTypes(scope.getParameterizedTypes());
 
 		Iterator<Class<?>> it = bounds.iterator();
@@ -62,12 +65,7 @@ public class MethodInspector {
 			}
 			result = findMethodType(bound, filter, builder, mapping, false);
 		}
-		if (result.getName().equals("java.lang.Object")
-				&& scope.getParameterizedTypes() != null) {
-			if (!scope.getParameterizedTypes().isEmpty()) {
-				result.setName(scope.getParameterizedTypes().get(0).getName());
-			}
-		}
+		
 		return result;
 	}
 
@@ -132,6 +130,68 @@ public class MethodInspector {
 		if (result == null && throwException) {
 			throw new NoSuchMethodException("The method  cannot be found");
 		}
+		return result;
+	}
+
+	public static Set<Method> getNonPrivateMethods(Class<?> clazz) {
+		Set<Method> result = new HashSet<Method>();
+		HashMap<String, Set<Method>> aux = new HashMap<String, Set<Method>>();
+
+		if (clazz == null || clazz.equals(Object.class)) {
+			return result;
+		}
+		Method[] declMethods = clazz.getDeclaredMethods();
+		for (int i = 0; i < declMethods.length; i++) {
+			if (!Modifier.isPrivate(declMethods[i].getModifiers())
+					&& !Modifier.isAbstract(declMethods[i].getModifiers())
+					&& !declMethods[i].isBridge()
+					&& !declMethods[i].isSynthetic()) {
+				result.add(declMethods[i]);
+				Set<Method> auxSet = aux.get(declMethods[i].getName());
+				if (auxSet == null) {
+					auxSet = new HashSet<Method>();
+				}
+				auxSet.add(declMethods[i]);
+
+				aux.put(declMethods[i].getName(), auxSet);
+			}
+		}
+
+		Set<Method> superClassMethods = getNonPrivateMethods(clazz
+				.getSuperclass());
+		for (Method superMethod : superClassMethods) {
+			Set<Method> auxSet = aux.get(superMethod.getName());
+			boolean found = false;
+			if (auxSet == null) {
+				auxSet = new HashSet<Method>();
+			} else {
+				Class<?>[] superParams = superMethod.getParameterTypes();
+				Iterator<Method> it = auxSet.iterator();
+
+				while (it.hasNext() && !found) {
+					Method prev = it.next();
+					Class<?>[] prevParams = prev.getParameterTypes();
+					if (prevParams.length == superParams.length) {
+						if (prevParams.length > 0) {
+							boolean compatibleArgs = false;
+							for (int i = 0; i < prevParams.length
+									&& compatibleArgs; i++) {
+								compatibleArgs = superParams[i]
+										.isAssignableFrom(prevParams[i]);
+							}
+							found = compatibleArgs;
+						} else {
+							found = true;
+						}
+					}
+				}
+			}
+			if (!found) {
+				aux.put(superMethod.getName(), auxSet);
+				result.add(superMethod);
+			}
+		}
+
 		return result;
 	}
 

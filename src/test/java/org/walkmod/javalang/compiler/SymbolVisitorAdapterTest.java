@@ -39,7 +39,6 @@ import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
-import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.stmt.TryStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
@@ -537,6 +536,92 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public class A { public Object foo() { class B { public A get() {return new A() {public String toString(){ return \"hello\";}};}} return new B(); }}");
 		Assert.assertTrue(true);
 	}
-	
+
+	@Test
+	public void testInheritedAttributesInAnonymousClass() throws Exception {
+		run("public class A { public class B { int c; } B aux = new B() { public int getC() { return c; } };}");
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testInvisibleMethodByReflection() throws Exception {
+		run("public class A { public void foo() {sun.misc.Unsafe.getUnsafe();}}");
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testUpperBounds() throws Exception {
+		run("import java.util.*; public class A { List<Collection> list; List add(List<? super List> list) { return list; }  void test() { add(list).isEmpty(); }}");
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testInheritance() throws Exception {
+		CompilationUnit cu = run("public class A { private int var; private void foo() {} class B extends A { void bar() { foo(); var = 1;}}}");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+				.getTypes().get(0);
+		MethodDeclaration md = (MethodDeclaration) type.getMembers().get(1);
+		Assert.assertNotNull(md.getUsages());
+		FieldDeclaration fd = (FieldDeclaration) type.getMembers().get(0);
+		Assert.assertNotNull(fd.getUsages());
+
+	}
+
+	@Test
+	public void testGenericsInTheSameClass() throws Exception {
+		run("public class A<T>{ T foo() { return null;} class B extends A<C> {} class C { void bar () { B b = new B(); b.foo().bar(); } } }");
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testRecursiveWildcards() throws Exception {
+		run("import java.util.*; public class A { static <E extends Comparable<? super E>> Collection<List<E>> orderedPermutations(Iterable<E> elements) { return orderedPermutations(elements);}}");
+		Assert.assertTrue(true);
+
+	}
+
+	@Test
+	public void testNestedCalls() throws Exception {
+		run("public class A { B foo(){ return null;}  class B { void bar() {foo().bar();}}}");
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testCompositeGenerics() throws Exception {
+		String mergeSorted = "public static <T> Iterable<T> mergeSorted(final Iterable<? extends Iterable<? extends T>> iterables){\n";
+		mergeSorted += "A.transform(iterables, A.<T>toIterator()).iterator().next().next(); return null; }\n";
+
+		String toIterator = "private static <T> Function<Iterable<? extends T>, Iterator<? extends T>> \n";
+		toIterator += "toIterator() {\n";
+		toIterator += "return null;\n";
+		toIterator += "}\n";
+
+		String transform = "public static <F, T> Iterable<T> transform(final Iterable<F> fromIterable, final Function<? super F, ? extends T> function) { return null; }";
+
+		run("import java.util.*; public class A { " + mergeSorted + toIterator
+				+ transform + " public class Function<F,T> {} }");
+
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testInheritedPamaterizedClass() throws Exception {
+		run("import java.util.List; public class A{ interface B<T> extends List<List<T>> {} B<String> aux; String foo(List<List<String>> b){ return \"hello\"; } void bar() { foo(aux).toString(); }}");
+		Assert.assertTrue(true);
+	}
+
+	/*
+	@Test
+	public void errorWithArrayCopy() throws Exception {
+		String method = "static <T> T[] arraysCopyOf(T[] original, int newLength) {\n";
+		method += "T[] copy = null;\n";
+		method += "System.arraycopy(\n";
+		method += "original, 0, copy, 0, Math.min(original.length, newLength));\n";
+		method += "return copy;}";
+
+		run("public class A { " + method + " }");
+		Assert.assertTrue(true);
+	}*/
+
 
 }

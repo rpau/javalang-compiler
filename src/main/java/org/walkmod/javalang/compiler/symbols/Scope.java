@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -24,6 +25,7 @@ import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
+import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class Scope {
 
@@ -35,6 +37,12 @@ public class Scope {
 
 	private int innerAnonymousClassCounter = 0;
 
+	private boolean hasMethodsLoaded = false;
+
+	private boolean hasFieldsLoaded = false;
+
+	private Map<String, SymbolType> typeParams = null;
+
 	public Scope() {
 	}
 
@@ -45,6 +53,18 @@ public class Scope {
 	public Scope(List<SymbolAction> actions) {
 		this.actions = actions;
 
+	}
+
+	public void setHasMethodsLoaded(boolean hasMethodsLoaded) {
+		this.hasMethodsLoaded = hasMethodsLoaded;
+	}
+
+	public boolean hasFieldsLoaded() {
+		return hasFieldsLoaded;
+	}
+
+	public void setHasFieldsLoaded(boolean hasFieldsLoaded) {
+		this.hasFieldsLoaded = hasFieldsLoaded;
 	}
 
 	public Symbol<?> getRootSymbol() {
@@ -66,26 +86,35 @@ public class Scope {
 	}
 
 	public Symbol<?> findSymbol(String name, ReferenceType... referenceType) {
+		Symbol<?> result = null;
 		List<Symbol<?>> list = symbols.get(name);
 		if (list != null) {
 			Iterator<Symbol<?>> it = list.iterator();
-			while (it.hasNext()) {
+			while (it.hasNext() && result == null) {
 				Symbol<?> s = it.next();
 				if (referenceType == null || referenceType.length == 0) {
-					return s;
+					result = s;
 				} else {
 					boolean found = false;
 					for (int i = 0; i < referenceType.length && !found; i++) {
 						found = s.getReferenceType().equals(referenceType[i]);
 					}
 					if (found) {
-						return s;
+						result = s;
 					}
 				}
 			}
 		}
-
-		return null;
+		if (result == null) {
+			list = symbols.get("super");
+			if (list != null) {
+				Scope scope = list.get(0).getInnerScope();
+				if (scope != null) {
+					result = scope.findSymbol(name, referenceType);
+				}
+			}
+		}
+		return result;
 	}
 
 	public List<Symbol<?>> getSymbols(String name) {
@@ -130,25 +159,43 @@ public class Scope {
 
 	}
 
-	public Symbol<?> getSymbol(String name, SymbolType scope,
+	public Symbol<?> findSymbol(String name, SymbolType scope,
 			SymbolType[] args, ReferenceType... referenceType) {
+		Symbol<?> result = null;
 		if (args == null) {
 			return findSymbol(name, referenceType);
 		} else {
+
 			List<Symbol<?>> values = symbols.get(name);
 			if (values != null) {
-				for (Symbol<?> symbol : values) {
+				Iterator<Symbol<?>> it = values.iterator();
+				while (it.hasNext() && result == null) {
+					Symbol<?> symbol = it.next();
 					if (symbol instanceof MethodSymbol) {
 						MethodSymbol aux = (MethodSymbol) symbol;
 						if (aux.hasCompatibleSignature(scope, args)) {
-							return aux;
+							result = aux;
 						}
 					}
 				}
 			}
+			if (result == null) {
+				values = symbols.get("super");
+				if (values != null) {
+					Scope innerScope = values.get(0).getInnerScope();
+					if (innerScope != null) {
+						result = innerScope.findSymbol(name, scope, args,
+								referenceType);
+					}
+				}
+			}
+			if (result != null) {
+				MethodSymbol sm = (MethodSymbol) result;
+				result = sm.buildTypeParameters(typeParams);
+			}
 
 		}
-		return null;
+		return result;
 	}
 
 	public void chageSymbol(Symbol<?> oldSymbol, Symbol<?> newSymbol) {
@@ -197,7 +244,17 @@ public class Scope {
 				}
 			}
 		}
+		if (symbol.getReferenceType().equals(ReferenceType.TYPE_PARAM)) {
+			if(typeParams == null){
+				typeParams = new HashMap<String, SymbolType>();
+			}
+			typeParams.put(symbol.getName(), symbol.getType());
+		}
 		return values.add(symbol);
+	}
+
+	public boolean hasMethodsLoaded() {
+		return hasMethodsLoaded;
 	}
 
 	public List<SymbolAction> getActions() {
