@@ -610,7 +610,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 
-	/*
+	
 	@Test
 	public void errorWithArrayCopy() throws Exception {
 		String method = "static <T> T[] arraysCopyOf(T[] original, int newLength) {\n";
@@ -621,7 +621,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 		run("public class A { " + method + " }");
 		Assert.assertTrue(true);
-	}*/
+	}
 
 
 }

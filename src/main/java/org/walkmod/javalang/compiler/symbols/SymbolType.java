@@ -286,6 +286,12 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			} else {
 				isCompatible = Types.isCompatible(other.getClazz(), getClazz());
 			}
+			if(isCompatible){
+				if(!getClazz().equals(Object.class) || getArrayCount() > 0){
+					isCompatible = getArrayCount() == other.getArrayCount();
+				}
+			}
+			
 		}
 		return isCompatible;
 	}
@@ -409,9 +415,13 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				for (int i = 0; i < typeParams.length; i++) {
 					SymbolType tp = valueOf(typeParams[i], null,
 							updatedTypeMapping, typeMapping);
-					params.add(tp);
+					if (tp != null) {
+						params.add(tp);
+					}
 				}
-				returnType.setParameterizedTypes(params);
+				if (!params.isEmpty()) {
+					returnType.setParameterizedTypes(params);
+				}
 			}
 		} else if (type instanceof TypeVariable) {
 
@@ -441,10 +451,15 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 								typeMapping);
 						auxMap.put(variableName, returnType);
 						for (Type bound : bounds) {
-							boundsList.add(valueOf(bound, null,
-									updatedTypeMapping, auxMap));
+							SymbolType st = valueOf(bound, null,
+									updatedTypeMapping, auxMap);
+							if (st != null) {
+								boundsList.add(st);
+							}
 						}
-						if (bounds.length == 1) {
+						if (boundsList.isEmpty()) {
+							returnType = new SymbolType("java.lang.Object");
+						} else if (bounds.length == 1) {
 							returnType = boundsList.get(0);
 						}
 					}
@@ -520,6 +535,15 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 
 		} else if (type instanceof GenericArrayType) {
+			if(arg != null){
+				if(arg.getArrayCount() > 0){
+					arg = arg.clone();
+					arg.setArrayCount(arg.getArrayCount()-1);
+				}
+				else{
+					arg = null;
+				}
+			}
 			SymbolType st = valueOf(
 					((GenericArrayType) type).getGenericComponentType(), arg,
 					updatedTypeMapping, typeMapping);
@@ -535,8 +559,14 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			if (types != null && types.length > 0) {
 				upperBounds = new LinkedList<SymbolType>();
 				for (int i = 0; i < types.length; i++) {
-					upperBounds.add(valueOf(types[i], arg, updatedTypeMapping,
-							typeMapping));
+					SymbolType st = valueOf(types[i], arg, updatedTypeMapping,
+							typeMapping);
+					if (st != null) {
+						upperBounds.add(st);
+					}
+				}
+				if(upperBounds.isEmpty()){
+					upperBounds = null;
 				}
 
 			}
@@ -545,9 +575,15 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				lowerBounds = new LinkedList<SymbolType>();
 				for (int i = 0; i < types.length; i++) {
 
-					lowerBounds.add(valueOf(types[i], arg, updatedTypeMapping,
-							typeMapping));
+					SymbolType st = valueOf(types[i], arg, updatedTypeMapping,
+							typeMapping);
+					if (st != null) {
+						lowerBounds.add(st);
+					}
 
+				}
+				if(lowerBounds.isEmpty()){
+					lowerBounds = null;
 				}
 			}
 			if (upperBounds != null || lowerBounds != null) {
@@ -588,7 +624,10 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					Type[] bounds = tv.getBounds();
 					List<SymbolType> boundsList = new LinkedList<SymbolType>();
 					for (int i = 0; i < bounds.length; i++) {
-						boundsList.add(valueOf(bounds[i], typeMapping));
+						SymbolType st = valueOf(bounds[i], typeMapping);
+						if (st != null) {
+							boundsList.add(st);
+						}
 					}
 					SymbolType st = typeMapping.get(tv.getName());
 					if (st == null) {

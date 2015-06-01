@@ -120,6 +120,10 @@ public class Types {
 		}
 
 	}
+	
+	public static boolean isPrimitive(Class<?> clazz){
+		return clazz.isPrimitive() || wrapperClasses.containsKey(clazz.getName());
+	}
 
 	public static boolean isCompatible(Class<?>[] fromClasses,
 			Class<?>[] toClasses) {

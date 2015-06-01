@@ -93,7 +93,6 @@ import org.walkmod.javalang.compiler.reflection.GenericsBuilderFromMethodParamet
 import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
 import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
-import org.walkmod.javalang.compiler.reflection.ResultBuilderFromCallGenerics;
 import org.walkmod.javalang.compiler.reflection.SymbolDataOfMethodReferenceBuilder;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
@@ -392,9 +391,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					if (!(e instanceof LambdaExpr)
 							&& !(e instanceof MethodReferenceExpr)) {
 						e.accept(this, arg);
-						SymbolType argType = (SymbolType) e.getSymbolData();
+						SymbolType argType = null;
+						if (e instanceof ObjectCreationExpr) {
+							ObjectCreationExpr aux = (ObjectCreationExpr) e;
+							argType = (SymbolType) aux.getType()
+									.getSymbolData();
+						} else {
+							argType = (SymbolType) e.getSymbolData();
+						}
 						symbolTypes[i] = argType;
-
 					} else {
 						hasFunctionalExpressions = true;
 					}
@@ -417,7 +422,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					// it is may return a parameterized type
 					Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 					GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
-							typeMapping, n.getArgs(), scope, symbolTypes, n.getTypeArgs());
+							typeMapping, n.getArgs(), scope, symbolTypes,
+							n.getTypeArgs());
 
 					builder.build(m);
 					SymbolType aux = SymbolType.valueOf(m, typeMapping);
@@ -447,11 +453,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				}
 				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
 				builder.appendBuilder(new GenericsBuilderFromMethodParameterTypes(
-						typeMapping, n.getArgs(), scope, symbolTypes,n.getTypeArgs()));
+						typeMapping, n.getArgs(), scope, symbolTypes, n
+								.getTypeArgs()));
 
 				SymbolType st = MethodInspector.findMethodType(scope, filter,
 						builder, typeMapping);
-				
+
 				n.setSymbolData(st);
 
 				SymbolDataOfMethodReferenceBuilder<A> typeBuilder = new SymbolDataOfMethodReferenceBuilder<A>(
@@ -534,7 +541,14 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				if (!(e instanceof LambdaExpr)
 						&& !(e instanceof MethodReferenceExpr)) {
 					e.accept(this, arg);
-					SymbolType argType = (SymbolType) e.getSymbolData();
+					SymbolType argType = null;
+					if (e instanceof ObjectCreationExpr) {
+						ObjectCreationExpr aux = (ObjectCreationExpr) e;
+						argType = (SymbolType) aux.getType()
+								.getSymbolData();
+					} else {
+						argType = (SymbolType) e.getSymbolData();
+					}
 					symbolTypes[i] = argType;
 
 				} else {
@@ -883,7 +897,11 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				if (param.getSymbolData() == null) {
 					param.getType().accept(this, null);
 					typeArgs[i] = (SymbolType) param.getType().getSymbolData();
+					if(param.isVarArgs()){
+						typeArgs[i].setArrayCount( typeArgs[i].getArrayCount()+1);
+					}
 				}
+				
 			}
 		}
 		return typeArgs;

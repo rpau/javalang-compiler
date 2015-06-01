@@ -184,9 +184,17 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	public void visit(MarkerAnnotationExpr n, A arg) {
-		Symbol<?> s = symbolTable.lookUpSymbolForRead(n.getName().toString(),
-				n, ReferenceType.TYPE);
-		n.setSymbolData(s.getType());
+		String type = n.getName().toString();
+		Symbol<?> s = symbolTable.lookUpSymbolForRead(type, n,
+				ReferenceType.TYPE);
+		SymbolData sd = null;
+		if (s == null) {
+			//it is a full name and thus, it is not imported
+			sd = new SymbolType(type);
+		} else {
+			sd = s.getType();
+		}
+		n.setSymbolData(sd);
 		super.visit(n, arg);
 	}
 

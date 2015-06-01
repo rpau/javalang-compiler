@@ -17,7 +17,11 @@ package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -30,6 +34,7 @@ import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.compiler.types.Types;
 
 public class MethodInspector {
 
@@ -65,7 +70,7 @@ public class MethodInspector {
 			}
 			result = findMethodType(bound, filter, builder, mapping, false);
 		}
-		
+
 		return result;
 	}
 
@@ -73,8 +78,10 @@ public class MethodInspector {
 			ArrayFilter<Method> filter, CompositeBuilder<Method> builder,
 			Map<String, SymbolType> typeMapping, boolean throwException)
 			throws Exception {
-
-		filter.setElements(clazz.getDeclaredMethods());
+		List<Method> auxList = sortMethods(clazz.getDeclaredMethods());
+		Method[] auxArray = new Method[auxList.size()];
+		auxList.toArray(auxArray);
+		filter.setElements(auxArray);
 
 		Method aux = filter.filterOne();
 
@@ -130,6 +137,63 @@ public class MethodInspector {
 		if (result == null && throwException) {
 			throw new NoSuchMethodException("The method  cannot be found");
 		}
+		return result;
+	}
+
+	public static List<Method> sortMethods(Method[] methods) {
+
+		Map<String, List<Method>> map = new HashMap<String, List<Method>>();
+
+		LinkedList<Method> result = new LinkedList<Method>();
+		for (Method method : methods) {
+			List<Method> aux = map.get(method.getName());
+			if (aux == null) {
+				aux = new LinkedList<Method>();
+				map.put(method.getName(), aux);
+			}
+			aux.add(method);
+		}
+
+		Set<String> entries = map.keySet();
+		for (String entry : entries) {
+			List<Method> aux = map.get(entry);
+			Collections.sort(aux, new Comparator<Method>() {
+				@Override
+				public int compare(Method method1, Method method2) {
+					Parameter[] params1 = method1.getParameters();
+					Parameter[] params2 = method2.getParameters();
+
+					if (params1.length < params2.length) {
+						return -1;
+					} else if (params1.length > params2.length) {
+						return 1;
+					} else {
+						boolean isMethod2First = true;
+						try {
+							for (int i = 0; i < params1.length
+									&& isMethod2First; i++) {
+
+								Class<?> clazz2 = params2[i].getType();
+								Class<?> clazz1 = params1[i].getType();
+
+								isMethod2First = Types.isAssignable(clazz2, clazz1);
+
+							}
+							if (isMethod2First) {
+								return 1;
+							} else {
+								return -1;
+							}
+						} catch (Exception e) {
+							throw new RuntimeException(e);
+						}
+					}
+
+				}
+			});
+			result.addAll(aux);
+		}
+
 		return result;
 	}
 

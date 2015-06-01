@@ -45,6 +45,7 @@ public abstract class AbstractCompatibleArgsPredicate {
 	public boolean filter() throws Exception {
 		int numParams = typeArgs == null ? 0 : typeArgs.length;
 		SymbolType lastVariableTypeArg = null;
+		SymbolType[] newTypeArgs = typeArgs;
 		boolean isCompatible = true;
 		if ((paramsCount == numParams)
 				|| (isVarAgs && numParams >= (paramsCount - 1))) {
@@ -77,34 +78,45 @@ public abstract class AbstractCompatibleArgsPredicate {
 					numParams = paramsCount;
 
 					// changing the last argument to an array
-					SymbolType[] newTypeArgs = new SymbolType[paramsCount];
+					newTypeArgs = new SymbolType[paramsCount];
 
 					for (int i = 0; i < newTypeArgs.length - 1
 							&& i < typeArgs.length; i++) {
 						newTypeArgs[i] = typeArgs[i];
 					}
 
-					newTypeArgs[newTypeArgs.length - 1] = lastVariableTypeArg
-							.clone();
-					newTypeArgs[newTypeArgs.length - 1]
-							.setArrayCount(newTypeArgs[newTypeArgs.length - 1]
-									.getArrayCount() - 1);
-					typeArgs = newTypeArgs;
+					if (methodArgs.length == numParams && newTypeArgs[numParams-1] != null) {
+						if (methodArgs[numParams - 1].getArrayCount() != newTypeArgs[numParams - 1]
+								.getArrayCount()) {
+							newTypeArgs[newTypeArgs.length - 1] = lastVariableTypeArg
+									.clone();
+							newTypeArgs[newTypeArgs.length - 1]
+									.setArrayCount(newTypeArgs[newTypeArgs.length - 1]
+											.getArrayCount() - 1);
+						}
+					}
+
+				} else {
+					if (methodArgs.length > 0 && methodArgs[methodArgs.length-1] != null) {
+						methodArgs[methodArgs.length-1]
+								.setArrayCount(methodArgs[methodArgs.length-1]
+										.getArrayCount() - 1);
+					}
 				}
 			}
 
 			for (int i = 0; i < numParams && isCompatible; i++) {
 
-				isCompatible = typeArgs[i] == null
-						|| methodArgs[i].isCompatible(typeArgs[i]);
+				isCompatible = newTypeArgs[i] == null
+						|| methodArgs[i].isCompatible(newTypeArgs[i]);
 
 			}
 
 			if (isCompatible && lastVariableTypeArg != null) {
 
-				for (int j = numParams; j < typeArgs.length && isCompatible; j++) {
+				for (int j = numParams; j < newTypeArgs.length && isCompatible; j++) {
 					isCompatible = lastVariableTypeArg
-							.isCompatible(typeArgs[j]);
+							.isCompatible(newTypeArgs[j]);
 
 				}
 
