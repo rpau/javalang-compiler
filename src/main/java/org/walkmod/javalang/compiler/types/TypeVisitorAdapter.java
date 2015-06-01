@@ -417,8 +417,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				MethodSymbol methodSymbol = (MethodSymbol) s;
 				Method m = methodSymbol.getReferencedMethod();
 
-				if (m.getTypeParameters().length > 0
-						&& !m.getReturnType().equals(void.class)) {
+				if (MethodInspector.isGeneric(m)) {
 					// it is may return a parameterized type
 					Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 					GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
@@ -544,8 +543,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					SymbolType argType = null;
 					if (e instanceof ObjectCreationExpr) {
 						ObjectCreationExpr aux = (ObjectCreationExpr) e;
-						argType = (SymbolType) aux.getType()
-								.getSymbolData();
+						argType = (SymbolType) aux.getType().getSymbolData();
 					} else {
 						argType = (SymbolType) e.getSymbolData();
 					}
@@ -897,11 +895,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				if (param.getSymbolData() == null) {
 					param.getType().accept(this, null);
 					typeArgs[i] = (SymbolType) param.getType().getSymbolData();
-					if(param.isVarArgs()){
-						typeArgs[i].setArrayCount( typeArgs[i].getArrayCount()+1);
+					if (param.isVarArgs()) {
+						typeArgs[i]
+								.setArrayCount(typeArgs[i].getArrayCount() + 1);
 					}
 				}
-				
+
 			}
 		}
 		return typeArgs;

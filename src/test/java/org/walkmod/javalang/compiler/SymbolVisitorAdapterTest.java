@@ -622,6 +622,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public class A { " + method + " }");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testGenericsIntroducedByAnInnerClass() throws Exception{
+		String innerClass ="class Reference<T> { public T get() { return null;}} ";
+		String mainClass ="public class A { "+innerClass+" void foo() { Reference<Reference<String>> r = null; r.get().get().length(); }}";
+		run(mainClass);
+		Assert.assertTrue(true);
+	}
 
 
 }

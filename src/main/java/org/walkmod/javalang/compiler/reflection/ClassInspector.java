@@ -15,9 +15,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -217,6 +220,49 @@ public class ClassInspector {
 		}
 
 		return result;
+	}
+
+	public static boolean isGeneric(Type type) {
+		if (type instanceof Class<?>) {
+			Class<?> clazz = (Class<?>) type;
+			Type[] params = clazz.getTypeParameters();
+			boolean isGeneric = false;
+			for (int i = 0; i < params.length && !isGeneric; i++) {
+				isGeneric = isGeneric(params[i]);
+			}
+			return isGeneric;
+		} else if (type instanceof TypeVariable<?>) {
+			return true;
+		} else if (type instanceof ParameterizedType) {
+			ParameterizedType paramType = (ParameterizedType) type;
+			boolean isGeneric = isGeneric(paramType.getRawType());
+			if (!isGeneric) {
+				Type[] typeArgs = paramType.getActualTypeArguments();
+				for (int i = 0; i < typeArgs.length && !isGeneric; i++) {
+					isGeneric = isGeneric(typeArgs[i]);
+				}
+			}
+			return isGeneric;
+		} else if (type instanceof GenericArrayType) {
+			GenericArrayType arrayType = (GenericArrayType) type;
+			return isGeneric(arrayType.getGenericComponentType());
+		} else if (type instanceof WildcardType) {
+			WildcardType wt = (WildcardType) type;
+			Type[] bounds = wt.getUpperBounds();
+			boolean isGeneric = false;
+			for (int i = 0; i < bounds.length && !isGeneric; i++) {
+				isGeneric = isGeneric(bounds[i]);
+			}
+			if (!isGeneric) {
+				bounds = wt.getLowerBounds();
+
+				for (int i = 0; i < bounds.length && !isGeneric; i++) {
+					isGeneric = isGeneric(bounds[i]);
+				}
+			}
+			return isGeneric;
+		}
+		return false;
 	}
 
 }

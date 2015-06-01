@@ -19,7 +19,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -72,6 +71,16 @@ public class MethodInspector {
 		}
 
 		return result;
+	}
+
+	public static boolean isGeneric(Method m) {
+		boolean isGeneric = m.getTypeParameters().length > 0
+				&& !m.getReturnType().equals(void.class);
+		if (!isGeneric) {
+
+			return ClassInspector.isGeneric(m.getGenericReturnType());
+		}
+		return isGeneric;
 	}
 
 	public static SymbolType findMethodType(Class<?> clazz,
@@ -176,7 +185,8 @@ public class MethodInspector {
 								Class<?> clazz2 = params2[i].getType();
 								Class<?> clazz1 = params1[i].getType();
 
-								isMethod2First = Types.isAssignable(clazz2, clazz1);
+								isMethod2First = Types.isAssignable(clazz2,
+										clazz1);
 
 							}
 							if (isMethod2First) {
