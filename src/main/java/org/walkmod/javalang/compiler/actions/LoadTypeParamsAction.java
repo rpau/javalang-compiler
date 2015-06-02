@@ -15,8 +15,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.actions;
 
+import java.lang.reflect.TypeVariable;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.TypeParameter;
@@ -28,7 +32,6 @@ import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 
 public class LoadTypeParamsAction extends SymbolAction {
 
@@ -43,7 +46,42 @@ public class LoadTypeParamsAction extends SymbolAction {
 				List<TypeParameter> typeParams = declaration
 						.getTypeParameters();
 				SymbolType thisType = symbol.getType();
+
 				load(table, typeParams, thisType);
+				Map<String, SymbolType> localTypeParams = table.getScopes()
+						.peek().getLocalTypeParams();
+
+				if (!declaration.isInterface()) {
+					List<ClassOrInterfaceType> extendsList = declaration
+							.getExtends();
+					if (extendsList != null) {
+						for (ClassOrInterfaceType type : extendsList) {
+							SymbolType superType = ASTSymbolTypeResolver
+									.getInstance().valueOf(type);
+							List<SymbolType> params = superType
+									.getParameterizedTypes();
+							if (params != null) {
+								// extends a parameterizable type
+								TypeVariable<?>[] tps = superType.getClazz()
+										.getTypeParameters();
+								for (int i = 0; i < tps.length; i++) {
+									params.get(i).setTemplateVariable(
+											tps[i].getName());
+									if (localTypeParams == null
+											|| !localTypeParams
+													.containsKey(tps[i]
+															.getName())) {
+										table.pushSymbol(tps[i].getName(),
+												ReferenceType.TYPE_PARAM,
+												params.get(i), null);
+									}
+
+								}
+							}
+						}
+					}
+				}
+
 			}
 		}
 
@@ -61,8 +99,9 @@ public class LoadTypeParamsAction extends SymbolAction {
 				SymbolType st = null;
 				if (typeBounds != null) {
 					for (ClassOrInterfaceType type : typeBounds) {
-						SymbolType paramType = ASTSymbolTypeResolver.getInstance().valueOf(type);
-						if(paramType == null){
+						SymbolType paramType = ASTSymbolTypeResolver
+								.getInstance().valueOf(type);
+						if (paramType == null) {
 							paramType = new SymbolType(Object.class);
 						}
 						bounds.add(paramType);
@@ -72,8 +111,9 @@ public class LoadTypeParamsAction extends SymbolAction {
 				} else {
 					st = new SymbolType(Object.class);
 				}
-				table.pushSymbol(tp.getName(), ReferenceType.TYPE, st, tp);
-				st.setTemplateVariable(true);
+				st.setTemplateVariable(tp.getName());
+				table.pushSymbol(tp.getName(), ReferenceType.TYPE_PARAM, st, tp);
+
 				parameterizedTypes.add(st);
 			}
 			if (thisType != null && !parameterizedTypes.isEmpty()) {

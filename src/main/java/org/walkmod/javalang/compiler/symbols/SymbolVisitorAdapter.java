@@ -189,7 +189,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 				ReferenceType.TYPE);
 		SymbolData sd = null;
 		if (s == null) {
-			//it is a full name and thus, it is not imported
+			// it is a full name and thus, it is not imported
 			sd = new SymbolType(type);
 		} else {
 			sd = s.getType();
@@ -327,8 +327,11 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 		List<Symbol<?>> symbols = symbolTable.getScopes().peek()
 				.getSymbolsByLocation(n);
-		Scope scope = new Scope(symbols.get(0));
-		symbols.get(0).setInnerScope(scope);
+		Scope scope = symbols.get(0).getInnerScope();
+		if (scope == null) {
+			scope = new Scope(symbols.get(0));
+			symbols.get(0).setInnerScope(scope);
+		}
 		symbolTable.pushScope(scope);
 		LoadTypeParamsAction action = new LoadTypeParamsAction();
 		action.load(symbolTable, n.getTypeParameters(),
@@ -453,8 +456,11 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(MethodDeclaration n, A arg) {
 		List<Symbol<?>> symbols = symbolTable.getScopes().peek()
 				.getSymbolsByLocation(n);
-		Scope scope = new Scope(symbols.get(0));
-		symbols.get(0).setInnerScope(scope);
+		Scope scope = symbols.get(0).getInnerScope();
+		if (scope == null) {
+			scope = new Scope(symbols.get(0));
+			symbols.get(0).setInnerScope(scope);
+		}
 		symbolTable.pushScope(scope);
 		List<TypeParameter> typeParams = n.getTypeParameters();
 		LoadTypeParamsAction action = new LoadTypeParamsAction();

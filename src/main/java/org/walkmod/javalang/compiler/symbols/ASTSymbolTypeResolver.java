@@ -104,7 +104,8 @@ public class ASTSymbolTypeResolver extends
 				result = symbolTable
 						.getType(
 								name,
-								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
+								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
+								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
 				if (result != null) {
 					result = result.clone();
 				} else {
@@ -176,13 +177,17 @@ public class ASTSymbolTypeResolver extends
 			}
 			String fullName = scopeName + name;
 
-			result = symbolTable.getType(innerClassName,
-					org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
+			result = symbolTable
+					.getType(
+							innerClassName,
+							org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
+							org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
 			if (result == null) {
 				result = symbolTable
 						.getType(
 								fullName,
-								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
+								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
+								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
 				if (result == null) {
 					// in the code appears B.C
 					SymbolType scopeType = type.getScope().accept(this, arg);
@@ -261,7 +266,7 @@ public class ASTSymbolTypeResolver extends
 			if (upperBounds != null || lowerBounds != null) {
 				result = new SymbolType(upperBounds, lowerBounds);
 			}
-			
+
 		}
 		return result;
 	}

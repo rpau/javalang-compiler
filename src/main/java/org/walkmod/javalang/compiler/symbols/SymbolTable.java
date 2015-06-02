@@ -15,8 +15,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
@@ -186,6 +189,20 @@ public class SymbolTable {
 	public Symbol<?> lookUpSymbolForWrite(String symbolName,
 			SymbolReference reference) {
 		return lookUpSymbolForWrite(symbolName, reference, null, null);
+	}
+
+	public Map<String, SymbolType> getTypeParams() {
+		Map<String, SymbolType> result = new LinkedHashMap<String, SymbolType>();
+
+		Iterator<Scope> it = indexStructure.iterator();
+		while (it.hasNext()) {
+			Scope scope = it.next();
+			Map<String, SymbolType> tp = scope.getTypeParams();
+			if (tp != null) {
+				result.putAll(tp);
+			}
+		}
+		return result;
 	}
 
 	public Symbol<?> lookUpSymbolForWrite(String symbolName,

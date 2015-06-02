@@ -100,14 +100,17 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(md);
 		}
-		table.pushScope();
+
+		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
+				st, args, false, hasDynamicArgs, (Method) null, actions);
+		Scope scope = new Scope(method);
+		method.setInnerScope(scope);
+		table.pushScope(scope);
 		LoadTypeParamsAction action = new LoadTypeParamsAction();
-		action.load(table, md.getTypeParameters(),null);
+		action.load(table, md.getTypeParameters(), null);
 		md.accept(expressionTypeAnalyzer, null);
 		table.popScope(true);
-		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
-				st, args, false, hasDynamicArgs,
-				md.getSymbolData().getMethod(), actions);
+		method.setReferencedMethod(md.getSymbolData().getMethod());
 		table.pushSymbol(method, true);
 	}
 
@@ -140,11 +143,18 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 		if (actionProvider != null) {
 			actions = actionProvider.getActions(md);
 		}
-		md.accept(expressionTypeAnalyzer, null);
-
 		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
-				st, args, false, hasDynamicArgs, md.getSymbolData()
-						.getConstructor(), actions);
+				st, args, false, hasDynamicArgs,
+				(java.lang.reflect.Constructor<?>) null, actions);
+
+		Scope scope = new Scope(method);
+		method.setInnerScope(scope);
+		table.pushScope(scope);
+		md.accept(expressionTypeAnalyzer, null);
+		table.popScope(true);
+
+		method.setReferencedConstructor(md.getSymbolData().getConstructor());
+
 		table.pushSymbol(method);
 	}
 

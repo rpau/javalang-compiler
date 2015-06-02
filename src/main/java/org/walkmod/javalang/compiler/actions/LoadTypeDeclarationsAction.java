@@ -106,7 +106,7 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 						name = scope.toString() + "." + name;
 					}
 					Symbol<?> s = symbolTable.findSymbol(name,
-							ReferenceType.TYPE);
+							ReferenceType.TYPE, ReferenceType.TYPE_PARAM);
 					if (s != null) {
 						Object location = s.getLocation();
 						if (location != null

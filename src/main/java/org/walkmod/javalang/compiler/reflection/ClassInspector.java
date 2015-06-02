@@ -162,6 +162,7 @@ public class ClassInspector {
 			boolean validModifiers = Modifier.isPublic(modifiers)
 					|| Modifier.isProtected(modifiers)
 					|| (!Modifier.isPrivate(modifiers) && innerClasses[i]
+							.getPackage() != null && innerClasses[i]
 							.getPackage().equals(pkg));
 			found = validModifiers
 					&& (uniqueName.equals(name) || simpleName.equals(name));
@@ -263,6 +264,15 @@ public class ClassInspector {
 			return isGeneric;
 		}
 		return false;
+	}
+	
+	public static int getClassHierarchyHeight(Class<?> clazz){
+		if(clazz == null || Object.class.equals(clazz)){
+			return 0;
+		}
+		else{
+			return getClassHierarchyHeight(clazz.getSuperclass())+1;
+		}
 	}
 
 }

@@ -286,6 +286,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
+	
+	@Test
+	public void testImportsOfJavadocMultipleLinesTypes() throws Exception {
+		String javadoc = "\n*  Weak reference with a {@code finalizeReferent()} method which a background thread invokes after\n"
+				+ " * the garbage collector reclaims the referent. This is a simpler alternative to using a {@link\n"
+				+ " * Arrays}.\n";
+		String code = "import java.util.Arrays; public class Foo {/**" + javadoc
+				+ "*/ public void foo(){}}";
+		CompilationUnit cu = runRemoveUnusedMembers(code);
+		Assert.assertTrue(!cu.getImports().isEmpty());
+	}
 
 	@Test
 	public void testReferencesToEnum() throws Exception {
@@ -630,6 +641,49 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run(mainClass);
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testGenericsWithRewrittenTypeParams() throws Exception{
+		String class1 = "class B<T> { public T get() { return null; }}";
+		String class2 = "class C<T> extends B<B<T>> {}";
+		String main = "public class A { "+class1+" "+class2+" void foo () { C<String> c = null; c.get().get().trim().length(); }}";
+		run(main);
+		Assert.assertTrue(true);
+	}
 
+	@Test
+	public void testGenericsWithRewrittenTypeParams2() throws Exception{
+		String class1 = "class B<T> { public T get() { return null; }}";
+		String class2 = "class C extends B<B<V>> { void foo() { get().get();}}";
+		String main = "public class A<V> { "+class2+" "+class1+" }";
+		run(main);
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testGenericsWithRewrittenTypeParams3() throws Exception{
+		String class1 = "interface B<K,V> { public V get(Object key); public Set<K> keySet(); }";
+		String class2 = "class C extends HashMap<K, Set<V>> { }";
+		String class3 = "class D extends C { void foo() { get(null).iterator().hasNext();} }";
+		
+		String main = "import java.util.*; public class A<K,V> { "+class1+" "+class2+" "+class3+"}";
+		run(main);
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testFieldMethodCallWithGenerics() throws Exception{
+		String code ="import java.util.List; public class A<T> { List<A<? super T>> comparators; String foo() { comparators.get(0).foo().trim().length(); return null;}}";
+		run(code);
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testParameterTypeReferences() throws Exception{
+		String code ="import java.util.List; public class A { void foo(List list){}}";
+		CompilationUnit cu = run(code);
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+		Assert.assertEquals(1, cu.getImports().get(0).getUsages().size());
+	}
 
 }

@@ -53,7 +53,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 	private int arrayCount = 0;
 
-	private boolean isTemplateVariable = false;
+	private String templateVariable = null;
 
 	private Class<?> clazz;
 
@@ -202,11 +202,11 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	}
 
 	public boolean isTemplateVariable() {
-		return isTemplateVariable;
+		return templateVariable != null;
 	}
 
-	public void setTemplateVariable(boolean isTemplateVariable) {
-		this.isTemplateVariable = isTemplateVariable;
+	public void setTemplateVariable(String templateVariable) {
+		this.templateVariable = templateVariable;
 	}
 
 	@Override
@@ -286,12 +286,12 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			} else {
 				isCompatible = Types.isCompatible(other.getClazz(), getClazz());
 			}
-			if(isCompatible){
-				if(!getClazz().equals(Object.class) || getArrayCount() > 0){
+			if (isCompatible) {
+				if (!getClazz().equals(Object.class) || getArrayCount() > 0) {
 					isCompatible = getArrayCount() == other.getArrayCount();
 				}
 			}
-			
+
 		}
 		return isCompatible;
 	}
@@ -353,7 +353,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		result.setName(name);
 		result.setClazz(clazz);
 		result.setArrayCount(arrayCount);
-		result.isTemplateVariable = isTemplateVariable;
+		result.templateVariable = templateVariable;
 		if (parameterizedTypes != null) {
 			List<SymbolType> list = new LinkedList<SymbolType>();
 
@@ -535,12 +535,11 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 
 		} else if (type instanceof GenericArrayType) {
-			if(arg != null){
-				if(arg.getArrayCount() > 0){
+			if (arg != null) {
+				if (arg.getArrayCount() > 0) {
 					arg = arg.clone();
-					arg.setArrayCount(arg.getArrayCount()-1);
-				}
-				else{
+					arg.setArrayCount(arg.getArrayCount() - 1);
+				} else {
 					arg = null;
 				}
 			}
@@ -565,7 +564,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						upperBounds.add(st);
 					}
 				}
-				if(upperBounds.isEmpty()){
+				if (upperBounds.isEmpty()) {
 					upperBounds = null;
 				}
 
@@ -582,7 +581,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					}
 
 				}
-				if(lowerBounds.isEmpty()){
+				if (lowerBounds.isEmpty()) {
 					lowerBounds = null;
 				}
 			}
@@ -719,6 +718,51 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 		}
 		return upperBoundClasses;
+	}
+
+	private SymbolType refactor_rec(String variable, SymbolType st, boolean dynamicVar) {
+		if (variable.equals(templateVariable) && dynamicVar) {
+			return st;
+		} else {
+			SymbolType aux;
+			if (this.parameterizedTypes != null) {
+				aux = this.clone();
+				List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+				for (SymbolType param : this.parameterizedTypes) {
+					param = param.refactor_rec(variable, st, dynamicVar);
+					parameterizedTypes.add(param);
+				}
+				aux.setParameterizedTypes(parameterizedTypes);
+			} else {
+				aux = this;
+
+			}
+			return aux;
+		}
+	}
+
+	public SymbolType refactor(String variable, SymbolType st, boolean dynamicVar) {
+		if (variable.equals(templateVariable) && dynamicVar) {
+			return st;
+		} else {
+			SymbolType aux;
+			if (this.parameterizedTypes != null) {
+				aux = this.clone();
+				List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+				for (SymbolType param : this.parameterizedTypes) {
+					param = param.refactor_rec(variable, st, dynamicVar);
+					parameterizedTypes.add(param);
+				}
+				aux.setParameterizedTypes(parameterizedTypes);
+			} else {
+				if (Object.class.equals(getClazz())) {
+					aux = st;
+				} else {
+					aux = this;
+				}
+			}
+			return aux;
+		}
 	}
 
 }

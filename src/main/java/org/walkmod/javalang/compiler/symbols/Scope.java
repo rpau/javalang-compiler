@@ -15,17 +15,16 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
-import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class Scope {
 
@@ -159,6 +158,27 @@ public class Scope {
 
 	}
 
+	public Map<String, SymbolType> getTypeParams() {
+		Map<String, SymbolType> aux = new HashMap<String, SymbolType>();
+		List<Symbol<?>> superSymbol = symbols.get("super");
+		if (superSymbol != null) {
+			Scope superScope = superSymbol.get(0).getInnerScope();
+			if (superScope != null) {
+
+				aux.putAll(superScope.getTypeParams());
+			}
+		}
+		if (typeParams != null) {
+			aux.putAll(typeParams);
+		}
+
+		return aux;
+	}
+	
+	public Map<String, SymbolType> getLocalTypeParams(){
+		return typeParams;
+	}
+
 	public Symbol<?> findSymbol(String name, SymbolType scope,
 			SymbolType[] args, ReferenceType... referenceType) {
 		Symbol<?> result = null;
@@ -245,8 +265,8 @@ public class Scope {
 			}
 		}
 		if (symbol.getReferenceType().equals(ReferenceType.TYPE_PARAM)) {
-			if(typeParams == null){
-				typeParams = new HashMap<String, SymbolType>();
+			if (typeParams == null) {
+				typeParams = new LinkedHashMap<String, SymbolType>();
 			}
 			typeParams.put(symbol.getName(), symbol.getType());
 		}

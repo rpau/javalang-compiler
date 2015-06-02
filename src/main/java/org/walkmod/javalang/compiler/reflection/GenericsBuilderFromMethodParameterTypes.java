@@ -19,8 +19,10 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.ast.expr.Expression;
+import org.walkmod.javalang.ast.type.Type;
+import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 public class GenericsBuilderFromMethodParameterTypes extends
@@ -29,13 +31,16 @@ public class GenericsBuilderFromMethodParameterTypes extends
 
 	private List<Type> callArgs = null;
 	private SymbolType scope = null;
+	private SymbolTable symbolTable = null;
 
 	public GenericsBuilderFromMethodParameterTypes(
 			Map<String, SymbolType> typeMapping, List<Expression> args,
-			SymbolType scope, SymbolType[] typeArgs, List<Type> callArgs) {
+			SymbolType scope, SymbolType[] typeArgs, List<Type> callArgs,
+			SymbolTable symbolTable) {
 		super(typeMapping, args, typeArgs);
 		this.callArgs = callArgs;
 		this.scope = scope;
+		this.symbolTable = symbolTable;
 	}
 
 	public GenericsBuilderFromMethodParameterTypes() {
@@ -46,8 +51,11 @@ public class GenericsBuilderFromMethodParameterTypes extends
 		setTypes(method.getGenericParameterTypes());
 		if (scope != null) {
 			ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
-					scope);
+					scope, method, symbolTable);
 			generics.build(getTypeMapping());
+		}
+		else{
+			getTypeMapping().putAll(symbolTable.getTypeParams());
 		}
 		if (callArgs != null) {
 			ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(

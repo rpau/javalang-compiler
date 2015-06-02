@@ -422,7 +422,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 					GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
 							typeMapping, n.getArgs(), scope, symbolTypes,
-							n.getTypeArgs());
+							n.getTypeArgs(), symbolTable);
 
 					builder.build(m);
 					SymbolType aux = SymbolType.valueOf(m, typeMapping);
@@ -453,7 +453,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				CompositeBuilder<Method> builder = new CompositeBuilder<Method>();
 				builder.appendBuilder(new GenericsBuilderFromMethodParameterTypes(
 						typeMapping, n.getArgs(), scope, symbolTypes, n
-								.getTypeArgs()));
+								.getTypeArgs(), symbolTable));
 
 				SymbolType st = MethodInspector.findMethodType(scope, filter,
 						builder, typeMapping);
@@ -724,13 +724,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			}
 
 		} else {
-			Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
-					ReferenceType.TYPE, ReferenceType.VARIABLE);
-			if (s != null) {
-				type = s.getType().clone();
-			} else {
-				type = ASTSymbolTypeResolver.getInstance().valueOf(n);
+			if (n.getSymbolData() == null) {
+				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
+						ReferenceType.TYPE, ReferenceType.VARIABLE);
+				if (s != null) {
+					type = s.getType().clone();
+				} else {
+					type = ASTSymbolTypeResolver.getInstance().valueOf(n);
 
+				}
 			}
 		}
 		if (type != null) {
