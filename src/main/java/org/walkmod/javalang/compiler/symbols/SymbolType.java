@@ -183,7 +183,23 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public List<SymbolType> getParameterizedTypes() {
 		if (parameterizedTypes == null) {
 			if (upperBounds != null && !upperBounds.isEmpty()) {
-				return upperBounds.get(0).getParameterizedTypes();
+				List<SymbolType> params = upperBounds.get(0).getParameterizedTypes();
+				if(params != null && name != null){
+					Iterator<SymbolType> it = params.iterator();
+					List<SymbolType> aux = null;
+					while(it.hasNext()){
+						SymbolType st = it.next();
+						if(!name.equals(st.getName())){
+							if(aux == null){
+								aux = new LinkedList<SymbolType>();
+							}
+							aux.add(st);
+						}
+					}
+					return aux;
+				}
+				return null;
+				
 			}
 		}
 		return parameterizedTypes;
@@ -720,7 +736,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return upperBoundClasses;
 	}
 
-	private SymbolType refactor_rec(String variable, SymbolType st, boolean dynamicVar) {
+	private SymbolType refactor_rec(String variable, SymbolType st,
+			boolean dynamicVar) {
 		if (variable.equals(templateVariable) && dynamicVar) {
 			return st;
 		} else {
@@ -741,7 +758,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		}
 	}
 
-	public SymbolType refactor(String variable, SymbolType st, boolean dynamicVar) {
+	public SymbolType refactor(String variable, SymbolType st,
+			boolean dynamicVar) {
 		if (variable.equals(templateVariable) && dynamicVar) {
 			return st;
 		} else {

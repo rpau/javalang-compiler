@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
-import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class MethodSymbol extends Symbol {
 
@@ -217,6 +216,7 @@ public class MethodSymbol extends Symbol {
 		}
 		return false;
 	}
+	
 
 	public boolean isVarArgs() {
 		return hasDynamicArgs;

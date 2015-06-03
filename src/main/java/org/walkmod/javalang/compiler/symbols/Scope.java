@@ -15,20 +15,24 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
+import org.walkmod.javalang.compiler.reflection.MethodComparator;
 
 public class Scope {
 
-	private Map<String, List<Symbol<?>>> symbols = new HashMap<String, List<Symbol<?>>>();
+	private Map<String, ArrayList<Symbol<?>>> symbols = new HashMap<String, ArrayList<Symbol<?>>>();
 
 	private List<SymbolAction> actions;
 
@@ -73,7 +77,7 @@ public class Scope {
 	public List<Symbol<?>> getSymbols() {
 		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
 
-		Iterator<List<Symbol<?>>> it = symbols.values().iterator();
+		Iterator<ArrayList<Symbol<?>>> it = symbols.values().iterator();
 		while (it.hasNext()) {
 			result.addAll(it.next());
 		}
@@ -122,8 +126,8 @@ public class Scope {
 
 	public List<Symbol<?>> getSymbolsByLocation(Node node) {
 		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
-		Collection<List<Symbol<?>>> values = symbols.values();
-		Iterator<List<Symbol<?>>> it = values.iterator();
+		Collection<ArrayList<Symbol<?>>> values = symbols.values();
+		Iterator<ArrayList<Symbol<?>>> it = values.iterator();
 		while (it.hasNext()) {
 			List<Symbol<?>> list = it.next();
 			for (Symbol<?> symbol : list) {
@@ -139,8 +143,8 @@ public class Scope {
 	public List<Symbol<?>> getSymbolsByType(String typeName,
 			ReferenceType referenceType) {
 		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
-		Collection<List<Symbol<?>>> values = symbols.values();
-		Iterator<List<Symbol<?>>> it = values.iterator();
+		Collection<ArrayList<Symbol<?>>> values = symbols.values();
+		Iterator<ArrayList<Symbol<?>>> it = values.iterator();
 		while (it.hasNext()) {
 			List<Symbol<?>> list = it.next();
 			for (Symbol<?> symbol : list) {
@@ -174,8 +178,8 @@ public class Scope {
 
 		return aux;
 	}
-	
-	public Map<String, SymbolType> getLocalTypeParams(){
+
+	public Map<String, SymbolType> getLocalTypeParams() {
 		return typeParams;
 	}
 
@@ -221,9 +225,9 @@ public class Scope {
 	public void chageSymbol(Symbol<?> oldSymbol, Symbol<?> newSymbol) {
 		List<Symbol<?>> list = symbols.get(oldSymbol.getName());
 		if (list.remove(oldSymbol)) {
-			List<Symbol<?>> values = symbols.get(newSymbol.getName());
+			ArrayList<Symbol<?>> values = symbols.get(newSymbol.getName());
 			if (values == null) {
-				values = new LinkedList<Symbol<?>>();
+				values = new ArrayList<Symbol<?>>();
 				symbols.put(newSymbol.getName(), values);
 			}
 			values.add(newSymbol);
@@ -247,9 +251,9 @@ public class Scope {
 
 	public <T extends Node & SymbolDefinition> boolean addSymbol(
 			Symbol<T> symbol, boolean override) {
-		List<Symbol<?>> values = symbols.get(symbol.getName());
+		ArrayList<Symbol<?>> values = symbols.get(symbol.getName());
 		if (values == null) {
-			values = new LinkedList<Symbol<?>>();
+			values = new ArrayList<Symbol<?>>();
 			symbols.put(symbol.getName(), values);
 		} else {
 			if (override) {
@@ -270,7 +274,44 @@ public class Scope {
 			}
 			typeParams.put(symbol.getName(), symbol.getType());
 		}
-		return values.add(symbol);
+		if (values.isEmpty()) {
+			values.add(symbol);
+		} else {
+			int pos = values.size() - 1;
+			boolean added = false;
+			if (symbol.getReferenceType().equals(ReferenceType.METHOD)) {
+				MethodSymbol ms = (MethodSymbol) symbol;
+				Method refMethod = ms.getReferencedMethod();
+
+				if (refMethod != null) {
+					ListIterator<Symbol<?>> it = values.listIterator(values
+							.size());
+
+					MethodComparator cmp = new MethodComparator();
+					while (it.hasPrevious() && !added) {
+						Symbol<?> aux = it.previous();
+						if (aux instanceof MethodSymbol) {
+							MethodSymbol auxMethod = (MethodSymbol) aux;
+							Method md = auxMethod.getReferencedMethod();
+							if (md != null) {
+								if (cmp.compare(refMethod, md) == 1) {
+									values.add(pos + 1, ms);
+									added = true;
+								}
+							}
+						}
+						pos--;
+					}
+					if (!added) {
+						pos = 0;
+					}
+				}
+			}
+			if (!added) {
+				values.add(pos, symbol);
+			}
+		}
+		return true;
 	}
 
 	public boolean hasMethodsLoaded() {

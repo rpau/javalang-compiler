@@ -16,5 +16,14 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
 public enum ReferenceType {
-	VARIABLE, TYPE, METHOD, ENUM_LITERAL, TYPE_PARAM
+	VARIABLE (0), TYPE(1), METHOD (2), ENUM_LITERAL (3), TYPE_PARAM (4);
+	
+	int id;
+	private ReferenceType(int id){
+		this.id = id;
+	}
+	
+	public int getId(){
+		return id;
+	}
 }
