@@ -78,43 +78,55 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 
 		@Override
 		public void visit(ObjectCreationExpr o, Scope scope) {
-			table.pushScope(scope);
-			List<ClassOrInterfaceType> types = new LinkedList<ClassOrInterfaceType>();
-			types.add(o.getType());
-			loadExtendsOrImplements(types);
-			loadFields(o.getAnonymousClassBody(), scope);
-			table.popScope(true);
+			if (!scope.hasFieldsLoaded()) {
+				table.pushScope(scope);
+				List<ClassOrInterfaceType> types = new LinkedList<ClassOrInterfaceType>();
+				types.add(o.getType());
+				loadExtendsOrImplements(types);
+				loadFields(o.getAnonymousClassBody(), scope);
+				table.popScope(true);
+			}
 		}
 
 		@Override
 		public void visit(EnumConstantDeclaration o, Scope scope) {
-			table.pushScope(scope);
-			loadFields(o.getClassBody(), scope);
-			table.popScope(true);
+			if (!scope.hasFieldsLoaded()) {
+				table.pushScope(scope);
+				loadFields(o.getClassBody(), scope);
+				table.popScope(true);
+			}
 		}
 
 		@Override
 		public void visit(ClassOrInterfaceDeclaration n, Scope scope) {
-			table.pushScope(scope);
-			loadExtendsOrImplements(n.getExtends());
-			loadExtendsOrImplements(n.getImplements());
-			loadFields(n.getMembers(), scope);
-			table.popScope(true);
+			if (!scope.hasFieldsLoaded()) {
+				table.pushScope(scope);
+
+				loadExtendsOrImplements(n.getExtends());
+				loadExtendsOrImplements(n.getImplements());
+				loadFields(n.getMembers(), scope);
+				table.popScope(true);
+			}
+
 		}
 
 		@Override
 		public void visit(EnumDeclaration n, Scope scope) {
-			table.pushScope(scope);
-			loadExtendsOrImplements(n.getImplements());
-			loadFields(n.getMembers(), scope);
-			table.popScope(true);
+			if (!scope.hasFieldsLoaded()) {
+				table.pushScope(scope);
+				loadExtendsOrImplements(n.getImplements());
+				loadFields(n.getMembers(), scope);
+				table.popScope(true);
+			}
 		}
 
 		@Override
 		public void visit(AnnotationDeclaration n, Scope scope) {
-			table.pushScope(scope);
-			loadFields(n.getMembers(), scope);
-			table.popScope(true);
+			if (!scope.hasFieldsLoaded()) {
+				table.pushScope(scope);
+				loadFields(n.getMembers(), scope);
+				table.popScope(true);
+			}
 		}
 
 		public void loadExtendsOrImplements(
@@ -155,8 +167,7 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 			}
 		}
 
-		@SuppressWarnings("unchecked")
-		public void loadFields(List<BodyDeclaration> members, Scope scope) {
+		private void loadFields(List<BodyDeclaration> members, Scope scope) {
 			if (!scope.hasFieldsLoaded()) {
 				if (members != null) {
 
