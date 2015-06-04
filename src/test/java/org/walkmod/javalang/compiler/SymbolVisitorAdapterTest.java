@@ -650,6 +650,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run(main);
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testGenericsWithRewrittenTypeParamsWithInheritance() throws Exception{
+		String class1 = "class B<T> { public T get() { return null; }}";
+		String class2 = "class C<T extends File> extends B<List<T>> { @Override public List<T> get() {return null;}}";
+		String main = "import java.util.*; import java.io.File; public class A { "+class1+" "+class2+
+				" void foo () { C<File> c = null; c.get().iterator().next().getAbsolutePath().trim(); }}";
+		run(main);
+		Assert.assertTrue(true);
+	}
 
 	@Test
 	public void testGenericsWithRewrittenTypeParams2() throws Exception{

@@ -58,10 +58,16 @@ public class ResultBuilderFromCallGenerics implements
 					.findSymbol(symbolName, ReferenceType.TYPE);
 			if (s != null) {
 				Scope scope = s.getInnerScope();
+
 				if (scope != null) {
+					Class<?> clazz = this.scope.getClazz();
+					if (clazz != null) {
+						clazz = clazz.getSuperclass();
+					}
 					if (method != null
+							&& clazz != null
 							&& method.getDeclaringClass().isAssignableFrom(
-									this.scope.getClazz())) {
+									clazz)) {
 						// we need to find for the super type params to resolve
 						// the method
 						Symbol<?> superSymbol = scope.findSymbol("super");
