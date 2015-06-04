@@ -672,6 +672,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 	
 	@Test
+	public void testGenericsWithRewrittenTypeParams4() throws Exception{
+		String classB = "class B<K, V> { K getKey() { return null; }}"; 
+		String code = "import java.util.*; public class C<K extends java.io.File, V> { "+classB+" class A extends B<List<K>, V> { void foo(K value){ value.getAbsolutePath().trim();}}}";
+		run(code);
+		Assert.assertTrue(true);
+	}
+	
+	@Test
 	public void testFieldMethodCallWithGenerics() throws Exception{
 		String code ="import java.util.List; public class A<T> { List<A<? super T>> comparators; String foo() { comparators.get(0).foo().trim().length(); return null;}}";
 		run(code);

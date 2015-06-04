@@ -224,6 +224,10 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public void setTemplateVariable(String templateVariable) {
 		this.templateVariable = templateVariable;
 	}
+	
+	public String getTemplateVariable(){
+		return templateVariable;
+	}
 
 	@Override
 	public boolean equals(Object o) {

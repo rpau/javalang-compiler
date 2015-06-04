@@ -3,6 +3,7 @@ package org.walkmod.javalang.compiler.symbols;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.TypeParameter;
@@ -26,8 +27,16 @@ public class ASTSymbolTypeResolver extends
 
 	private static ASTSymbolTypeResolver instance = null;
 
+	private Map<String, SymbolType> mapping = null;
+
 	private ASTSymbolTypeResolver() {
 
+	}
+
+	public ASTSymbolTypeResolver(Map<String, SymbolType> mapping,
+			SymbolTable symbolTable) {
+		this.mapping = mapping;
+		this.symbolTable = symbolTable;
 	}
 
 	public static ASTSymbolTypeResolver getInstance() {
@@ -229,6 +238,14 @@ public class ASTSymbolTypeResolver extends
 				result.setParameterizedTypes(typeArgs);
 			}
 		}
+		if (mapping != null) {
+			String letter = result.getTemplateVariable();
+			if (letter != null) {
+				mapping.put(letter, result);
+			} else {
+				mapping.put(result.getName(), result);
+			}
+		}
 		return result;
 	}
 
@@ -290,7 +307,7 @@ public class ASTSymbolTypeResolver extends
 
 	@Override
 	public SymbolType valueOf(Type parserType) {
-		return valueOf(parserType, null);
+		return valueOf(parserType, (List<TypeParameter>) null);
 	}
 
 	public SymbolType valueOf(Type parserType, List<TypeParameter> tps) {

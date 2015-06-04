@@ -462,9 +462,6 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			symbols.get(0).setInnerScope(scope);
 		}
 		symbolTable.pushScope(scope);
-		List<TypeParameter> typeParams = n.getTypeParameters();
-		LoadTypeParamsAction action = new LoadTypeParamsAction();
-		action.load(symbolTable, typeParams, (SymbolType) n.getSymbolData());
 		super.visit(n, arg);
 		symbolTable.popScope();
 	}
@@ -476,6 +473,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		SymbolType type = null;
 		if (ptype != null) {
 			type = (SymbolType) ptype.getSymbolData();
+			
 		} else {
 			type = (SymbolType) n.getSymbolData();
 		}

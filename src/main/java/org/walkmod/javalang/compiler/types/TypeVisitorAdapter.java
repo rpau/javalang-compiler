@@ -725,7 +725,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		} else {
 			if (n.getSymbolData() == null) {
-				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
+				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n, ReferenceType.TYPE_PARAM,
 						ReferenceType.TYPE, ReferenceType.VARIABLE);
 				if (s != null) {
 					type = s.getType().clone();

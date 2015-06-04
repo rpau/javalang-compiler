@@ -28,6 +28,7 @@ import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -48,40 +49,77 @@ public class LoadTypeParamsAction extends SymbolAction {
 				SymbolType thisType = symbol.getType();
 
 				load(table, typeParams, thisType);
-				Map<String, SymbolType> localTypeParams = table.getScopes()
-						.peek().getLocalTypeParams();
 
 				if (!declaration.isInterface()) {
 					List<ClassOrInterfaceType> extendsList = declaration
 							.getExtends();
 					if (extendsList != null) {
 						for (ClassOrInterfaceType type : extendsList) {
-							SymbolType superType = ASTSymbolTypeResolver
-									.getInstance().valueOf(type);
+							Map<String, SymbolType> typeResolution = new HashMap<String, SymbolType>();
+							
+							ASTSymbolTypeResolver res = new ASTSymbolTypeResolver(
+									typeResolution, table);
+							SymbolType superType = type.accept(res, null);
+							
 							List<SymbolType> params = superType
 									.getParameterizedTypes();
+							Map<String, SymbolType> typeMapping = table
+									.getTypeParams();
 							if (params != null) {
+								Symbol<?> superSymbol = symbol.getInnerScope()
+										.findSymbol("super");
+								Scope innerScope = superSymbol.getInnerScope();
+
+								Scope aux = null;
+
+								if (innerScope != null) {
+									aux = new Scope(superSymbol);
+									
+								} else {
+									aux = new Scope();
+								}
+								superSymbol.setInnerScope(aux);
+								
+								table.pushScope(aux);
+
+								Symbol<?> intermediateSuper = new Symbol(
+										"super", superSymbol.getType(),
+										superSymbol.getLocation());
+
+								if (innerScope != null) {
+									intermediateSuper.setInnerScope(innerScope);
+								}
+								
+
+								table.pushSymbol(intermediateSuper);
+
 								// extends a parameterizable type
 								TypeVariable<?>[] tps = superType.getClazz()
 										.getTypeParameters();
 								for (int i = 0; i < tps.length; i++) {
-									params.get(i).setTemplateVariable(
-											tps[i].getName());
-									if (localTypeParams == null
-											|| !localTypeParams
-													.containsKey(tps[i]
-															.getName())) {
-										table.pushSymbol(tps[i].getName(),
-												ReferenceType.TYPE_PARAM,
-												params.get(i), null);
-									}
+									
+									table.pushSymbol(tps[i].getName(),
+											ReferenceType.TYPE_PARAM,
+											params.get(i), null);
 
+								}
+								table.popScope(true);
+
+							}
+							Set<String> genericLetters = typeMapping.keySet();
+							if (genericLetters != null) {
+								for (String letter : genericLetters) {
+
+									if (typeResolution.containsKey(letter)) {
+										table.pushSymbol(letter,
+												ReferenceType.TYPE,
+												typeMapping.get(letter), null);
+									}
 								}
 							}
 						}
 					}
 				}
-
 			}
 		}
 

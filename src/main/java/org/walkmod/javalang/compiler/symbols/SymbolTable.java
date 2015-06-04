@@ -197,7 +197,7 @@ public class SymbolTable {
 		Iterator<Scope> it = indexStructure.iterator();
 		while (it.hasNext()) {
 			Scope scope = it.next();
-			Map<String, SymbolType> tp = scope.getTypeParams();
+			Map<String, SymbolType> tp = scope.getLocalTypeParams();
 			if (tp != null) {
 				result.putAll(tp);
 			}
@@ -337,11 +337,11 @@ public class SymbolTable {
 		return pushedSymbols;
 	}
 
-	public void popScope() {
-		popScope(false);
+	public Scope popScope() {
+		return popScope(false);
 	}
 
-	public void popScope(boolean silent) {
+	public Scope popScope(boolean silent) {
 		Scope scope = indexStructure.peek();
 		if (!silent) {
 			List<Symbol<?>> symbols = scope.getSymbols();
@@ -353,7 +353,7 @@ public class SymbolTable {
 				}
 			}
 		}
-		indexStructure.pop();
+		return indexStructure.pop();
 	}
 
 	public void pushScope() {

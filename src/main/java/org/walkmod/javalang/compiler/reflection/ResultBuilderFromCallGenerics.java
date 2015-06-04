@@ -59,6 +59,21 @@ public class ResultBuilderFromCallGenerics implements
 			if (s != null) {
 				Scope scope = s.getInnerScope();
 				if (scope != null) {
+					if (method != null
+							&& method.getDeclaringClass().isAssignableFrom(
+									this.scope.getClazz())) {
+						// we need to find for the super type params to resolve
+						// the method
+						Symbol<?> superSymbol = scope.findSymbol("super");
+						if (superSymbol != null) {
+							scope = superSymbol.getInnerScope();
+						}
+
+					}
+				}
+
+				if (scope != null) {
+
 					params = scope.getTypeParams();
 					if (params != null) {
 						typeMapping.putAll(params);
@@ -69,8 +84,8 @@ public class ResultBuilderFromCallGenerics implements
 			List<SymbolType> paramTypes = scope.getParameterizedTypes();
 
 			if (paramTypes != null) {
-				updateTypeMapping(method.getDeclaringClass(), typeMapping, scope, params,
-						false);
+				updateTypeMapping(method.getDeclaringClass(), typeMapping,
+						scope, params, false);
 			}
 
 		}

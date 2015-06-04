@@ -57,6 +57,10 @@ public class Scope {
 		this.actions = actions;
 
 	}
+	
+	public void setRootSymbol(Symbol<?> rootSymbol){
+		this.rootSymbol = rootSymbol;
+	}
 
 	public void setHasMethodsLoaded(boolean hasMethodsLoaded) {
 		this.hasMethodsLoaded = hasMethodsLoaded;
@@ -251,7 +255,9 @@ public class Scope {
 
 	public <T extends Node & SymbolDefinition> boolean addSymbol(
 			Symbol<T> symbol, boolean override) {
-		ArrayList<Symbol<?>> values = symbols.get(symbol.getName());
+		String name = symbol.getName();
+		ArrayList<Symbol<?>> values = symbols.get(name);
+		boolean added = false;
 		if (values == null) {
 			values = new ArrayList<Symbol<?>>();
 			symbols.put(symbol.getName(), values);
@@ -272,13 +278,19 @@ public class Scope {
 			if (typeParams == null) {
 				typeParams = new LinkedHashMap<String, SymbolType>();
 			}
-			typeParams.put(symbol.getName(), symbol.getType());
+			
+			if(!typeParams.containsKey(name)){
+				typeParams.put(name, symbol.getType());
+			}
+			else{
+				added = true;
+			}
 		}
 		if (values.isEmpty()) {
 			values.add(symbol);
 		} else {
 			int pos = values.size() - 1;
-			boolean added = false;
+			
 			if (symbol.getReferenceType().equals(ReferenceType.METHOD)) {
 				MethodSymbol ms = (MethodSymbol) symbol;
 				Method refMethod = ms.getReferencedMethod();

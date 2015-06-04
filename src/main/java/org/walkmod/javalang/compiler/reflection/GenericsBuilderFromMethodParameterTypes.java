@@ -49,16 +49,16 @@ public class GenericsBuilderFromMethodParameterTypes extends
 	@Override
 	public Method build(Method method) throws Exception {
 		setTypes(method.getGenericParameterTypes());
-		if (scope != null) {
-			ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
-					scope, method, symbolTable);
-			generics.build(getTypeMapping());
+		if (scope == null) {
+			scope = symbolTable.getType("this", ReferenceType.VARIABLE);
 		}
-		else{
-			getTypeMapping().putAll(symbolTable.getTypeParams());
-		}
+
+		ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
+				scope, method, symbolTable);
+		generics.build(getTypeMapping());
+
 		if (callArgs != null) {
-			ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
+			generics = new ResultBuilderFromCallGenerics(
 					callArgs, method);
 			generics.build(getTypeMapping());
 		}

@@ -67,7 +67,10 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 	private void pushMethod(SymbolType st, SymbolTable table,
 			MethodDeclaration md) throws Exception {
-
+		Scope sc = new Scope();
+		table.pushScope(sc);
+		LoadTypeParamsAction action = new LoadTypeParamsAction();
+		action.load(table, md.getTypeParameters(), null);
 		Type type = md.getType();
 		SymbolType resolvedType = ASTSymbolTypeResolver.getInstance().valueOf(
 				type);
@@ -91,7 +94,12 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 				params.get(i).getType().setSymbolData(args[i]);
 				if (i == args.length - 1) {
 					hasDynamicArgs = params.get(i).isVarArgs();
+					if(hasDynamicArgs){
+						args[i] = args[i].clone();
+						args[i].setArrayCount(args[i].getArrayCount()+1);
+					}
 				}
+				
 			}
 		}
 
@@ -103,11 +111,9 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 		MethodSymbol method = new MethodSymbol(md.getName(), resolvedType, md,
 				st, args, false, hasDynamicArgs, (Method) null, actions);
-		Scope scope = new Scope(method);
-		method.setInnerScope(scope);
-		table.pushScope(scope);
-		LoadTypeParamsAction action = new LoadTypeParamsAction();
-		action.load(table, md.getTypeParameters(), null);
+		sc.setRootSymbol(method);
+		method.setInnerScope(sc);
+		
 		md.accept(expressionTypeAnalyzer, null);
 		table.popScope(true);
 		method.setReferencedMethod(md.getSymbolData().getMethod());
@@ -277,6 +283,7 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 							TypeDeclaration superClass = ((TypeDeclaration) location);
 							superClass.accept(this, s.getInnerScope());
+							/*
 							Symbol<?> superSym = table.findSymbol("super",
 									ReferenceType.VARIABLE);
 							if (superSym != null) {
@@ -291,13 +298,14 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 										Type typeArg = typeArgs.get(i);
 										SymbolType paramType = ASTSymbolTypeResolver
 												.getInstance().valueOf(typeArg);
+										
 										table.pushSymbol(typeParam.getName(),
 												ReferenceType.TYPE_PARAM,
 												paramType, null);
 										i++;
 									}
 								}
-							}
+							}*/
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
