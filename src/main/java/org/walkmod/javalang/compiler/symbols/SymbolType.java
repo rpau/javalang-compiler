@@ -458,6 +458,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						valueOf(bound, arg, updatedTypeMapping, typeMapping);
 					}
 					returnType = new SymbolType(arg.getName());
+					returnType.setTemplateVariable(variableName);
 					returnType.setParameterizedTypes(arg
 							.getParameterizedTypes());
 
@@ -467,6 +468,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					} else {
 						List<SymbolType> boundsList = new LinkedList<SymbolType>();
 						returnType = new SymbolType(boundsList);
+						returnType.setTemplateVariable(variableName);
 						Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(
 								typeMapping);
 						auxMap.put(variableName, returnType);

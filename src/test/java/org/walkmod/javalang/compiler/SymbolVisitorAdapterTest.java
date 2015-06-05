@@ -699,6 +699,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 	
 	@Test
+	public void testGenericsWithClassParameters2() throws Exception{
+		String class1= "public static class Range { public static <C extends Collection<?>> C range(C lower, boolean x, C upper, boolean y) { return null;}}";
+		String code = "import java.util.*; public class A { "+class1+
+				" void bar(){ Range.range(new ArrayList(), true, new ArrayList(), true).get(0).toString(); }}";
+		run(code);
+		Assert.assertTrue(true);
+	}
+	
+	@Test
 	public void testFieldMethodCallWithGenerics() throws Exception{
 		String code ="import java.util.List; public class A<T> { List<A<? super T>> comparators; String foo() { comparators.get(0).foo().trim().length(); return null;}}";
 		run(code);

@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -128,6 +129,18 @@ public class SymbolTable {
 		while (i >= 0) {
 			Scope scope = indexStructure.get(i);
 			result.addAll(scope.getSymbolsByType(typeName, referenceType));
+			i--;
+		}
+		return result;
+	}
+	
+	public ArrayList<Symbol<?>> findSymbolsByType(
+			ReferenceType... referenceType) {
+		ArrayList<Symbol<?>> result = new ArrayList<Symbol<?>>();
+		int i = indexStructure.size() - 1;
+		while (i >= 0) {
+			Scope scope = indexStructure.get(i);
+			result.addAll(scope.getSymbolsByType(referenceType));
 			i--;
 		}
 		return result;

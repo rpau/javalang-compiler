@@ -22,6 +22,7 @@ import java.util.Map;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
+import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
@@ -45,27 +46,36 @@ public class GenericsBuilderFromMethodParameterTypes extends
 	public GenericsBuilderFromMethodParameterTypes() {
 	}
 
+
+
 	@Override
 	public Method build(Method method) throws Exception {
 		setTypes(method.getGenericParameterTypes());
 		if (scope == null) {
 			scope = getSymbolTable().getType("this", ReferenceType.VARIABLE);
 		}
+		// we build a new symbol table just for the generics resolution (An
+		// stack of scopes) based on the parameterized types of the class which belongs the implicit
+		// object
+		SymbolTable symbolTable = getTypeParamsSymbolTable();
 
+		// we store in the symbol table a new scope with the generics of the
+		// containing class of the method
 		ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
 				scope, method, getSymbolTable());
-        Map<String, SymbolType> typeMapping = getTypeMapping();
-		generics.build(typeMapping);
-		loadTypeMappingFromTypeArgs();
-		if (callArgs != null) {
-			generics = new ResultBuilderFromCallGenerics(callArgs, method);
-			generics.build(getTypeMapping());
-		}
-		else{
-			//HERE? remove those type mapping that are specified inside the method and are also type vars parameters
-			//WARNING: they may be a call arg.
-		}
-		super.build();
+		generics.build(symbolTable);
+
+		// we store in the symbol table a new scope with the generics regarding
+		// the argument types
+		buildTypeParamsTypes();
+
+		// we store in the symbol table a new scope with the generics regarding
+		// the call method call explicit result parameter types
+		generics = new ResultBuilderFromCallGenerics(callArgs, method);
+		generics.build(symbolTable);
+	
+
+		closeTypeMapping();
 		return method;
 	}
 

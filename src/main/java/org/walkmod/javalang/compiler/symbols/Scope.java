@@ -57,8 +57,10 @@ public class Scope {
 		this.actions = actions;
 
 	}
+
 	
-	public void setRootSymbol(Symbol<?> rootSymbol){
+
+	public void setRootSymbol(Symbol<?> rootSymbol) {
 		this.rootSymbol = rootSymbol;
 	}
 
@@ -158,6 +160,34 @@ public class Scope {
 					if (symbol.getType().getName().startsWith(typeName)) {
 						result.add(symbol);
 					}
+				}
+			}
+		}
+
+		return result;
+
+	}
+
+	public List<Symbol<?>> getSymbolsByType(ReferenceType... referenceType) {
+		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
+		Collection<ArrayList<Symbol<?>>> values = symbols.values();
+		Iterator<ArrayList<Symbol<?>>> it = values.iterator();
+		while (it.hasNext()) {
+			List<Symbol<?>> list = it.next();
+			for (Symbol<?> symbol : list) {
+				boolean found = false;
+
+				if (referenceType == null || referenceType.length == 0) {
+
+					found = true;
+				} else {
+
+					for (int i = 0; i < referenceType.length && !found; i++) {
+						found = symbol.getReferenceType() == referenceType[i];
+					}
+				}
+				if (found) {
+					result.add(symbol);
 				}
 			}
 		}
@@ -278,11 +308,10 @@ public class Scope {
 			if (typeParams == null) {
 				typeParams = new LinkedHashMap<String, SymbolType>();
 			}
-			
-			if(!typeParams.containsKey(name)){
+
+			if (!typeParams.containsKey(name)) {
 				typeParams.put(name, symbol.getType());
-			}
-			else{
+			} else {
 				added = true;
 			}
 		}
@@ -290,7 +319,7 @@ public class Scope {
 			values.add(symbol);
 		} else {
 			int pos = values.size() - 1;
-			
+
 			if (symbol.getReferenceType().equals(ReferenceType.METHOD)) {
 				MethodSymbol ms = (MethodSymbol) symbol;
 				Method refMethod = ms.getReferencedMethod();
