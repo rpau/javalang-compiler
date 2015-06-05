@@ -31,16 +31,15 @@ public class GenericsBuilderFromMethodParameterTypes extends
 
 	private List<Type> callArgs = null;
 	private SymbolType scope = null;
-	private SymbolTable symbolTable = null;
 
 	public GenericsBuilderFromMethodParameterTypes(
 			Map<String, SymbolType> typeMapping, List<Expression> args,
 			SymbolType scope, SymbolType[] typeArgs, List<Type> callArgs,
 			SymbolTable symbolTable) {
-		super(typeMapping, args, typeArgs);
+		super(typeMapping, args, typeArgs, symbolTable);
 		this.callArgs = callArgs;
 		this.scope = scope;
-		this.symbolTable = symbolTable;
+
 	}
 
 	public GenericsBuilderFromMethodParameterTypes() {
@@ -50,19 +49,22 @@ public class GenericsBuilderFromMethodParameterTypes extends
 	public Method build(Method method) throws Exception {
 		setTypes(method.getGenericParameterTypes());
 		if (scope == null) {
-			scope = symbolTable.getType("this", ReferenceType.VARIABLE);
+			scope = getSymbolTable().getType("this", ReferenceType.VARIABLE);
 		}
 
 		ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
-				scope, method, symbolTable);
-		generics.build(getTypeMapping());
-
+				scope, method, getSymbolTable());
+        Map<String, SymbolType> typeMapping = getTypeMapping();
+		generics.build(typeMapping);
+		loadTypeMappingFromTypeArgs();
 		if (callArgs != null) {
-			generics = new ResultBuilderFromCallGenerics(
-					callArgs, method);
+			generics = new ResultBuilderFromCallGenerics(callArgs, method);
 			generics.build(getTypeMapping());
 		}
-
+		else{
+			//HERE? remove those type mapping that are specified inside the method and are also type vars parameters
+			//WARNING: they may be a call arg.
+		}
 		super.build();
 		return method;
 	}

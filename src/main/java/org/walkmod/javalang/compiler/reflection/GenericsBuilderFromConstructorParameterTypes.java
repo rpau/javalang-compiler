@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.walkmod.javalang.ast.expr.Expression;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 public class GenericsBuilderFromConstructorParameterTypes extends
@@ -28,8 +29,8 @@ public class GenericsBuilderFromConstructorParameterTypes extends
 
 	public GenericsBuilderFromConstructorParameterTypes(
 			Map<String, SymbolType> typeMapping, List<Expression> args,
-			SymbolType[] typeArgs) {
-		super(typeMapping, args, typeArgs);
+			SymbolType[] typeArgs, SymbolTable symTable) {
+		super(typeMapping, args, typeArgs, symTable);
 	}
 
 	public GenericsBuilderFromConstructorParameterTypes() {

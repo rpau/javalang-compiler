@@ -568,7 +568,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		}
 		CompositeBuilder<Constructor<?>> builder = new CompositeBuilder<Constructor<?>>();
 		builder.appendBuilder(new GenericsBuilderFromConstructorParameterTypes(
-				typeMapping, n.getArgs(), symbolTypes));
+				typeMapping, n.getArgs(), symbolTypes, symbolTable));
 
 		try {
 			SymbolType aux = ConstructorInspector.findConstructor(st, filter,
