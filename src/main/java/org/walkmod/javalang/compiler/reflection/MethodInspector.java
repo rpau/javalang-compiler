@@ -43,7 +43,15 @@ public class MethodInspector {
 			Map<String, SymbolType> typeMapping) throws Exception {
 
 		SymbolType result = null;
-		List<Class<?>> bounds = scope.getBoundClasses();
+		List<Class<?>> bounds = null;
+		if (scope.getArrayCount() != 0) {
+			bounds = new LinkedList<Class<?>>();
+			bounds.add(Object.class);
+		} else {
+			bounds = scope.getBoundClasses();
+		}
+		
+
 		b1.setParameterizedTypes(scope.getParameterizedTypes());
 
 		Iterator<Class<?>> it = bounds.iterator();
@@ -57,6 +65,7 @@ public class MethodInspector {
 				}
 			}
 		}
+
 		while (it.hasNext() && result == null) {
 			Class<?> bound = it.next();
 			b1.setClazz(bound);
@@ -177,16 +186,16 @@ public class MethodInspector {
 				if (sortedList.isEmpty()) {
 					sortedList.add(method);
 				} else {
-					int pos = sortedList.size() -1;
+					int pos = sortedList.size() - 1;
 					while (!inserted && li.hasPrevious()) {
 						Method previous = li.previous();
 						if (comp.compare(method, previous) == 1) {
-							sortedList.add(pos+1, method);
+							sortedList.add(pos + 1, method);
 							inserted = true;
 						}
-						pos --;
+						pos--;
 					}
-					if(!inserted){
+					if (!inserted) {
 						sortedList.add(0, method);
 					}
 				}
