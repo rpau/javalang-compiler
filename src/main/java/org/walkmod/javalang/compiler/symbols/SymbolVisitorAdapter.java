@@ -41,6 +41,7 @@ import org.walkmod.javalang.ast.body.MultiTypeParameter;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
+import org.walkmod.javalang.ast.body.VariableDeclaratorId;
 import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.Expression;
@@ -466,6 +467,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		symbolTable.popScope();
 	}
 
+	
 	@Override
 	public void visit(Parameter n, A arg) {
 		super.visit(n, arg);
@@ -476,6 +478,13 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			
 		} else {
 			type = (SymbolType) n.getSymbolData();
+		}
+		VariableDeclaratorId id= n.getId();
+		if(id != null){
+			int arrayCount = id.getArrayCount();
+			if(arrayCount > 0){
+				type.setArrayCount(type.getArrayCount()+arrayCount);
+			}
 		}
 		if (n.isVarArgs()) {
 			type.setArrayCount(type.getArrayCount() + 1);

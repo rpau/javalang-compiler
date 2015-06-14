@@ -89,8 +89,14 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 		if (params != null) {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
+				Parameter currentParam = params.get(i);
+				
 				args[i] = ASTSymbolTypeResolver.getInstance().valueOf(
-						params.get(i).getType(), tps);
+						currentParam.getType(), tps);
+				int arrayCount = currentParam.getId().getArrayCount();
+				if(arrayCount > 0){
+					args[i].setArrayCount(args[i].getArrayCount()+arrayCount);
+				}
 				params.get(i).getType().setSymbolData(args[i]);
 				if (i == args.length - 1) {
 					hasDynamicArgs = params.get(i).isVarArgs();

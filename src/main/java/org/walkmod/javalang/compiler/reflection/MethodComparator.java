@@ -7,10 +7,16 @@ import java.util.Comparator;
 import org.walkmod.javalang.compiler.types.Types;
 
 public class MethodComparator implements Comparator<Method> {
+
 	
 	
 	private static boolean isAssignable(Class<?> clazz2, Class<?> clazz1) {
 		boolean isMethod2First = true;
+		Integer order2 = Types.basicTypeEvaluationOrder(clazz2);
+		Integer order1 = Types.basicTypeEvaluationOrder(clazz1);
+		if(order1 != null && order2 != null){
+			return order2 <= order1;
+		}
 		boolean isAssignable = Types.isAssignable(clazz2, clazz1);
 		if (!isAssignable) {
 			if (Types.isAssignable(clazz1, clazz2)) {
@@ -23,9 +29,10 @@ public class MethodComparator implements Comparator<Method> {
 		} else {
 			isMethod2First = true;
 		}
+
 		return isMethod2First;
 	}
-	
+
 	@Override
 	public int compare(Method method1, Method method2) {
 		Parameter[] params1 = method1.getParameters();
@@ -43,7 +50,7 @@ public class MethodComparator implements Comparator<Method> {
 
 					Class<?> clazz2 = params2[i].getType();
 					Class<?> clazz1 = params1[i].getType();
-
+					
 					if (i == params1.length - 1) {
 						boolean isVarArgs1 = method1.isVarArgs();
 						boolean isVarArgs2 = method2.isVarArgs();
@@ -58,6 +65,10 @@ public class MethodComparator implements Comparator<Method> {
 
 						}
 					} else {
+						if (clazz2.isArray() && clazz1.isArray()) {
+							clazz2 = clazz2.getComponentType();
+							clazz1 = clazz1.getComponentType();
+						}
 						isMethod2First = isAssignable(clazz2, clazz1);
 					}
 

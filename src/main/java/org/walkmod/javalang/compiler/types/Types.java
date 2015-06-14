@@ -76,12 +76,18 @@ public class Types {
 
 		compatibilityMatrix = new boolean[][] {
 				{ true, true, true, true, true, true, true, false, false, true },
-				{ false, true, false, true, true, true, true, false, false, true },
-				{ false, false, true, true, true, true, true, false, false, true },
-				{ false, false, false, true, true, true, true, false, false,true },
-				{ false, false, false, false, true, true, true, false, false,true },
-				{ false, false, false, false, false, true, true, false, false,true },
-				{ false, false, false, false, false, false, true, false, false,true },
+				{ false, true, false, true, true, true, true, false, false,
+						true },
+				{ false, false, true, true, true, true, true, false, false,
+						true },
+				{ false, false, false, true, true, true, true, false, false,
+						true },
+				{ false, false, false, false, true, true, true, false, false,
+						true },
+				{ false, false, false, false, false, true, true, false, false,
+						true },
+				{ false, false, false, false, false, false, true, false, false,
+						true },
 				{ false, false, false, false, false, false, false, true, false,
 						true },
 				{ false, false, false, false, false, false, false, false, true,
@@ -103,12 +109,12 @@ public class Types {
 		}
 
 	}
-	
+
 	public static boolean isAssignable(Class<?> fromClass, Class<?> toClass) {
 		if (fromClass == null || toClass == null) {
 			return true;
 		}
-		if(fromClass.equals(Object.class) && toClass.equals(String.class)){
+		if (fromClass.equals(Object.class) && toClass.equals(String.class)) {
 			return false;
 		}
 		if (matrixTypePosition.containsKey(fromClass.getName())
@@ -120,9 +126,16 @@ public class Types {
 		}
 
 	}
-	
-	public static boolean isPrimitive(Class<?> clazz){
-		return clazz.isPrimitive() || wrapperClasses.containsKey(clazz.getName());
+
+	public static Integer basicTypeEvaluationOrder(Class<?> clazz) {
+
+		return matrixTypePosition.get(clazz.getName());
+
+	}
+
+	public static boolean isPrimitive(Class<?> clazz) {
+		return clazz.isPrimitive()
+				|| wrapperClasses.containsKey(clazz.getName());
 	}
 
 	public static boolean isCompatible(Class<?>[] fromClasses,

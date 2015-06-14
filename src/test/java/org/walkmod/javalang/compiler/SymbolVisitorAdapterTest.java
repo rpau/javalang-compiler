@@ -36,6 +36,7 @@ import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.AnnotationExpr;
+import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
@@ -286,14 +287,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
-	
+
 	@Test
 	public void testImportsOfJavadocMultipleLinesTypes() throws Exception {
 		String javadoc = "\n*  Weak reference with a {@code finalizeReferent()} method which a background thread invokes after\n"
 				+ " * the garbage collector reclaims the referent. This is a simpler alternative to using a {@link\n"
 				+ " * Arrays}.\n";
-		String code = "import java.util.Arrays; public class Foo {/**" + javadoc
-				+ "*/ public void foo(){}}";
+		String code = "import java.util.Arrays; public class Foo {/**"
+				+ javadoc + "*/ public void foo(){}}";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
@@ -621,7 +622,6 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 
-	
 	@Test
 	public void errorWithArrayCopy() throws Exception {
 		String method = "static <T> T[] arraysCopyOf(T[] original, int newLength) {\n";
@@ -633,113 +633,189 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public class A { " + method + " }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testGenericsIntroducedByAnInnerClass() throws Exception{
-		String innerClass ="class Reference<T> { public T get() { return null;}} ";
-		String mainClass ="public class A { "+innerClass+" void foo() { Reference<Reference<String>> r = null; r.get().get().length(); }}";
+	public void testGenericsIntroducedByAnInnerClass() throws Exception {
+		String innerClass = "class Reference<T> { public T get() { return null;}} ";
+		String mainClass = "public class A { "
+				+ innerClass
+				+ " void foo() { Reference<Reference<String>> r = null; r.get().get().length(); }}";
 		run(mainClass);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testGenericsWithRewrittenTypeParams() throws Exception{
+	public void testGenericsWithRewrittenTypeParams() throws Exception {
 		String class1 = "class B<T> { public T get() { return null; }}";
 		String class2 = "class C<T> extends B<B<T>> {}";
-		String main = "public class A { "+class1+" "+class2+" void foo () { C<String> c = null; c.get().get().trim().length(); }}";
-		run(main);
-		Assert.assertTrue(true);
-	}
-	
-	@Test
-	public void testGenericsWithRewrittenTypeParamsWithInheritance() throws Exception{
-		String class1 = "class B<T> { public T get() { return null; }}";
-		String class2 = "class C<T extends File> extends B<List<T>> { @Override public List<T> get() {return null;}}";
-		String main = "import java.util.*; import java.io.File; public class A { "+class1+" "+class2+
-				" void foo () { C<File> c = null; c.get().iterator().next().getAbsolutePath().trim(); }}";
+		String main = "public class A { "
+				+ class1
+				+ " "
+				+ class2
+				+ " void foo () { C<String> c = null; c.get().get().trim().length(); }}";
 		run(main);
 		Assert.assertTrue(true);
 	}
 
 	@Test
-	public void testGenericsWithRewrittenTypeParams2() throws Exception{
+	public void testGenericsWithRewrittenTypeParamsWithInheritance()
+			throws Exception {
 		String class1 = "class B<T> { public T get() { return null; }}";
-		String class2 = "class C extends B<B<V>> { void foo() { get().get();}}";
-		String main = "public class A<V> { "+class2+" "+class1+" }";
+		String class2 = "class C<T extends File> extends B<List<T>> { @Override public List<T> get() {return null;}}";
+		String main = "import java.util.*; import java.io.File; public class A { "
+				+ class1
+				+ " "
+				+ class2
+				+ " void foo () { C<File> c = null; c.get().iterator().next().getAbsolutePath().trim(); }}";
 		run(main);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testGenericsWithRewrittenTypeParams3() throws Exception{
+	public void testGenericsWithRewrittenTypeParams2() throws Exception {
+		String class1 = "class B<T> { public T get() { return null; }}";
+		String class2 = "class C extends B<B<V>> { void foo() { get().get();}}";
+		String main = "public class A<V> { " + class2 + " " + class1 + " }";
+		run(main);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testGenericsWithRewrittenTypeParams3() throws Exception {
 		String class1 = "interface B<K,V> { public V get(Object key); public Set<K> keySet(); }";
 		String class2 = "class C extends HashMap<K, Set<V>> { }";
 		String class3 = "class D extends C { void foo() { get(null).iterator().hasNext();} }";
-		
-		String main = "import java.util.*; public class A<K,V> { "+class1+" "+class2+" "+class3+"}";
+
+		String main = "import java.util.*; public class A<K,V> { " + class1
+				+ " " + class2 + " " + class3 + "}";
 		run(main);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testGenericsWithRewrittenTypeParams4() throws Exception{
-		String classB = "class B<K, V> { K getKey() { return null; }}"; 
-		String code = "import java.util.*; public class C<K extends java.io.File, V> { "+classB+" class A extends B<List<K>, V> { void foo(K value){ value.getAbsolutePath().trim();}}}";
+	public void testGenericsWithRewrittenTypeParams4() throws Exception {
+		String classB = "class B<K, V> { K getKey() { return null; }}";
+		String code = "import java.util.*; public class C<K extends java.io.File, V> { "
+				+ classB
+				+ " class A extends B<List<K>, V> { void foo(K value){ value.getAbsolutePath().trim();}}}";
 		run(code);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testGenericsWithClassParameters() throws Exception{
-		String class1= "public static class Range { public static <C extends Collection<?>> List<C> range(C lower, boolean x, C upper, boolean y) { return null;}}";
-		String code = "import java.util.*; public class A { "+class1+
-				" void bar(){ Range.range(new ArrayList(), true, new ArrayList(), true).iterator().next().get(0).toString(); }}";
+	public void testGenericsWithClassParameters() throws Exception {
+		String class1 = "public static class Range { public static <C extends Collection<?>> List<C> range(C lower, boolean x, C upper, boolean y) { return null;}}";
+		String code = "import java.util.*; public class A { "
+				+ class1
+				+ " void bar(){ Range.range(new ArrayList(), true, new ArrayList(), true).iterator().next().get(0).toString(); }}";
 		run(code);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testGenericsWithClassParameters2() throws Exception{
-		String class1= "public static class Range { public static <C extends Collection<?>> C range(C lower, boolean x, C upper, boolean y) { return null;}}";
-		String code = "import java.util.*; public class A { "+class1+
-				" void bar(){ Range.range(new ArrayList(), true, new ArrayList(), true).get(0).toString(); }}";
+	public void testGenericsWithClassParameters2() throws Exception {
+		String class1 = "public static class Range { public static <C extends Collection<?>> C range(C lower, boolean x, C upper, boolean y) { return null;}}";
+		String code = "import java.util.*; public class A { "
+				+ class1
+				+ " void bar(){ Range.range(new ArrayList(), true, new ArrayList(), true).get(0).toString(); }}";
 		run(code);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testFieldMethodCallWithGenerics() throws Exception{
-		String code ="import java.util.List; public class A<T> { List<A<? super T>> comparators; String foo() { comparators.get(0).foo().trim().length(); return null;}}";
+	public void testFieldMethodCallWithGenerics() throws Exception {
+		String code = "import java.util.List; public class A<T> { List<A<? super T>> comparators; String foo() { comparators.get(0).foo().trim().length(); return null;}}";
 		run(code);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testParameterTypeReferences() throws Exception{
-		String code ="import java.util.List; public class A { void foo(List list){}}";
+	public void testParameterTypeReferences() throws Exception {
+		String code = "import java.util.List; public class A { void foo(List list){}}";
 		CompilationUnit cu = run(code);
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 		Assert.assertEquals(1, cu.getImports().get(0).getUsages().size());
 	}
-	
+
 	@Test
 	public void testMethodOrdering() throws Exception {
 		String code = "public class A { void foo(long i) {} void foo(int i) {} void bar(){ foo(1); }}";
 		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
 		Assert.assertNull(md.getUsages());
-		md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
-		Assert.assertNotNull(md.getUsages());
-		Assert.assertEquals(1, md.getUsages().size());
-	}
-	
-	@Test
-	public void testMethodOrdering2() throws Exception {
-		String code = "public class A { void foo(long i) {} void foo(int i) {} void bar(){ foo(1L); }}";
-		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		Assert.assertNotNull(md.getUsages());
 		Assert.assertEquals(1, md.getUsages().size());
 	}
 
+	@Test
+	public void testMethodOrdering2() throws Exception {
+		String code = "public class A { void foo(long i) {} void foo(int i) {} void bar(){ foo(1L); }}";
+		CompilationUnit cu = run(code);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		Assert.assertNotNull(md.getUsages());
+		Assert.assertEquals(1, md.getUsages().size());
+	}
+
+	@Test
+	public void testObjecMethodsInBasicArrays() throws Exception {
+		String code = "public class A { void foo() { int[] c = null; c.toString().toString(); }}";
+		run(code);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testObjecMethodsInBasicArrays2() throws Exception {
+		String code = "public class A { void foo() { int[] c = null; int i = c.clone()[0]; }}";
+		run(code);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testObjecMethodsInBasicArrays3() throws Exception {
+		String code = "public class A { void bar(int aux){} void foo() { int[] c = null; bar(c.clone().length); }}";
+		run(code);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testArrayInitExprType() throws Exception {
+		String code = "public class A { void foo() { int[] c = new int[10];}} ";
+		CompilationUnit cu = run(code);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt
+				.getExpression();
+		ArrayCreationExpr array = (ArrayCreationExpr) expr.getVars().get(0)
+				.getInit();
+		Assert.assertNotNull(array.getDimensions().get(0).getSymbolData());
+	}
+
+	@Test
+	public void testArrayInitExprType2() throws Exception {
+		String code = "public class A { private int x = 10; void foo() { int[] c = new int[x];}} ";
+		CompilationUnit cu = runRemoveUnusedMembers(code);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt
+				.getExpression();
+		Assert.assertNotNull(expr.getVars().get(0).getInit().getSymbolData());
+	}
+
+	@Test
+	public void testArrayArgumentsOrder() throws Exception {
+		String code = "import java.util.Arrays; public class A { void foo( byte[] digest) { foo(Arrays.copyOf(digest, 3)); } } ";
+		run(code);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testMethodWithArrayArgsSignature() throws Exception {
+		run("public class A { void write(char cbuf[], int off, int len) {} }");
+		Assert.assertTrue(true);
+	}
 }

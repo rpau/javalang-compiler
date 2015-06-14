@@ -34,6 +34,7 @@ import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
+import org.walkmod.javalang.ast.body.VariableDeclaratorId;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.ArrayInitializerExpr;
@@ -146,6 +147,16 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				n.getType());
 		arrayType.setArrayCount(1);
 		n.setSymbolData(arrayType);
+		ArrayInitializerExpr expr = n.getInitializer();
+		if (expr != null) {
+			expr.accept(this, arg);
+		}
+		List<Expression> dimensions = n.getDimensions();
+		if (dimensions != null) {
+			for (Expression dimension : dimensions) {
+				dimension.accept(this, arg);
+			}
+		}
 	}
 
 	@Override
@@ -725,8 +736,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		} else {
 			if (n.getSymbolData() == null) {
-				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n, ReferenceType.TYPE_PARAM,
-						ReferenceType.TYPE, ReferenceType.VARIABLE);
+				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
+						ReferenceType.TYPE_PARAM, ReferenceType.TYPE,
+						ReferenceType.VARIABLE);
 				if (s != null) {
 					type = s.getType().clone();
 				} else {
@@ -897,10 +909,19 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				if (param.getSymbolData() == null) {
 					param.getType().accept(this, null);
 					typeArgs[i] = (SymbolType) param.getType().getSymbolData();
+					VariableDeclaratorId id = param.getId();
+					if (id != null) {
+						int arrayCount = id.getArrayCount();
+						if (arrayCount > 0) {
+							typeArgs[i].setArrayCount(typeArgs[i]
+									.getArrayCount() + arrayCount);
+						}
+					}
 					if (param.isVarArgs()) {
 						typeArgs[i]
 								.setArrayCount(typeArgs[i].getArrayCount() + 1);
 					}
+
 				}
 
 			}

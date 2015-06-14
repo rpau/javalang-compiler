@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -43,13 +44,7 @@ public class MethodInspector {
 			Map<String, SymbolType> typeMapping) throws Exception {
 
 		SymbolType result = null;
-		List<Class<?>> bounds = null;
-		if (scope.getArrayCount() != 0) {
-			bounds = new LinkedList<Class<?>>();
-			bounds.add(Object.class);
-		} else {
-			bounds = scope.getBoundClasses();
-		}
+		List<Class<?>> bounds = scope.getBoundClasses();
 		
 
 		b1.setParameterizedTypes(scope.getParameterizedTypes());
@@ -68,6 +63,10 @@ public class MethodInspector {
 
 		while (it.hasNext() && result == null) {
 			Class<?> bound = it.next();
+			
+			if (scope.getArrayCount() != 0) {
+			   bound = Array.newInstance(bound, scope.getArrayCount()).getClass();
+			}
 			b1.setClazz(bound);
 			Map<String, SymbolType> mapping = b1.build(typeMapping);
 			if (tmp != null) {
@@ -76,6 +75,12 @@ public class MethodInspector {
 				}
 			}
 			result = findMethodType(bound, filter, builder, mapping, false);
+			if(scope.getArrayCount() != 0){
+				Method method = result.getMethod();
+				if(method != null && method.getName().equals("clone")){
+					result.setArrayCount(scope.getArrayCount());
+				}
+			}
 		}
 
 		return result;
