@@ -238,7 +238,7 @@ public class ASTSymbolTypeResolver extends
 				result.setParameterizedTypes(typeArgs);
 			}
 		}
-		if (mapping != null) {
+		if (mapping != null && result != null) {
 			String letter = result.getTemplateVariable();
 			if (letter != null) {
 				mapping.put(letter, result);

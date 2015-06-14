@@ -109,10 +109,8 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 			SymbolType st = ASTSymbolTypeResolver.getInstance().valueOf(
 					n.getType());
-			Symbol<?> aux = new Symbol<ObjectCreationExpr>("", st, n,
-					ReferenceType.TYPE);
-			Scope scope = new Scope(aux);
-			aux.setInnerScope(scope);
+			
+			Scope scope = new Scope();
 			symbolTable.pushScope(scope);
 			List<BodyDeclaration> members = n.getAnonymousClassBody();
 			boolean anonymousClass = members != null;
@@ -145,12 +143,18 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 					superSymbol.setInnerScope(superType.getInnerScope());
 				}
 				String name = symbolTable.generateAnonymousClass();
-
+				
 				type = new SymbolType(name);
-				symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n);
+				Symbol<?> anonymousType = symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n);
+				anonymousType.setInnerScope(scope);
 
-				symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type, n,
+				Symbol<ObjectCreationExpr> thisSymbol = new Symbol<ObjectCreationExpr>(
+						"this", type, n, ReferenceType.VARIABLE,
 						actions);
+				scope.setRootSymbol(thisSymbol);
+				thisSymbol.setInnerScope(scope);
+				
+				symbolTable.pushSymbol(thisSymbol);
 				for (BodyDeclaration member : members) {
 					if (member instanceof TypeDeclaration) {
 						process((TypeDeclaration) member, symbolTable);

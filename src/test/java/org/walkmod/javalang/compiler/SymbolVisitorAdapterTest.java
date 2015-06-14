@@ -818,10 +818,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public class A { void write(char cbuf[], int off, int len) {} }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testWrappingTypes() throws Exception{
+	public void testWrappingTypes() throws Exception {
 		run("public class A { private static int indexOf(short[] array, short target, int start, int end) { return 0; } void bar(short[] array, Short target,int start, int end) { int aux = A.indexOf(array,target,start, end) + 1; }}");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testGenericsInsideAnonymousClasses() throws Exception {
+		run("import java.util.Iterator; public class A { class C<T> {  Iterator<T> get() { return null; } } void bar() { C aux = new C<String>() { void test(String s) { get().next().concat(s).length(); }}; }}");
+		Assert.assertTrue(true);
+	}
+	
+
 }

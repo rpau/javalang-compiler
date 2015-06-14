@@ -22,7 +22,6 @@ import java.util.Map;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
-import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 

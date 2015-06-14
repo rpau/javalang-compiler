@@ -25,6 +25,7 @@ import java.util.Set;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
@@ -33,6 +34,7 @@ import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class LoadTypeParamsAction extends SymbolAction {
 
@@ -41,88 +43,113 @@ public class LoadTypeParamsAction extends SymbolAction {
 
 		Node n = symbol.getLocation();
 		if (n != null) {
-			if (n instanceof ClassOrInterfaceDeclaration) {
-				ClassOrInterfaceDeclaration declaration = (ClassOrInterfaceDeclaration) symbol
-						.getLocation();
-				List<TypeParameter> typeParams = declaration
-						.getTypeParameters();
-				SymbolType thisType = symbol.getType();
+			if (n instanceof ClassOrInterfaceDeclaration
+					|| n instanceof ObjectCreationExpr) {
+				ProcessGenerics<?> gen = new ProcessGenerics<Object>(symbol,
+						table);
+				n.accept(gen, null);
+			}
+		}
 
-				load(table, typeParams, thisType);
+	}
 
-				if (!declaration.isInterface()) {
-					List<ClassOrInterfaceType> extendsList = declaration
-							.getExtends();
-					if (extendsList != null) {
-						for (ClassOrInterfaceType type : extendsList) {
-							Map<String, SymbolType> typeResolution = new HashMap<String, SymbolType>();
-							
-							ASTSymbolTypeResolver res = new ASTSymbolTypeResolver(
-									typeResolution, table);
-							SymbolType superType = type.accept(res, null);
-							
-							List<SymbolType> params = superType
-									.getParameterizedTypes();
-							Map<String, SymbolType> typeMapping = table
-									.getTypeParams();
-							if (params != null) {
-								Symbol<?> superSymbol = symbol.getInnerScope()
-										.findSymbol("super");
-								Scope innerScope = superSymbol.getInnerScope();
+	private class ProcessGenerics<A> extends VoidVisitorAdapter<A> {
 
-								Scope aux = null;
+		private Symbol<?> symbol;
 
-								if (innerScope != null) {
-									aux = new Scope(superSymbol);
-									
-								} else {
-									aux = new Scope();
-								}
-								superSymbol.setInnerScope(aux);
-								
-								table.pushScope(aux);
+		private SymbolTable table;
 
-								Symbol<?> intermediateSuper = new Symbol(
-										"super", superSymbol.getType(),
-										superSymbol.getLocation());
+		public ProcessGenerics(Symbol<?> symbol, SymbolTable table) {
+			this.symbol = symbol;
+			this.table = table;
+		}
 
-								if (innerScope != null) {
-									intermediateSuper.setInnerScope(innerScope);
-								}
-								
+		@Override
+		public void visit(ClassOrInterfaceDeclaration declaration, A ctx) {
+			List<TypeParameter> typeParams = declaration.getTypeParameters();
+			SymbolType thisType = symbol.getType();
 
-								table.pushSymbol(intermediateSuper);
+			load(table, typeParams, thisType);
 
-								// extends a parameterizable type
-								TypeVariable<?>[] tps = superType.getClazz()
-										.getTypeParameters();
-								for (int i = 0; i < tps.length; i++) {
-									
-									table.pushSymbol(tps[i].getName(),
-											ReferenceType.TYPE_PARAM,
-											params.get(i), null);
-
-								}
-								table.popScope(true);
-
-							}
-							Set<String> genericLetters = typeMapping.keySet();
-							if (genericLetters != null) {
-								for (String letter : genericLetters) {
-
-									if (typeResolution.containsKey(letter)) {
-										table.pushSymbol(letter,
-												ReferenceType.TYPE,
-												typeMapping.get(letter), null);
-									}
-								}
-							}
-						}
-					}
+			if (!declaration.isInterface()) {
+				List<ClassOrInterfaceType> extendsList = declaration
+						.getExtends();
+				if (extendsList != null && !extendsList.isEmpty()) {
+					processSuperGenerics(table, symbol, extendsList.get(0));
 				}
 			}
 		}
 
+		@Override
+		public void visit(ObjectCreationExpr n, A ctx) {
+			ClassOrInterfaceType superType = n.getType();
+			processSuperGenerics(table, symbol, superType);
+
+		}
+
+		private void processSuperGenerics(SymbolTable table, Symbol<?> symbol,
+				ClassOrInterfaceType type) {
+			if (type != null) {
+
+				Map<String, SymbolType> typeResolution = new HashMap<String, SymbolType>();
+
+				ASTSymbolTypeResolver res = new ASTSymbolTypeResolver(
+						typeResolution, table);
+				SymbolType superType = type.accept(res, null);
+
+				List<SymbolType> params = superType.getParameterizedTypes();
+				Map<String, SymbolType> typeMapping = table.getTypeParams();
+				if (params != null) {
+					Symbol<?> superSymbol = symbol.getInnerScope().findSymbol(
+							"super");
+					Scope innerScope = superSymbol.getInnerScope();
+
+					Scope aux = null;
+
+					if (innerScope != null) {
+						aux = new Scope(superSymbol);
+
+					} else {
+						aux = new Scope();
+					}
+					superSymbol.setInnerScope(aux);
+
+					table.pushScope(aux);
+
+					Symbol<?> intermediateSuper = new Symbol("super",
+							superSymbol.getType(), superSymbol.getLocation());
+
+					if (innerScope != null) {
+						intermediateSuper.setInnerScope(innerScope);
+					}
+
+					table.pushSymbol(intermediateSuper);
+
+					// extends a parameterizable type
+					TypeVariable<?>[] tps = superType.getClazz()
+							.getTypeParameters();
+					for (int i = 0; i < tps.length; i++) {
+
+						table.pushSymbol(tps[i].getName(),
+								ReferenceType.TYPE_PARAM, params.get(i), null);
+
+					}
+					table.popScope(true);
+
+				}
+				Set<String> genericLetters = typeMapping.keySet();
+				if (genericLetters != null) {
+					for (String letter : genericLetters) {
+
+						if (typeResolution.containsKey(letter)) {
+							table.pushSymbol(letter, ReferenceType.TYPE,
+									typeMapping.get(letter), null);
+						}
+					}
+				}
+			}
+
+		}
 	}
 
 	public void load(SymbolTable table, List<TypeParameter> typeParams,
