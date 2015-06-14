@@ -831,5 +831,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 	
-
+	@Test
+	public void testGenericsInsideAnonymousClasses2() throws Exception {
+		run("import java.util.Iterator; public class A { class C<T> {  Iterator<T> get() { return null; } } void bar() { C aux = new C<String>() { void test(String s) { super.get().next().concat(s).length(); }}; }}");
+		Assert.assertTrue(true);
+	}
 }

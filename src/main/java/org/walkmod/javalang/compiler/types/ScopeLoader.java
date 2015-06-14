@@ -115,6 +115,8 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 			List<BodyDeclaration> members = n.getAnonymousClassBody();
 			boolean anonymousClass = members != null;
 			if (anonymousClass) {
+				
+				
 				String className = symbolTable
 						.findSymbol("this", ReferenceType.VARIABLE).getType()
 						.getName();
@@ -135,7 +137,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				SymbolType type = null;
 				type = new SymbolType(className);
 				Symbol<?> superSymbol = symbolTable.pushSymbol("super",
-						ReferenceType.VARIABLE, new SymbolType(st.getClazz()),
+						ReferenceType.VARIABLE, st,
 						n, (List<SymbolAction>) null);
 				Symbol<?> superType = symbolTable.findSymbol(st.getClazz()
 						.getCanonicalName(), ReferenceType.TYPE);
