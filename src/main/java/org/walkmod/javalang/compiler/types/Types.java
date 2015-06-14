@@ -50,6 +50,7 @@ public class Types {
 		matrixTypePosition.put("byte", 0);
 		matrixTypePosition.put("java.lang.Byte", 0);
 		matrixTypePosition.put("short", 1);
+		matrixTypePosition.put("java.lang.Short", 1);
 		matrixTypePosition.put("char", 2);
 		matrixTypePosition.put("java.lang.Character", 2);
 		matrixTypePosition.put("int", 3);
