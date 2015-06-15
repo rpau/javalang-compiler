@@ -311,7 +311,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(TypeDeclarationStmt n, A arg) {
 		Symbol<?> s = symbolTable.pushSymbol(n.getTypeDeclaration().getName(),
 				ReferenceType.TYPE,
-				new SymbolType(symbolTable.generateAnonymousClass()
+				new SymbolType(symbolTable.getTypeStatementPreffix()
 						+ n.getTypeDeclaration().getName()), n);
 		n.getTypeDeclaration().setSymbolData(s.getType());
 		s.setInnerScope(new Scope(s));

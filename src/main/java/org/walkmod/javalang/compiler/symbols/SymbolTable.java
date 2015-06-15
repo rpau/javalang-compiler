@@ -28,6 +28,7 @@ import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
+import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
@@ -133,7 +134,7 @@ public class SymbolTable {
 		}
 		return result;
 	}
-	
+
 	public ArrayList<Symbol<?>> findSymbolsByType(
 			ReferenceType... referenceType) {
 		ArrayList<Symbol<?>> result = new ArrayList<Symbol<?>>();
@@ -248,6 +249,11 @@ public class SymbolTable {
 	}
 
 	public String generateAnonymousClass() {
+		return getTypeAnonymousClassPreffix(false);
+
+	}
+
+	private String getTypeAnonymousClassPreffix(boolean isTypeStmt) {
 		int j = indexStructure.size() - 2;
 		String suffixName = null;
 
@@ -259,11 +265,16 @@ public class SymbolTable {
 				SymbolDefinition sd = rootSymbol.getLocation();
 				if (sd instanceof ObjectCreationExpr
 						|| sd instanceof TypeDeclaration
-						|| sd instanceof TypeDeclarationStmt) {
+						|| sd instanceof TypeDeclarationStmt
+						|| sd instanceof EnumConstantDeclaration) {
 
-					sc.incrInnerAnonymousClassCounter();
+					int num = 1;
 
-					int num = sc.getInnerAnonymousClassCounter();
+					if (!isTypeStmt) {
+
+						sc.incrInnerAnonymousClassCounter();
+						num = sc.getInnerAnonymousClassCounter();
+					}
 					suffixName = "$" + num;
 					return ((SymbolDataAware<?>) sd).getSymbolData().getName()
 							+ suffixName;
@@ -273,7 +284,10 @@ public class SymbolTable {
 			j--;
 		}
 		return null;
+	}
 
+	public String getTypeStatementPreffix() {
+		return getTypeAnonymousClassPreffix(true);
 	}
 
 	public boolean pushSymbol(Symbol<?> symbol, boolean override) {

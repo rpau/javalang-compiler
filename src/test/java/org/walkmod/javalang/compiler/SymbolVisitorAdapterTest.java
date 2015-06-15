@@ -836,4 +836,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("import java.util.Iterator; public class A { class C<T> {  Iterator<T> get() { return null; } } void bar() { C aux = new C<String>() { void test(String s) { super.get().next().concat(s).length(); }}; }}");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testTypeDeclarationStmts2() throws Exception{
+		run("public enum A { B { public Object foo() { class D { int c = 0; int x = c;} return new D(); }}, C {}; public Object foo() { class B { int c = 0; int x = c;} return new B(); }}");
+		Assert.assertTrue(true);
+	}
 }
