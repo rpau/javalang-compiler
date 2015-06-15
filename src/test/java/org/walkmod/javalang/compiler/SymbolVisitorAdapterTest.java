@@ -842,4 +842,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public enum A { B { public Object foo() { class D { int c = 0; int x = c;} return new D(); }}, C {}; public Object foo() { class B { int c = 0; int x = c;} return new B(); }}");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testConditionalArgument() throws Exception{
+		run("public class A  { String newTypeVariableImpl(String name, Integer[] bounds){ return null; }  void newArtificialTypeVariable(String name, Integer... bounds) { newTypeVariableImpl(name, (bounds.length == 0)? new Integer[] { new Integer(1) }: bounds).concat(\"hello\").length(); }}  ");
+		Assert.assertTrue(true);
+	}
+	
+	
+	@Test
+	public void testSuperExpressionsWithClassContext() throws Exception{
+		run("import java.util.*; public class A extends LinkedList{ void foo(){ A.super.add(null);}}");
+		Assert.assertTrue(true);
+	}
 }

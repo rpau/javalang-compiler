@@ -289,29 +289,6 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 							TypeDeclaration superClass = ((TypeDeclaration) location);
 							superClass.accept(this, s.getInnerScope());
-							/*
-							Symbol<?> superSym = table.findSymbol("super",
-									ReferenceType.VARIABLE);
-							if (superSym != null) {
-								// it is not an interface
-								List<Type> typeArgs = type.getTypeArgs();
-								if (typeArgs != null) {
-									ClassOrInterfaceDeclaration superDec = (ClassOrInterfaceDeclaration) superClass;
-									List<TypeParameter> typeParams = superDec
-											.getTypeParameters();
-									int i = 0;
-									for (TypeParameter typeParam : typeParams) {
-										Type typeArg = typeArgs.get(i);
-										SymbolType paramType = ASTSymbolTypeResolver
-												.getInstance().valueOf(typeArg);
-										
-										table.pushSymbol(typeParam.getName(),
-												ReferenceType.TYPE_PARAM,
-												paramType, null);
-										i++;
-									}
-								}
-							}*/
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
@@ -349,7 +326,7 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 										TypeVariable<?>[] typeParams = method
 												.getDeclaringClass()
 												.getTypeParameters();
-										for (int i = 0; i < typeParams.length; i++) {
+										for (int i = 0; i < params.size() && i < typeParams.length; i++) {
 											SymbolType.valueOf(typeParams[i],
 													params.get(i),
 													parameterTypes, null);

@@ -183,14 +183,15 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public List<SymbolType> getParameterizedTypes() {
 		if (parameterizedTypes == null) {
 			if (upperBounds != null && !upperBounds.isEmpty()) {
-				List<SymbolType> params = upperBounds.get(0).getParameterizedTypes();
-				if(params != null && name != null){
+				List<SymbolType> params = upperBounds.get(0)
+						.getParameterizedTypes();
+				if (params != null && name != null) {
 					Iterator<SymbolType> it = params.iterator();
 					List<SymbolType> aux = null;
-					while(it.hasNext()){
+					while (it.hasNext()) {
 						SymbolType st = it.next();
-						if(!name.equals(st.getName())){
-							if(aux == null){
+						if (!name.equals(st.getName())) {
+							if (aux == null) {
 								aux = new LinkedList<SymbolType>();
 							}
 							aux.add(st);
@@ -199,7 +200,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					return aux;
 				}
 				return null;
-				
+
 			}
 		}
 		return parameterizedTypes;
@@ -224,8 +225,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public void setTemplateVariable(String templateVariable) {
 		this.templateVariable = templateVariable;
 	}
-	
-	public String getTemplateVariable(){
+
+	public String getTemplateVariable() {
 		return templateVariable;
 	}
 
@@ -683,24 +684,33 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		if (other == null) {
 			result = this;
 		} else {
-			List<Class<?>> bounds = ClassInspector.getTheNearestSuperClasses(
-					getBoundClasses(), other.getBoundClasses());
-			if (bounds.isEmpty()) {
-				result = null;
-			} else if (bounds.size() == 1) {
-				result = new SymbolType(bounds.get(0));
-			} else {
-				List<SymbolType> boundsList = new LinkedList<SymbolType>();
-				for (Class<?> bound : bounds) {
-					boundsList.add(new SymbolType(bound));
+			if (other.getArrayCount() == getArrayCount()) {
+				List<Class<?>> bounds = ClassInspector
+						.getTheNearestSuperClasses(getBoundClasses(),
+								other.getBoundClasses());
+				if (bounds.isEmpty()) {
+					result = null;
+				} else if (bounds.size() == 1) {
+					result = new SymbolType(bounds.get(0));
+				} else {
+					List<SymbolType> boundsList = new LinkedList<SymbolType>();
+					for (Class<?> bound : bounds) {
+						boundsList.add(new SymbolType(bound));
+					}
+					result = new SymbolType(boundsList);
 				}
-				result = new SymbolType(boundsList);
+				if(result != null){
+				if (lowerBounds != null) {
+					result.lowerBounds = new LinkedList<SymbolType>();
+					for (SymbolType st : lowerBounds) {
+						result.lowerBounds.add(st.clone());
+					}
+				}
+				result.arrayCount = other.getArrayCount();
+				}
 			}
-			if (lowerBounds != null) {
-				result.lowerBounds = new LinkedList<SymbolType>();
-				for (SymbolType st : lowerBounds) {
-					result.lowerBounds.add(st.clone());
-				}
+			else{
+				result = new SymbolType(Object.class);
 			}
 		}
 		return result;

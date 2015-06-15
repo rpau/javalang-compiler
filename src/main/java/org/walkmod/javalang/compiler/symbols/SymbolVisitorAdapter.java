@@ -467,7 +467,6 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		symbolTable.popScope();
 	}
 
-	
 	@Override
 	public void visit(Parameter n, A arg) {
 		super.visit(n, arg);
@@ -475,15 +474,15 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		SymbolType type = null;
 		if (ptype != null) {
 			type = (SymbolType) ptype.getSymbolData();
-			
+
 		} else {
 			type = (SymbolType) n.getSymbolData();
 		}
-		VariableDeclaratorId id= n.getId();
-		if(id != null){
+		VariableDeclaratorId id = n.getId();
+		if (id != null) {
 			int arrayCount = id.getArrayCount();
-			if(arrayCount > 0){
-				type.setArrayCount(type.getArrayCount()+arrayCount);
+			if (arrayCount > 0) {
+				type.setArrayCount(type.getArrayCount() + arrayCount);
 			}
 		}
 		if (n.isVarArgs()) {
@@ -817,9 +816,24 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(SuperExpr n, A arg) {
-		Symbol<?> s = symbolTable.lookUpSymbolForRead("super", null,
-				ReferenceType.VARIABLE);
-		if (n.getSymbolData() == null) {
+		Expression classExpr = n.getClassExpr();
+		Symbol<?> s = null;
+		if (classExpr == null) {
+			s = symbolTable.lookUpSymbolForRead("super", null,
+					ReferenceType.VARIABLE);
+
+		} else {
+			classExpr.accept(this, arg);
+			SymbolData sd = classExpr.getSymbolData();
+			Class<?> aux = sd.getClazz().getSuperclass();
+			if(aux == null){
+				aux = Object.class;
+			}
+			s = symbolTable.lookUpSymbolForRead(aux.getCanonicalName(), null,
+					ReferenceType.TYPE);
+
+		}
+		if (n.getSymbolData() == null && s != null) {
 			n.setSymbolData(s.getType());
 		}
 	}

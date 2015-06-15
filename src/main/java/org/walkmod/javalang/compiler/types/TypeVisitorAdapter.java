@@ -82,7 +82,6 @@ import org.walkmod.javalang.ast.type.VoidType;
 import org.walkmod.javalang.ast.type.WildcardType;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
-import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.CompatibleConstructorArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.CompatibleFunctionalConstructorPredicate;
@@ -163,29 +162,26 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ArrayInitializerExpr n, A arg) {
 
 		if (n.getValues() != null) {
-			int arrayCount = 1;
-			List<Class<?>> classes = new LinkedList<Class<?>>();
-			Integer minArrayCount = null;
+			
 			List<Expression> values = n.getValues();
+			SymbolType st = null;
 			for (Expression expr : values) {
 				expr.accept(this, arg);
 				SymbolData sd = expr.getSymbolData();
-
-				if (sd != null) {
-					if (minArrayCount == null
-							|| sd.getArrayCount() < minArrayCount) {
-						minArrayCount = sd.getArrayCount();
-					}
-					classes.add(sd.getClazz());
+				if (st == null && sd != null){
+					st = (SymbolType)sd;
+					st = st.clone();
+					
 				}
+				else if(sd != null){
+					st = (SymbolType) st.merge(sd);
+				}
+				
 			}
-			if (values != null && !values.isEmpty() && minArrayCount != null) {
-				arrayCount = minArrayCount + 1;
+			if (values != null && !values.isEmpty() && st != null) {
+				st.setArrayCount(st.getArrayCount()+1);
 			}
-			Class<?> superClass = ClassInspector
-					.getTheNearestSuperClass(classes);
-			SymbolType st = new SymbolType(superClass);
-			st.setArrayCount(arrayCount);
+			
 			n.setSymbolData(st);
 		}
 	}
@@ -284,11 +280,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				n.setSymbolData(elseData);
 			}
 		} else {
-			Class<?> thenClass = thenData.getClazz();
-			Class<?> elseClass = elseData.getClazz();
-			Class<?> superClass = ClassInspector.getTheNearestSuperClass(
-					thenClass, elseClass);
-			n.setSymbolData(new SymbolType(superClass));
+			n.setSymbolData(thenData.merge(elseData));
 		}
 
 	}
@@ -622,7 +614,21 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(SuperExpr n, A arg) {
-		n.setSymbolData(symbolTable.getType("super", ReferenceType.VARIABLE));
+		Expression classExpr = n.getClassExpr();
+		if(classExpr == null){
+			n.setSymbolData(symbolTable.getType("super", ReferenceType.VARIABLE));
+		}
+		else{
+			classExpr.accept(this, arg);
+			SymbolType st = (SymbolType)classExpr.getSymbolData();
+			
+			Class<?> superClass = st.getClazz().getSuperclass();
+			if(superClass == null){
+				superClass = Object.class;
+			}
+			st = new SymbolType(superClass);
+			n.setSymbolData(st);
+		}
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}
