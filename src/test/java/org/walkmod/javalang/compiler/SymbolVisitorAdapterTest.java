@@ -855,4 +855,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("import java.util.*; public class A extends LinkedList{ void foo(){ A.super.add(null);}}");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testInnerClassReferencesFromVarDeclarations() throws Exception{
+		run("public class A { void bar() { B.C aux = new B.C(); aux.foo(); } private static final class B { private static final class C { void foo() {}}} }");
+		Assert.assertTrue(true);
+	}
 }
