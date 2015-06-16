@@ -162,26 +162,25 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ArrayInitializerExpr n, A arg) {
 
 		if (n.getValues() != null) {
-			
+
 			List<Expression> values = n.getValues();
 			SymbolType st = null;
 			for (Expression expr : values) {
 				expr.accept(this, arg);
 				SymbolData sd = expr.getSymbolData();
-				if (st == null && sd != null){
-					st = (SymbolType)sd;
+				if (st == null && sd != null) {
+					st = (SymbolType) sd;
 					st = st.clone();
-					
-				}
-				else if(sd != null){
+
+				} else if (sd != null) {
 					st = (SymbolType) st.merge(sd);
 				}
-				
+
 			}
 			if (values != null && !values.isEmpty() && st != null) {
-				st.setArrayCount(st.getArrayCount()+1);
+				st.setArrayCount(st.getArrayCount() + 1);
 			}
-			
+
 			n.setSymbolData(st);
 		}
 	}
@@ -615,15 +614,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(SuperExpr n, A arg) {
 		Expression classExpr = n.getClassExpr();
-		if(classExpr == null){
-			n.setSymbolData(symbolTable.getType("super", ReferenceType.VARIABLE));
-		}
-		else{
+		if (classExpr == null) {
+			n.setSymbolData(symbolTable
+					.getType("super", ReferenceType.VARIABLE));
+		} else {
 			classExpr.accept(this, arg);
-			SymbolType st = (SymbolType)classExpr.getSymbolData();
-			
+			SymbolType st = (SymbolType) classExpr.getSymbolData();
+
 			Class<?> superClass = st.getClazz().getSuperclass();
-			if(superClass == null){
+			if (superClass == null) {
 				superClass = Object.class;
 			}
 			st = new SymbolType(superClass);
@@ -712,32 +711,48 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(ClassOrInterfaceType n, A arg) {
 		super.visit(n, arg);
+		
 		String typeName = n.getName();
 		ClassOrInterfaceType scope = n.getScope();
-		Class<?> clazz = null;
+
 		SymbolType type = null;
 		if (scope != null) {
 			SymbolData data = scope.getSymbolData();
 			if (data == null) {
 				typeName = scope.toString() + "." + typeName;
-				try {
-					clazz = TypesLoaderVisitor.getClassLoader().loadClass(
-							typeName);
-				} catch (ClassNotFoundException e) {
-					// we are the parents of another class or interface type
-				}
+
 			} else {
-				typeName = data.getName() + "$" + typeName;
-				try {
-					clazz = TypesLoaderVisitor.getClassLoader().loadClass(
-							typeName);
-				} catch (ClassNotFoundException e) {
-					throw new NoSuchExpressionTypeException("Ops! The class "
-							+ n.toString() + " can't be resolved", null);
-				}
+				typeName = data.getClazz().getCanonicalName() + "." + typeName;
 			}
-			if (clazz != null) {
-				type = new SymbolType(clazz);
+			if (n.getSymbolData() == null) {
+				// we try to look the type into the symbol table
+				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
+						ReferenceType.TYPE);
+				if (s != null) {
+					type = s.getType().clone();
+				} else {
+					// if we don't find it, it is a full type name
+					Class<?> clazz = null;
+					if (data != null) {
+						// it is an inner class
+						typeName = data.getName() + "$" + n.getName();
+					}
+					try {
+						// there is no import nor a inner class inside the CU
+						// unit. We need to load it by reflection
+						clazz = TypesLoaderVisitor.getClassLoader().loadClass(
+								typeName);
+					} catch (ClassNotFoundException e) {
+						if (data != null) {
+							throw new NoSuchExpressionTypeException(
+									"Ops! The class " + n.toString()
+											+ " can't be resolved", null);
+						}
+					}
+					if (clazz != null) {
+						type = new SymbolType(clazz);
+					}
+				}
 			}
 
 		} else {
