@@ -635,7 +635,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ThisExpr n, A arg) {
-		n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
+		Expression classExpr = n.getClassExpr();
+		if (classExpr == null) {
+			n.setSymbolData(symbolTable
+					.getType("this", ReferenceType.VARIABLE));
+		} else {
+			classExpr.accept(this, arg);
+			SymbolType st = (SymbolType) classExpr.getSymbolData();
+			n.setSymbolData(st.clone());
+		}
 		if (semanticVisitor != null) {
 			n.accept(semanticVisitor, arg);
 		}

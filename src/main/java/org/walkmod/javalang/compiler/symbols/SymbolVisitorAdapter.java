@@ -840,11 +840,21 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ThisExpr n, A arg) {
-		Symbol<?> s = symbolTable.lookUpSymbolForRead("this", null,
-				ReferenceType.VARIABLE);
-		if (n.getSymbolData() == null) {
-			n.setSymbolData(s.getType());
+		
+		Expression classExpr = n.getClassExpr();
+		Symbol<?> s = null;
+		if (classExpr == null) {
+			s = symbolTable.lookUpSymbolForRead("this", null,
+					ReferenceType.VARIABLE);
+			if (n.getSymbolData() == null && s != null) {
+				n.setSymbolData(s.getType());
+			}
+		} else {
+			classExpr.accept(this, arg);
+			SymbolData sd = classExpr.getSymbolData();
+			n.setSymbolData(sd);
 		}
+		
 
 	}
 
