@@ -274,5 +274,28 @@ public class ClassInspector {
 			return getClassHierarchyHeight(clazz.getSuperclass())+1;
 		}
 	}
+	
+	public static boolean isAssignable(Class<?> clazz2, Class<?> clazz1) {
+		boolean isMethod2First = true;
+		Integer order2 = Types.basicTypeEvaluationOrder(clazz2);
+		Integer order1 = Types.basicTypeEvaluationOrder(clazz1);
+		if(order1 != null && order2 != null){
+			return order2 <= order1;
+		}
+		boolean isAssignable = Types.isAssignable(clazz2, clazz1);
+		if (!isAssignable) {
+			if (Types.isAssignable(clazz1, clazz2)) {
+				isMethod2First = false;
+			} else {
+				int h2 = ClassInspector.getClassHierarchyHeight(clazz2);
+				int h1 = ClassInspector.getClassHierarchyHeight(clazz1);
+				isMethod2First = h2 > h1;
+			}
+		} else {
+			isMethod2First = true;
+		}
+
+		return isMethod2First;
+	}
 
 }

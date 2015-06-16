@@ -28,7 +28,7 @@ import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
-import org.walkmod.javalang.compiler.reflection.MethodComparator;
+import org.walkmod.javalang.compiler.reflection.ExecutableSorter;
 
 public class Scope {
 
@@ -57,8 +57,6 @@ public class Scope {
 		this.actions = actions;
 
 	}
-
-	
 
 	public void setRootSymbol(Symbol<?> rootSymbol) {
 		this.rootSymbol = rootSymbol;
@@ -328,7 +326,7 @@ public class Scope {
 					ListIterator<Symbol<?>> it = values.listIterator(values
 							.size());
 
-					MethodComparator cmp = new MethodComparator();
+					ExecutableSorter<Method> cmp = new ExecutableSorter<Method>();
 					while (it.hasPrevious() && !added) {
 						Symbol<?> aux = it.previous();
 						if (aux instanceof MethodSymbol) {

@@ -31,7 +31,14 @@ public class ConstructorInspector {
 
 	public static SymbolType findConstructor(SymbolType scope,
 			ArrayFilter<Constructor<?>> filter) throws Exception {
-		filter.setElements(scope.getClazz().getConstructors());
+		ExecutableSorter<Constructor<?>> sorter = new ExecutableSorter<Constructor<?>>();
+
+		List<Constructor<?>> auxList = sorter.sort(scope.getClazz()
+				.getConstructors());
+		Constructor<?>[] auxArray = new Constructor[auxList.size()];
+		auxList.toArray(auxArray);
+		filter.setElements(auxArray);
+
 		Constructor<?> constructor = filter.filterOne();
 		SymbolType result = scope.clone();
 		result.setConstructor(constructor);

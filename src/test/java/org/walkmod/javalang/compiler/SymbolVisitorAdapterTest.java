@@ -748,6 +748,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(md.getUsages());
 		Assert.assertEquals(1, md.getUsages().size());
 	}
+	
+	@Test
+	public void testConstructorOrdering() throws Exception {
+		String code = "public class A { A(long i) {} A(int i) {} void bar(){ A aux = new A(1); }}";
+		CompilationUnit cu = run(code);
+		ConstructorDeclaration md = (ConstructorDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		Assert.assertNull(md.getUsages());
+		md = (ConstructorDeclaration) cu.getTypes().get(0).getMembers().get(1);
+		Assert.assertNotNull(md.getUsages());
+		Assert.assertEquals(1, md.getUsages().size());
+	}
 
 	@Test
 	public void testMethodOrdering2() throws Exception {

@@ -19,14 +19,11 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -100,7 +97,8 @@ public class MethodInspector {
 			ArrayFilter<Method> filter, CompositeBuilder<Method> builder,
 			Map<String, SymbolType> typeMapping, boolean throwException)
 			throws Exception {
-		List<Method> auxList = sortMethods(clazz.getDeclaredMethods());
+		ExecutableSorter<Method> sorter = new ExecutableSorter<Method>();
+		List<Method> auxList = sorter.sort(clazz.getDeclaredMethods());
 		Method[] auxArray = new Method[auxList.size()];
 		auxList.toArray(auxArray);
 		filter.setElements(auxArray);
@@ -162,55 +160,7 @@ public class MethodInspector {
 		return result;
 	}
 
-	public static List<Method> sortMethods(Method[] methods) {
 
-		Map<String, List<Method>> map = new HashMap<String, List<Method>>();
-
-		LinkedList<Method> result = new LinkedList<Method>();
-		for (Method method : methods) {
-			List<Method> aux = map.get(method.getName());
-			if (aux == null) {
-				aux = new LinkedList<Method>();
-				map.put(method.getName(), aux);
-			}
-			aux.add(method);
-		}
-
-		Set<String> entries = map.keySet();
-		Comparator<Method> comp = new MethodComparator();
-		for (String entry : entries) {
-			List<Method> aux = map.get(entry);
-
-			ArrayList<Method> sortedList = new ArrayList<Method>();
-			Iterator<Method> it = aux.iterator();
-			while (it.hasNext()) {
-				ListIterator<Method> li = sortedList.listIterator(sortedList
-						.size());
-				Method method = it.next();
-				boolean inserted = false;
-				if (sortedList.isEmpty()) {
-					sortedList.add(method);
-				} else {
-					int pos = sortedList.size() - 1;
-					while (!inserted && li.hasPrevious()) {
-						Method previous = li.previous();
-						if (comp.compare(method, previous) == 1) {
-							sortedList.add(pos + 1, method);
-							inserted = true;
-						}
-						pos--;
-					}
-					if (!inserted) {
-						sortedList.add(0, method);
-					}
-				}
-			}
-
-			result.addAll(sortedList);
-		}
-
-		return result;
-	}
 
 	public static Set<Method> getNonPrivateMethods(Class<?> clazz) {
 		Set<Method> result = new HashSet<Method>();

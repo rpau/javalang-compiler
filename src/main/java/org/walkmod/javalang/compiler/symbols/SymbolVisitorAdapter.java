@@ -280,15 +280,19 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	private void loadThisSymbol(ObjectCreationExpr n, A arg) {
-		ScopeLoader scopeLoader = new ScopeLoader(typeTable,
-				expressionTypeAnalyzer, actionProvider);
-		Scope scope = n.accept(scopeLoader, symbolTable);
-		if (scope != null) {
-			symbolTable.pushScope(scope);
-		}
-		super.visit(n, arg);
-		if (scope != null) {
-			symbolTable.popScope();
+		boolean isAnnonymousClass = n.getAnonymousClassBody() != null
+				&& !n.getAnonymousClassBody().isEmpty();
+		if (isAnnonymousClass) {
+			ScopeLoader scopeLoader = new ScopeLoader(typeTable,
+					expressionTypeAnalyzer, actionProvider);
+			Scope scope = n.accept(scopeLoader, symbolTable);
+			if (scope != null) {
+				symbolTable.pushScope(scope);
+			}
+			super.visit(n, arg);
+			if (scope != null) {
+				symbolTable.popScope();
+			}
 		}
 
 	}
@@ -345,7 +349,28 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ObjectCreationExpr n, A arg) {
 
 		loadThisSymbol(n, arg);
+		List<Expression> args = n.getArgs();
+		SymbolType[] argsType = null;
+		if (args != null) {
+			Iterator<Expression> it = args.iterator();
+			argsType = new SymbolType[args.size()];
+			int i = 0;
+			while (it.hasNext()) {
+				Expression current = it.next();
 
+				SymbolType argType = (SymbolType) current.getSymbolData();
+
+				argsType[i] = argType;
+
+				i++;
+
+			}
+		} else {
+			argsType = new SymbolType[0];
+		}
+		SymbolType scopeType = (SymbolType) n.getType().getSymbolData();
+		symbolTable.lookUpSymbolForRead(scopeType.getClazz().getSimpleName(),
+				n, scopeType, argsType, ReferenceType.METHOD);
 	}
 
 	public void pushScope(TypeDeclaration n) {
@@ -826,7 +851,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			classExpr.accept(this, arg);
 			SymbolData sd = classExpr.getSymbolData();
 			Class<?> aux = sd.getClazz().getSuperclass();
-			if(aux == null){
+			if (aux == null) {
 				aux = Object.class;
 			}
 			s = symbolTable.lookUpSymbolForRead(aux.getCanonicalName(), null,
@@ -840,7 +865,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ThisExpr n, A arg) {
-		
+
 		Expression classExpr = n.getClassExpr();
 		Symbol<?> s = null;
 		if (classExpr == null) {
@@ -854,7 +879,6 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			SymbolData sd = classExpr.getSymbolData();
 			n.setSymbolData(sd);
 		}
-		
 
 	}
 

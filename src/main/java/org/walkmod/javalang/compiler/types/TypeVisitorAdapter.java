@@ -520,8 +520,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ObjectCreationExpr n, A arg) {
-		boolean isAnnonymousClass = n.getAnonymousClassBody() != null
-				&& !n.getAnonymousClassBody().isEmpty();
+	
 		if (n.getScope() != null) {
 			n.getScope().accept(this, arg);
 		}
@@ -579,11 +578,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException(e);
 		}
-		if (isAnnonymousClass) {
-			// we need to update the symbol table
-			if (semanticVisitor != null) {
-				n.accept(semanticVisitor, arg);
-			}
+
+		// we need to update the symbol table
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
 		}
 
 	}
@@ -637,8 +635,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ThisExpr n, A arg) {
 		Expression classExpr = n.getClassExpr();
 		if (classExpr == null) {
-			n.setSymbolData(symbolTable
-					.getType("this", ReferenceType.VARIABLE));
+			n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
 		} else {
 			classExpr.accept(this, arg);
 			SymbolType st = (SymbolType) classExpr.getSymbolData();
@@ -719,7 +716,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(ClassOrInterfaceType n, A arg) {
 		super.visit(n, arg);
-		
+
 		String typeName = n.getName();
 		ClassOrInterfaceType scope = n.getScope();
 
