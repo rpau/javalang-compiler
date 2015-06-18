@@ -873,4 +873,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public class A { void bar() { B.C aux = new B.C(); aux.foo(); } private static final class B { private static final class C { void foo() {}}} }");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testTypeCompatibilityWithGenericsAndBasicTypes() throws Exception{
+		run("import java.util.*; public class A { void foo(List<Number> list) { boolean a = list.add(3) && true;} }");
+		Assert.assertTrue(true);
+	}
 }

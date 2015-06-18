@@ -30,6 +30,8 @@ public class Types {
 	private static Map<String, LiteralExpr> defaultValues = new HashMap<String, LiteralExpr>();
 
 	private static Map<String, String> wrapperClasses = new HashMap<String, String>();
+	
+	private static Map<String, Class<?>> inverseWrapperClasses = new HashMap<String, Class<?>>();
 
 	private static Map<String, Integer> matrixTypePosition;
 
@@ -74,6 +76,15 @@ public class Types {
 		wrapperClasses.put("java.lang.Float", "float");
 		wrapperClasses.put("java.lang.Double", "double");
 		wrapperClasses.put("java.lang.Boolean", "boolean");
+		
+		
+		inverseWrapperClasses.put("byte", Byte.class);
+		inverseWrapperClasses.put("char", Character.class);
+		inverseWrapperClasses.put("int", Integer.class);
+		inverseWrapperClasses.put("long", Long.class);
+		inverseWrapperClasses.put("float", Float.class);
+		inverseWrapperClasses.put("double", Double.class);
+		inverseWrapperClasses.put("boolean", Boolean.class);
 
 		compatibilityMatrix = new boolean[][] {
 				{ true, true, true, true, true, true, true, false, false, true },
@@ -106,6 +117,9 @@ public class Types {
 			return compatibilityMatrix[matrixTypePosition.get(fromClass
 					.getName())][matrixTypePosition.get(toClass.getName())];
 		} else {
+			if(fromClass.isPrimitive() && !toClass.isPrimitive()){
+				fromClass = inverseWrapperClasses.get(fromClass.getName());
+			}
 			return toClass.isAssignableFrom(fromClass);
 		}
 
