@@ -29,6 +29,7 @@ import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
+import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
@@ -249,11 +250,11 @@ public class SymbolTable {
 	}
 
 	public String generateAnonymousClass() {
-		return getTypeAnonymousClassPreffix(false);
+		return getTypeAnonymousClassPreffix(null);
 
 	}
 
-	private String getTypeAnonymousClassPreffix(boolean isTypeStmt) {
+	private String getTypeAnonymousClassPreffix(String name) {
 		int j = indexStructure.size() - 2;
 		String suffixName = null;
 
@@ -269,15 +270,29 @@ public class SymbolTable {
 						|| sd instanceof EnumConstantDeclaration) {
 
 					int num = 1;
-
-					if (!isTypeStmt) {
-
+					String preffix = ((SymbolDataAware<?>) sd).getSymbolData()
+							.getName();
+					if (name == null) {
 						sc.incrInnerAnonymousClassCounter();
 						num = sc.getInnerAnonymousClassCounter();
+					} else {
+						num = 1;
+
+						Symbol<?> aux = indexStructure.get(0).findSymbol(
+								preffix + "$" + num + name, ReferenceType.TYPE);
+
+						while (aux != null) {
+							num++;
+							aux = indexStructure.get(0).findSymbol(
+									preffix + "$" + num + name,
+									ReferenceType.TYPE);
+							
+						}
+
 					}
+
 					suffixName = "$" + num;
-					return ((SymbolDataAware<?>) sd).getSymbolData().getName()
-							+ suffixName;
+					return preffix + suffixName;
 				}
 
 			}
@@ -286,8 +301,8 @@ public class SymbolTable {
 		return null;
 	}
 
-	public String getTypeStatementPreffix() {
-		return getTypeAnonymousClassPreffix(true);
+	public String getTypeStatementPreffix(String name) {
+		return getTypeAnonymousClassPreffix(name);
 	}
 
 	public boolean pushSymbol(Symbol<?> symbol, boolean override) {

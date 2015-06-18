@@ -913,4 +913,23 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals(Integer.class.getName(), sd.getParameterizedTypes().get(0).getName());
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testInnerClassesPlusTypeStmtPlusEnums() throws Exception{
+		run("public enum A { B{}, C{}; void foo() { class B {} } void foo1() { class B{} } void foo2(){ class B{ class C{}} new B().new C().toString(); }  }");
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testInnerClassesInsideTypeStmts() throws Exception{
+		run("public class A { void foo() { class B {} } void foo1() { class B{} } void foo2(){ class B{ class C{}} new B().new C().toString(); }  }");
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testInnerClassesInsideTypeStmts2() throws Exception{
+		run("public class A { void foo() { class B {} } void foo1() { class C{} } void foo2(){ class B{ class C{}} new B().new C().toString(); }  }");
+		Assert.assertTrue(true);
+	}
+	
 }

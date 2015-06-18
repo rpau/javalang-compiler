@@ -770,13 +770,26 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		} else {
 			if (n.getSymbolData() == null) {
+				
 				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
 						ReferenceType.TYPE_PARAM, ReferenceType.TYPE,
 						ReferenceType.VARIABLE);
 				if (s != null) {
 					type = s.getType().clone();
 				} else {
-					type = ASTSymbolTypeResolver.getInstance().valueOf(n);
+					Node parentNode = n.getParentNode();
+					if(parentNode instanceof ObjectCreationExpr){
+						ObjectCreationExpr expr = (ObjectCreationExpr) parentNode;
+						Expression grandParent = expr.getScope();
+						if(grandParent != null){
+							type = new SymbolType(grandParent.getSymbolData().getClazz().getName()+"$"+typeName);
+							type.getClazz();
+						}
+						
+					}
+					if(type == null){
+						type = ASTSymbolTypeResolver.getInstance().valueOf(n);
+					}
 
 				}
 			}

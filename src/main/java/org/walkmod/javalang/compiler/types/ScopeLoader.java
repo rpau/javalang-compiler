@@ -55,8 +55,20 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
    private Scope process(TypeDeclaration declaration, SymbolTable symbolTable) {
       Symbol<?> sym = symbolTable.findSymbol(declaration.getName(), ReferenceType.TYPE);
-
-      symbolTable.pushScope(sym.getInnerScope());
+      Scope scope = null;
+      if(sym == null){
+    	 //it is a type declaration inside a TypeStmt
+    	 sym = symbolTable.pushSymbol(declaration.getName(),
+  				ReferenceType.TYPE,
+  				(SymbolType)declaration.getSymbolData(), declaration);
+    	declaration.setSymbolData(sym.getType());
+    	scope = new Scope(sym);
+  		sym.setInnerScope(scope);
+      }
+      else{
+    	  scope = sym.getInnerScope();
+      }
+      symbolTable.pushScope(scope);
 
       List<SymbolAction> actions = new LinkedList<SymbolAction>();
       actions.add(new LoadTypeParamsAction());

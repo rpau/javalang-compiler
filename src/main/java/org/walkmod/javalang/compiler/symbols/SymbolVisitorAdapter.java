@@ -313,17 +313,27 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(TypeDeclarationStmt n, A arg) {
-		Symbol<?> s = symbolTable.pushSymbol(n.getTypeDeclaration().getName(),
-				ReferenceType.TYPE,
-				new SymbolType(symbolTable.getTypeStatementPreffix()
-						+ n.getTypeDeclaration().getName()), n);
-		n.getTypeDeclaration().setSymbolData(s.getType());
-		s.setInnerScope(new Scope(s));
-		ScopeLoader scopeLoader = new ScopeLoader(typeTable,
-				expressionTypeAnalyzer, actionProvider);
-		Scope scope = n.getTypeDeclaration().accept(scopeLoader, symbolTable);
-		s.setInnerScope(scope);
-		n.setSymbolData(s.getType());
+		if (n.getSymbolData() == null) {
+			String name = n.getTypeDeclaration().getName();
+			SymbolType st = new SymbolType(
+					symbolTable.getTypeStatementPreffix(name) + name);
+			Symbol<?> s = symbolTable.pushSymbol(n.getTypeDeclaration()
+					.getName(), ReferenceType.TYPE, st, n);
+			Symbol<?> globalSymbol = new Symbol<TypeDeclarationStmt>(st.getName(), st, n, ReferenceType.TYPE);
+			
+			symbolTable.getScopes().get(0).addSymbol(globalSymbol); 
+			n.getTypeDeclaration().setSymbolData(s.getType());
+			s.setInnerScope(new Scope(s));
+			globalSymbol.setInnerScope(s.getInnerScope());
+			
+			ScopeLoader scopeLoader = new ScopeLoader(typeTable,
+					expressionTypeAnalyzer, actionProvider);
+			n.setSymbolData(s.getType());
+			Scope scope = n.getTypeDeclaration().accept(scopeLoader,
+					symbolTable);
+			s.setInnerScope(scope);
+
+		}
 		super.visit(n, arg);
 	}
 
