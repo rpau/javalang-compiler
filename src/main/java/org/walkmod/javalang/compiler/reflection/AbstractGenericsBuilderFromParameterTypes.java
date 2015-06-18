@@ -245,7 +245,10 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
          if (typeArg != null) {
             GenericArrayType arrayType = (GenericArrayType) type;
             SymbolType aux = typeArg.clone();
-            aux.setArrayCount(typeArg.getArrayCount() - 1);
+            if(typeArg.getArrayCount() > 0){
+            	aux.setArrayCount(typeArg.getArrayCount() - 1);
+            }
+           
             typeMappingUpdate(arrayType.getGenericComponentType(), aux);
          }
       }
