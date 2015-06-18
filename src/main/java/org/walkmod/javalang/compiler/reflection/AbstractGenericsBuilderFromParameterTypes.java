@@ -189,7 +189,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
          if (s != null) {
             st = s.getType();
          }
-         if (s == null || (st.isTemplateVariable() && s.getReferenceType().equals(ReferenceType.TYPE_PARAM))
+         if ((s == null || st == null) || (st.isTemplateVariable() && s.getReferenceType().equals(ReferenceType.TYPE_PARAM))
                || (Object.class.equals(st.getClazz()) && !s.getReferenceType().equals(ReferenceType.TYPE))) {
             typeParamsSymbolTable.pushSymbol(name, ReferenceType.TYPE, typeArg, null);
          } else {
