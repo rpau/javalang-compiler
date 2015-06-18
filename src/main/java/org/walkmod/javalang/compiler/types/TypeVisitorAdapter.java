@@ -292,7 +292,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(DoubleLiteralExpr n, A arg) {
-		n.setSymbolData(new SymbolType("double"));
+		String value = n.getValue();
+		String typeName = "double";
+		if(value != null){
+			char lastChar = value.charAt(value.length()-1);
+			if(Character.toLowerCase(lastChar) == 'f'){
+				typeName = "float";
+			}	
+		}
+		n.setSymbolData(new SymbolType(typeName));
 	}
 
 	@Override

@@ -37,6 +37,7 @@ import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
+import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
@@ -889,5 +890,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(sd);
 		Assert.assertEquals(String.class.getName(), sd.getParameterizedTypes().get(0).getName());
 		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testFloats() throws Exception{
+		CompilationUnit cu = run("public class A { void foo() { foo(1.0f); } void foo(float f){} }");
+		Assert.assertTrue(true);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd =  mce.getArgs().get(0).getSymbolData();
+		Assert.assertEquals(float.class.getName(), sd.getName());
 	}
 }
