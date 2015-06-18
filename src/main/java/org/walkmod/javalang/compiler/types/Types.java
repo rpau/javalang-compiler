@@ -76,6 +76,7 @@ public class Types {
 		wrapperClasses.put("java.lang.Float", "float");
 		wrapperClasses.put("java.lang.Double", "double");
 		wrapperClasses.put("java.lang.Boolean", "boolean");
+		wrapperClasses.put("java.lang.Short", "short");
 		
 		
 		inverseWrapperClasses.put("byte", Byte.class);
@@ -85,6 +86,7 @@ public class Types {
 		inverseWrapperClasses.put("float", Float.class);
 		inverseWrapperClasses.put("double", Double.class);
 		inverseWrapperClasses.put("boolean", Boolean.class);
+		inverseWrapperClasses.put("short", Short.class);
 
 		compatibilityMatrix = new boolean[][] {
 				{ true, true, true, true, true, true, true, false, false, true },
@@ -137,6 +139,9 @@ public class Types {
 			return compatibilityMatrix[matrixTypePosition.get(fromClass
 					.getName())][matrixTypePosition.get(toClass.getName())];
 		} else {
+			if(fromClass.isPrimitive() && !toClass.isPrimitive()){
+				fromClass = inverseWrapperClasses.get(fromClass.getName());
+			}
 			return toClass.isAssignableFrom(fromClass);
 		}
 

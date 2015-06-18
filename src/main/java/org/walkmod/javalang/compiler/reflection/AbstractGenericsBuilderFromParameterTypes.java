@@ -190,7 +190,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
             st = s.getType();
          }
          if (s == null || (st.isTemplateVariable() && s.getReferenceType().equals(ReferenceType.TYPE_PARAM))
-               || Object.class.equals(st.getClazz())) {
+               || (Object.class.equals(st.getClazz()) && !s.getReferenceType().equals(ReferenceType.TYPE))) {
             typeParamsSymbolTable.pushSymbol(name, ReferenceType.TYPE, typeArg, null);
          } else {
             if (s.getReferenceType().equals(ReferenceType.TYPE)) {
@@ -217,6 +217,8 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
       } else if (type instanceof WildcardType) {
          if (typeArg != null) {
             WildcardType wildcardType = (WildcardType) type;
+            
+            //? super T -> upper is '?'. So it is Object
             Type[] upper = wildcardType.getUpperBounds();
             List<SymbolType> bounds = typeArg.getBounds();
             if (bounds == null) {
@@ -227,14 +229,17 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
             for (int i = 0; i < upper.length; i++) {
                typeMappingUpdate(upper[i], bounds.get(i));
             }
-
+            //? super T -> lower is 'T'. The type can contain lower bounds or is a resolved type
             Type[] lower = wildcardType.getLowerBounds();
-            bounds = typeArg.getLowerBounds();
-            if (bounds != null) {
-               for (int i = 0; i < lower.length; i++) {
-                  typeMappingUpdate(lower[i], bounds.get(i));
-               }
+            List<SymbolType> lowerBounds = typeArg.getLowerBounds();
+            if (lowerBounds != null) {
+               bounds = lowerBounds;
             }
+            if (bounds != null) {
+                for (int i = 0; i < lower.length; i++) {
+                   typeMappingUpdate(lower[i], bounds.get(i));
+                }
+             }
          }
       } else if (type instanceof GenericArrayType) {
          if (typeArg != null) {

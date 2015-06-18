@@ -879,4 +879,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("import java.util.*; public class A { void foo(List<Number> list) { boolean a = list.add(3) && true;} }");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testUpperBoundsInAResolvedType() throws Exception{
+		CompilationUnit cu = run("import java.util.*; public class EquivalenceTester<T> { List<? super T> aux; EquivalenceTester(List<? super T> aux){ this.aux = aux;} void foo(){  EquivalenceTester.of(new LinkedList<String>()); } public static <T> EquivalenceTester<T> of(List<? super T> equivalence) {return new EquivalenceTester<T>(equivalence);}}");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		SymbolData sd = stmt.getExpression().getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals(String.class.getName(), sd.getParameterizedTypes().get(0).getName());
+		Assert.assertTrue(true);
+	}
 }
