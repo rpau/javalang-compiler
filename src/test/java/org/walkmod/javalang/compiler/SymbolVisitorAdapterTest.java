@@ -902,4 +902,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		SymbolData sd =  mce.getArgs().get(0).getSymbolData();
 		Assert.assertEquals(float.class.getName(), sd.getName());
 	}
+	
+	@Test
+	public void genericsWithBasicTypes() throws Exception{
+		CompilationUnit cu = run("public class A { void foo() { java.util.Arrays.asList(1, 2, 3, null); } }");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals(Integer.class.getName(), sd.getParameterizedTypes().get(0).getName());
+		Assert.assertTrue(true);
+	}
 }

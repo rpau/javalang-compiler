@@ -170,6 +170,10 @@ public class Types {
 		}
 		return false;
 	}
+	
+	public static Class<?> getWrapperClass(String name){
+		return inverseWrapperClasses.get(name);
+	}
 
 	public static Map<String, String> getWrapperClasses() {
 		return wrapperClasses;

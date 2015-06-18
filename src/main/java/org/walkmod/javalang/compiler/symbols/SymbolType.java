@@ -526,6 +526,14 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				for (Type t : types) {
 					SymbolType param = typeMapping.get(t.toString());
 					if (param != null) {
+						String name = param.getName();
+						if (name != null) {
+							Class<?> aux = Types.getWrapperClass(name);
+							if(aux != null){
+								param.setName(aux.getName());
+								param.setClazz(aux);
+							}
+						}
 						params.add(param);
 					} else {
 						SymbolType argToAnalyze = null;
@@ -542,6 +550,16 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						if (validParameterizedType) {
 							st = valueOf(t, argToAnalyze, updatedTypeMapping,
 									typeMapping);
+						}
+						if (st != null) {
+							String name = st.getName();
+							if (name != null) {
+								Class<?> aux = Types.getWrapperClass(name);
+								if(aux != null){
+									st.setName(aux.getName());
+									st.setClazz(aux);
+								}
+							}
 						}
 						if (st == null) {
 							st = new SymbolType("java.lang.Object");
@@ -699,17 +717,16 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					}
 					result = new SymbolType(boundsList);
 				}
-				if(result != null){
-				if (lowerBounds != null) {
-					result.lowerBounds = new LinkedList<SymbolType>();
-					for (SymbolType st : lowerBounds) {
-						result.lowerBounds.add(st.clone());
+				if (result != null) {
+					if (lowerBounds != null) {
+						result.lowerBounds = new LinkedList<SymbolType>();
+						for (SymbolType st : lowerBounds) {
+							result.lowerBounds.add(st.clone());
+						}
 					}
+					result.arrayCount = other.getArrayCount();
 				}
-				result.arrayCount = other.getArrayCount();
-				}
-			}
-			else{
+			} else {
 				result = new SymbolType(Object.class);
 			}
 		}
