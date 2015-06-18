@@ -35,9 +35,11 @@ public class LoadEnumConstantLiteralsAction extends SymbolAction {
 			if (node instanceof EnumDeclaration) {
 				EnumDeclaration ed = (EnumDeclaration) node;
 				List<EnumConstantDeclaration> entries = ed.getEntries();
-				for (EnumConstantDeclaration ecd : entries) {
-					table.pushSymbol(ecd.getName(), ReferenceType.ENUM_LITERAL,
-							symbol.getType(), ecd);
+				if(entries != null){
+					for (EnumConstantDeclaration ecd : entries) {
+						table.pushSymbol(ecd.getName(), ReferenceType.ENUM_LITERAL,
+								symbol.getType(), ecd);
+					}
 				}
 			}
 		}
