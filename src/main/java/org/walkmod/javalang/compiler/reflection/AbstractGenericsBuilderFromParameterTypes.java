@@ -209,7 +209,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
          if (typeArg != null) {
             List<SymbolType> paramsSymbol = typeArg.getParameterizedTypes();
             if (paramsSymbol != null) {
-               for (int i = 0; i < args.length; i++) {
+               for (int i = 0; i < args.length && i < paramsSymbol.size(); i++) {
                   typeMappingUpdate(args[i], paramsSymbol.get(i));
                }
             }
