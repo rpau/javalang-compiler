@@ -932,4 +932,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 	
+	@Test
+	public void testDynamicArraysInMethodCalls() throws Exception{
+		CompilationUnit cu = run("public class A { private byte[] toByteArray(int... bytes) { return null; }  private void assertWellFormed(int... bytes) { toByteArray(bytes); } } ");
+		Assert.assertTrue(true);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		Assert.assertNotNull(md.getUsages());
+	}
+	
 }

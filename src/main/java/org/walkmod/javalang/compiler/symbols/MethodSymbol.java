@@ -189,7 +189,7 @@ public class MethodSymbol extends Symbol {
 					aux.setArrayCount(0);
 					for (int i = args.length - 1; i < otherLenght && sameArgs; i++) {
 						sameArgs = (otherArgs[i] == null || (aux
-								.isCompatible(otherArgs[i])));
+								.isCompatible(otherArgs[i]) || last.isCompatible(otherArgs[i])));
 					}
 				}
 				return sameArgs;
