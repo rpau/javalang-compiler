@@ -33,6 +33,34 @@ import org.walkmod.javalang.compiler.types.Types;
 
 public class ClassInspector {
 
+	public static Type getInterfaceImplementation(Type implementation,
+			Class<?> interf) {
+		Type result = null;
+		Set<Type> types = getEquivalentParametrizableClasses(implementation);
+		if (types != null) {
+			Iterator<Type> it = types.iterator();
+			while (it.hasNext() && result == null) {
+				Type type = it.next();
+				if (type instanceof Class<?>) {
+					Class<?> clazz = (Class<?>) type;
+					if (interf.isAssignableFrom(clazz)) {
+						result = clazz;
+					}
+				} else if (type instanceof ParameterizedType) {
+					ParameterizedType ptype = (ParameterizedType) type;
+					Type rawType = ptype.getRawType();
+					if (rawType instanceof Class<?>) {
+						Class<?> auxClass = (Class<?>) rawType;
+						if (interf.isAssignableFrom(auxClass)) {
+							result = ptype;
+						}
+					}
+				}
+			}
+		}
+		return result;
+	}
+
 	public static Class<?> getTheNearestSuperClass(Class<?> clazz1,
 			Class<?> clazz2) {
 		if (clazz2 == null) {
@@ -161,8 +189,8 @@ public class ClassInspector {
 			int modifiers = innerClasses[i].getModifiers();
 			boolean validModifiers = Modifier.isPublic(modifiers)
 					|| Modifier.isProtected(modifiers)
-					|| (!Modifier.isPrivate(modifiers) && innerClasses[i]
-							.getPackage() != null && innerClasses[i]
+					|| (!Modifier.isPrivate(modifiers)
+							&& innerClasses[i].getPackage() != null && innerClasses[i]
 							.getPackage().equals(pkg));
 			found = validModifiers
 					&& (uniqueName.equals(name) || simpleName.equals(name));
@@ -209,14 +237,13 @@ public class ClassInspector {
 		} else if (clazz instanceof Class<?>) {
 			Class<?> type = (Class<?>) clazz;
 			if (type.getTypeParameters().length > 0) {
-
 				result.add(type);
-				result.addAll(getEquivalentParametrizableClasses(type
-						.getGenericSuperclass()));
-				Type[] interfaces = type.getGenericInterfaces();
-				for (int i = 0; i < interfaces.length; i++) {
-					result.addAll(getEquivalentParametrizableClasses(interfaces[i]));
-				}
+			}
+			result.addAll(getEquivalentParametrizableClasses(type
+					.getGenericSuperclass()));
+			Type[] interfaces = type.getGenericInterfaces();
+			for (int i = 0; i < interfaces.length; i++) {
+				result.addAll(getEquivalentParametrizableClasses(interfaces[i]));
 			}
 		}
 
@@ -265,21 +292,20 @@ public class ClassInspector {
 		}
 		return false;
 	}
-	
-	public static int getClassHierarchyHeight(Class<?> clazz){
-		if(clazz == null || Object.class.equals(clazz)){
+
+	public static int getClassHierarchyHeight(Class<?> clazz) {
+		if (clazz == null || Object.class.equals(clazz)) {
 			return 0;
-		}
-		else{
-			return getClassHierarchyHeight(clazz.getSuperclass())+1;
+		} else {
+			return getClassHierarchyHeight(clazz.getSuperclass()) + 1;
 		}
 	}
-	
+
 	public static boolean isAssignable(Class<?> clazz2, Class<?> clazz1) {
 		boolean isMethod2First = true;
 		Integer order2 = Types.basicTypeEvaluationOrder(clazz2);
 		Integer order1 = Types.basicTypeEvaluationOrder(clazz1);
-		if(order1 != null && order2 != null){
+		if (order1 != null && order2 != null) {
 			return order2 <= order1;
 		}
 		boolean isAssignable = Types.isAssignable(clazz2, clazz1);

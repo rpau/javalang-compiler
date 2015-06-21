@@ -908,7 +908,8 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run("public class A { void foo() { java.util.Arrays.asList(1, 2, 3, null); } }");
 		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();SymbolData sd = mce.getSymbolData();
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals(Integer.class.getName(), sd.getParameterizedTypes().get(0).getName());
 		Assert.assertTrue(true);
@@ -938,6 +939,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNotNull(md.getUsages());
+	}
+	
+	@Test
+	public void testInterfaceImplementationsWithGenerics() throws Exception{
+		CompilationUnit cu = run("public class A { interface B<T> { public T get();} class C implements B<String> { public String get (){return null;}} <F> F bar(B<F> b) { return null; } void car() { bar(new C()); }}");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(3);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals(String.class.getName(), sd.getName());
+		
 	}
 	
 }

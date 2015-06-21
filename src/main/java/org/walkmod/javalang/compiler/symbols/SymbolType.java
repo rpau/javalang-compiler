@@ -413,10 +413,11 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	 * @param typeMapping
 	 *            reference type mapping for generic variables.
 	 * @return the representative symbol type
+	 * @throws InvalidTypeException
 	 */
 	public static SymbolType valueOf(Type type, SymbolType arg,
 			Map<String, SymbolType> updatedTypeMapping,
-			Map<String, SymbolType> typeMapping) {
+			Map<String, SymbolType> typeMapping) throws InvalidTypeException {
 		if (typeMapping == null) {
 			typeMapping = Collections.emptyMap();
 		}
@@ -431,10 +432,25 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 			TypeVariable<?>[] typeParams = aux.getTypeParameters();
 			if (typeParams.length > 0) {
+				SymbolType[] paramTypes = new SymbolType[typeParams.length];
 				List<SymbolType> params = new LinkedList<SymbolType>();
-
+				if (aux.isInterface() && arg != null) {
+					Class<?> argClass = arg.getClazz();
+					Type implementation = ClassInspector
+							.getInterfaceImplementation(argClass, aux);
+					if (implementation != null) {
+						if (implementation instanceof ParameterizedType) {
+							ParameterizedType ptype = (ParameterizedType) implementation;
+							Type[] targuments = ptype.getActualTypeArguments();
+							for (int i = 0; i < paramTypes.length; i++) {
+								paramTypes[i] = SymbolType.valueOf(
+										targuments[i], typeMapping);
+							}
+						}
+					}
+				}
 				for (int i = 0; i < typeParams.length; i++) {
-					SymbolType tp = valueOf(typeParams[i], null,
+					SymbolType tp = valueOf(typeParams[i], paramTypes[i],
 							updatedTypeMapping, typeMapping);
 					if (tp != null) {
 						params.add(tp);
@@ -529,7 +545,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						String name = param.getName();
 						if (name != null) {
 							Class<?> aux = Types.getWrapperClass(name);
-							if(aux != null){
+							if (aux != null) {
 								param.setName(aux.getName());
 								param.setClazz(aux);
 							}
@@ -555,7 +571,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 							String name = st.getName();
 							if (name != null) {
 								Class<?> aux = Types.getWrapperClass(name);
-								if(aux != null){
+								if (aux != null) {
 									st.setName(aux.getName());
 									st.setClazz(aux);
 								}
