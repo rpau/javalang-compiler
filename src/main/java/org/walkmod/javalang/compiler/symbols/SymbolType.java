@@ -580,6 +580,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						valueOf(bound, arg, updatedTypeMapping, typeMapping);
 					}
 					returnType = new SymbolType(arg.getName());
+					returnType.setArrayCount(arg.getArrayCount());
 					returnType.setTemplateVariable(variableName);
 					returnType.setParameterizedTypes(arg
 							.getParameterizedTypes());

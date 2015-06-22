@@ -990,4 +990,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(sd.getParameterizedTypes());
 		Assert.assertEquals("java.lang.Object", sd.getParameterizedTypes().get(0).getName());
 	}
+	
+	@Test
+	public void testSingletonList() throws Exception{
+		CompilationUnit cu = run("import java.util.Collections; public class A { void foo(String[] array) { Collections.singletonList(array); } }");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		
+	}
 }
