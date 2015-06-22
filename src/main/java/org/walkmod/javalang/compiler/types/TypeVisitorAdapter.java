@@ -427,11 +427,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			if (s != null) {
 
 				MethodSymbol methodSymbol = (MethodSymbol) s;
-			
+
 				Method m = methodSymbol.getReferencedMethod();
 				SymbolType methodScope = new SymbolType(m.getDeclaringClass());
-				if (scope == null //is static import
-						|| methodScope.isCompatible(scope)) { //is a method inside the CU
+				if (scope == null // is static import
+						|| methodScope.isCompatible(scope)) { // is a method
+																// inside the CU
 					if (MethodInspector.isGeneric(m)) {
 						// it is may return a parameterized type
 						Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
@@ -445,8 +446,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					} else {
 						n.setSymbolData(s.getType());
 					}
-				}
-				else{
+				} else {
 					lookUpMethodByReflection = true;
 				}
 			}
@@ -1042,7 +1042,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			try {
 				st.setField(thisType.getClazz().getDeclaredField(name));
 			} catch (Exception e) {
-				throw new NoSuchExpressionTypeException(e);
+				throw new NoSuchExpressionTypeException(
+						"Ops! We can't find the field " + name + " in "
+								+ thisType.getClazz().getName(), e);
 			}
 			result.add(st);
 		}

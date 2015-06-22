@@ -281,8 +281,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	}
 
 	private void loadThisSymbol(ObjectCreationExpr n, A arg) {
-		boolean isAnnonymousClass = n.getAnonymousClassBody() != null
-				&& !n.getAnonymousClassBody().isEmpty();
+		boolean isAnnonymousClass = n.getAnonymousClassBody() != null;
 		if (isAnnonymousClass) {
 			ScopeLoader scopeLoader = new ScopeLoader(typeTable,
 					expressionTypeAnalyzer, actionProvider);

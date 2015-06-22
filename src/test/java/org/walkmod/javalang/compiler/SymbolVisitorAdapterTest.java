@@ -1014,4 +1014,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals("java.lang.Integer", sd.getParameterizedTypes().get(0).getName());
 		
 	}
+	
+	@Test
+	public void testFieldDeclarationInsideAnonymousClass() throws Exception{
+		run("import java.util.*; public class A { public Object get() { Map<String,String> aux = new HashMap<String, String>() {}; return new HashMap<String, String>() {boolean iteratorCalled;}; }}");
+		Assert.assertTrue(true);
+	}
 }
