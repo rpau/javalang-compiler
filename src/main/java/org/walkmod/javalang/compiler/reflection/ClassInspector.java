@@ -33,18 +33,21 @@ import org.walkmod.javalang.compiler.types.Types;
 
 public class ClassInspector {
 
-	public static Type getInterfaceImplementation(Type implementation,
+	public static List<Type> getInterfaceOrSuperclassImplementations(Type implementation,
 			Class<?> interf) {
-		Type result = null;
+		List<Type> result = new LinkedList<Type>();
+		
 		Set<Type> types = getEquivalentParametrizableClasses(implementation);
 		if (types != null) {
 			Iterator<Type> it = types.iterator();
-			while (it.hasNext() && result == null) {
+			boolean found = false;
+			while (it.hasNext() && !found) {
 				Type type = it.next();
 				if (type instanceof Class<?>) {
 					Class<?> clazz = (Class<?>) type;
 					if (interf.isAssignableFrom(clazz)) {
-						result = clazz;
+						result.add(clazz);
+						found = interf.isInterface();
 					}
 				} else if (type instanceof ParameterizedType) {
 					ParameterizedType ptype = (ParameterizedType) type;
@@ -52,7 +55,8 @@ public class ClassInspector {
 					if (rawType instanceof Class<?>) {
 						Class<?> auxClass = (Class<?>) rawType;
 						if (interf.isAssignableFrom(auxClass)) {
-							result = ptype;
+							result.add(ptype);
+							found = interf.isInterface();
 						}
 					}
 				}
@@ -228,20 +232,31 @@ public class ClassInspector {
 
 		return result;
 	}
+	
+
 
 	public static Set<Type> getEquivalentParametrizableClasses(Type clazz) {
 		Set<Type> result = new LinkedHashSet<Type>();
+		Class<?> classToAnalyze = null;
 		if (clazz instanceof ParameterizedType) {
 			result.add(clazz);
-
+			ParameterizedType ptype = (ParameterizedType) clazz;
+			Type rawType = ptype.getRawType();
+			if(rawType instanceof Class<?>){
+				classToAnalyze = (Class<?>)rawType;
+			}
+			
 		} else if (clazz instanceof Class<?>) {
 			Class<?> type = (Class<?>) clazz;
 			if (type.getTypeParameters().length > 0) {
 				result.add(type);
 			}
-			result.addAll(getEquivalentParametrizableClasses(type
+			classToAnalyze = type;
+		}
+		if(classToAnalyze != null){
+			result.addAll(getEquivalentParametrizableClasses(classToAnalyze
 					.getGenericSuperclass()));
-			Type[] interfaces = type.getGenericInterfaces();
+			Type[] interfaces = classToAnalyze.getGenericInterfaces();
 			for (int i = 0; i < interfaces.length; i++) {
 				result.addAll(getEquivalentParametrizableClasses(interfaces[i]));
 			}

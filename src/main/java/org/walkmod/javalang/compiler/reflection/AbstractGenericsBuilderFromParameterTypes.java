@@ -113,9 +113,10 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 			if (typeMapping != null) {
 				Set<String> parameterizedTypeNames = typeMapping.keySet();
 				for (String typeName : parameterizedTypeNames) {
-					typeParamsSymbolTable
-							.pushSymbol(typeName, ReferenceType.TYPE,
-									typeMapping.get(typeName), null);
+					SymbolType st = typeMapping.get(typeName).clone();
+					st.setTemplateVariable(typeName);
+					typeParamsSymbolTable.pushSymbol(typeName,
+							ReferenceType.TYPE, st, null);
 				}
 			}
 		}
@@ -252,13 +253,12 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 						SymbolType st = itP.next();
 						if ((st.getName() == null || Object.class.equals(st
 								.getClazz()))) {
-							if (auxIt != null  && auxIt.hasNext()) {
+							if (auxIt != null && auxIt.hasNext()) {
 								// it is defined by the parameters of the
 								// implicit object.Eg: (List<String> a = null;
 								// a.add("hello"));
 								typeMappingUpdate(args[i], auxIt.next());
-							}
-							else{
+							} else {
 								typeMappingUpdate(args[i], st);
 							}
 						} else {
@@ -312,12 +312,23 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 			}
 		} else if (type instanceof Class<?>) {
 			if (typeArg != null) {
-				Class<?> aux = (Class<?>) type;
-				TypeVariable[] tvs = aux.getTypeParameters();
-				List<SymbolType> stypes = typeArg.getParameterizedTypes();
-				if (stypes != null) {
-					for (int i = 0; i < tvs.length && i < stypes.size(); i++) {
-						typeMappingUpdate(tvs[i], stypes.get(i));
+				Class<?> clazz = (Class<?>) type;
+				Map<String, SymbolType> updateMapping = new LinkedHashMap<String, SymbolType>();
+
+				// class A<T> implements B<String,T>, if type is B<K,M>, we need
+				// to know that K is String and M whatever has the typeArg
+				SymbolType rewrittenType = SymbolType.valueOf(clazz, typeArg,
+						updateMapping, null);
+				TypeVariable[] tvs = clazz.getTypeParameters();
+				List<SymbolType> paramTypes = rewrittenType
+						.getParameterizedTypes();
+				if (paramTypes != null) {
+					Iterator<SymbolType> it = paramTypes.iterator();
+					for (int i = 0; i < tvs.length && it.hasNext(); i++) {
+						SymbolType st = it.next();
+						if (st != null) {
+							typeMappingUpdate(tvs[i], st);
+						}
 					}
 				}
 			}

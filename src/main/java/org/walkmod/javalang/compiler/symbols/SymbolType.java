@@ -30,6 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 
 import org.walkmod.javalang.ast.ConstructorSymbolData;
 import org.walkmod.javalang.ast.FieldSymbolData;
@@ -291,12 +292,15 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 							otherParams = st.getParameterizedTypes();
 							Iterator<SymbolType> it = parameterizedTypes
 									.iterator();
-							Iterator<SymbolType> otherIt = otherParams
-									.iterator();
-							while (it.hasNext() && found && otherIt.hasNext()) {
-								SymbolType thisType = it.next();
-								SymbolType otherType = otherIt.next();
-								found = thisType.isCompatible(otherType);
+							if (otherParams != null) {
+								Iterator<SymbolType> otherIt = otherParams
+										.iterator();
+								while (it.hasNext() && found
+										&& otherIt.hasNext()) {
+									SymbolType thisType = it.next();
+									SymbolType otherType = otherIt.next();
+									found = thisType.isCompatible(otherType);
+								}
 							}
 						}
 					}
@@ -370,34 +374,79 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	}
 
 	public SymbolType clone() {
+		return clone(null, null);
+	}
+
+	private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created) {
 		SymbolType result = new SymbolType();
 		result.setName(name);
 		result.setClazz(clazz);
 		result.setArrayCount(arrayCount);
 		result.templateVariable = templateVariable;
-		if (parameterizedTypes != null) {
-			List<SymbolType> list = new LinkedList<SymbolType>();
+		if (parent == null) {
+			parent = new Stack<SymbolType>();
+			created = new Stack<SymbolType>();
+		}
+		Iterator<SymbolType> it = parent.iterator();
+		Iterator<SymbolType> it2 = created.iterator();
+		boolean found = false;
+		while (it.hasNext() && !found) {
+			SymbolType next = it.next();
+			SymbolType created2 = it2.next();
+			if (next == this) {
+				result = created2;
+				found = true;
+			}
+		}
+		if (!found) {
+			parent.push(this);
+			created.push(result);
+			if (parameterizedTypes != null) {
+				List<SymbolType> list = new LinkedList<SymbolType>();
 
-			for (SymbolData type : parameterizedTypes) {
-				list.add(((SymbolType) type).clone());
+				for (SymbolData type : parameterizedTypes) {
+					list.add(((SymbolType) type).clone(parent, created));
+				}
+				result.setParameterizedTypes(list);
 			}
-			result.setParameterizedTypes(list);
-		}
-		if (upperBounds != null) {
-			List<SymbolType> list = new LinkedList<SymbolType>();
-			for (SymbolData type : upperBounds) {
-				list.add(((SymbolType) type).clone());
+			if (upperBounds != null) {
+				List<SymbolType> list = new LinkedList<SymbolType>();
+				for (SymbolData type : upperBounds) {
+					list.add(((SymbolType) type).clone(parent, created));
+				}
+				result.upperBounds = list;
 			}
-			result.upperBounds = list;
-		}
-		if (lowerBounds != null) {
-			List<SymbolType> list = new LinkedList<SymbolType>();
-			for (SymbolData type : lowerBounds) {
-				list.add(((SymbolType) type).clone());
+			if (lowerBounds != null) {
+				List<SymbolType> list = new LinkedList<SymbolType>();
+				for (SymbolData type : lowerBounds) {
+					list.add(((SymbolType) type).clone(parent, created));
+				}
+				result.lowerBounds = list;
 			}
-			result.lowerBounds = list;
+			parent.pop();
+			created.pop();
 		}
 		return result;
+	}
+
+	private static void loadTypeParams(Iterator<SymbolType> it,
+			Type[] typeParams, List<SymbolType> parameterizedTypes,
+			Map<String, SymbolType> typeMapping, Map<String, SymbolType> auxMap)
+			throws InvalidTypeException {
+
+		if (parameterizedTypes != null) {
+			it = parameterizedTypes.iterator();
+		}
+		for (int i = 0; i < typeParams.length; i++) {
+			SymbolType ref = null;
+			if (it != null && it.hasNext()) {
+				ref = it.next();
+			}
+
+			valueOf(typeParams[i], ref, auxMap, typeMapping);
+
+		}
+
 	}
 
 	/**
@@ -430,36 +479,92 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				returnType.setArrayCount(1);
 				returnType.setName(aux.getComponentType().getName());
 			}
-			TypeVariable<?>[] typeParams = aux.getTypeParameters();
+			Type[] typeParams = aux.getTypeParameters();
 			if (typeParams.length > 0) {
-				SymbolType[] paramTypes = new SymbolType[typeParams.length];
+
 				List<SymbolType> params = new LinkedList<SymbolType>();
-				if (aux.isInterface() && arg != null) {
+				List<SymbolType> implParams = new LinkedList<SymbolType>();
+				boolean isParameterizedImplementation = false;
+				List<SymbolType> parameterizedTypes = null;
+				Iterator<SymbolType> it = null;
+				if (arg != null) {
+
 					Class<?> argClass = arg.getClazz();
-					Type implementation = ClassInspector
-							.getInterfaceImplementation(argClass, aux);
-					if (implementation != null) {
+					parameterizedTypes = arg.getParameterizedTypes();
+					if (parameterizedTypes != null) {
+						it = parameterizedTypes.iterator();
+
+					}
+					List<Type> implementations = ClassInspector
+							.getInterfaceOrSuperclassImplementations(argClass,
+									aux);
+
+					Iterator<Type> itTypes = implementations.iterator();
+					Type[] typeParamsAux = typeParams;
+					Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(
+							typeMapping);
+					while (itTypes.hasNext()) {
+						Type implementation = itTypes.next();
 						if (implementation instanceof ParameterizedType) {
 							ParameterizedType ptype = (ParameterizedType) implementation;
+
 							Type[] targuments = ptype.getActualTypeArguments();
-							for (int i = 0; i < paramTypes.length; i++) {
-								paramTypes[i] = SymbolType.valueOf(
-										targuments[i], typeMapping);
+							for (int i = 0; i < targuments.length; i++) {
+
+								SymbolType st = null;
+								if (targuments[i] instanceof TypeVariable) {
+									if (it != null && it.hasNext()) {
+										st = it.next();
+									} else {
+										st = new SymbolType(Object.class);
+									}
+								} else {
+
+									st = SymbolType.valueOf(targuments[i],
+											auxMap);
+								}
+								if (st != null) {
+									implParams.add(st);
+								}
 							}
+							isParameterizedImplementation = true;
+							it = implParams.iterator();
+							params = implParams;
+							implParams = new LinkedList<SymbolType>();
+							parameterizedTypes = params;
+						} else if (implementation instanceof Class<?>) {
+							typeParamsAux = ((Class<?>) implementation)
+									.getTypeParameters();
+							loadTypeParams(it, typeParamsAux,
+									parameterizedTypes, typeMapping, auxMap);
 						}
 					}
+
 				}
-				for (int i = 0; i < typeParams.length; i++) {
-					SymbolType tp = valueOf(typeParams[i], paramTypes[i],
-							updatedTypeMapping, typeMapping);
-					if (tp != null) {
-						params.add(tp);
+				if (!isParameterizedImplementation) {
+
+					if (parameterizedTypes != null) {
+						it = parameterizedTypes.iterator();
 					}
+					for (int i = 0; i < typeParams.length; i++) {
+						SymbolType ref = null;
+						if (it != null && it.hasNext()) {
+							ref = it.next();
+						}
+
+						SymbolType tp = valueOf(typeParams[i], ref,
+								updatedTypeMapping, typeMapping);
+						if (tp != null) {
+							params.add(tp);
+						}
+					}
+
 				}
 				if (!params.isEmpty()) {
 					returnType.setParameterizedTypes(params);
 				}
 			}
+
 		} else if (type instanceof TypeVariable) {
 
 			String variableName = ((TypeVariable<?>) type).getName();

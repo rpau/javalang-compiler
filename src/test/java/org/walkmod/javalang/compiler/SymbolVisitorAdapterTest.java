@@ -953,4 +953,41 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		
 	}
 	
+	@Test
+	public void testImplementationWithGenericsRewrittingLetters() throws Exception{
+		CompilationUnit cu = run("public class A { class B <B,K,V> { B get() { return null; }} class C<K,V> extends B<C<K,V>,K, V>{} void foo() { C<String,String> c = new C<String,String>(); c.get(); } }");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(1);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("A$C", sd.getName());
+	}
+	
+	@Test
+	public void testImplementationWithGenericsRewrittingLetters2() throws Exception{
+		CompilationUnit cu = run("import java.util.*; public class A { class Z <B> { B get() { return null; }}  class D<K, V> extends C <HashMap<K, V>> {} class C<X> extends Z<X>{} void foo() { D<String, String> c = new D<String, String>(); c.get(); } }");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(3);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(1);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("java.util.HashMap", sd.getName());
+		Assert.assertNotNull(sd.getParameterizedTypes());
+		Assert.assertEquals("java.lang.String", sd.getParameterizedTypes().get(0).getName());
+		Assert.assertEquals("java.lang.String", sd.getParameterizedTypes().get(1).getName());
+	}
+	
+	@Test
+	public void test1() throws Exception{
+		CompilationUnit cu = run("import java.util.*; public class A<K,V> { public static <T> T firstNonNull( T first, T second) { return null;} public Map<K, Collection<V>> asMap() {return null;} void foo(K key, Collection<V> value) { A.firstNonNull(asMap().remove(key),value); } }");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("java.util.Collection", sd.getName());
+		Assert.assertNotNull(sd.getParameterizedTypes());
+		Assert.assertEquals("java.lang.Object", sd.getParameterizedTypes().get(0).getName());
+	}
 }

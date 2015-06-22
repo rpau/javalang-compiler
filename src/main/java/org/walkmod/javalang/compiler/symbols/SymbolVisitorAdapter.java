@@ -165,6 +165,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		if (unit.getTypes() != null) {
 
 			for (TypeDeclaration typeDeclaration : unit.getTypes()) {
+				//System.out.println("type: "+typeDeclaration.getName());
 				typeDeclaration.accept(scopeLoader, symbolTable);
 			}
 

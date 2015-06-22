@@ -24,8 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 
 public class FieldInspector {
@@ -44,14 +44,14 @@ public class FieldInspector {
 		}
 		result.addAll(getNonPrivateFields(clazz.getSuperclass()));
 		Class<?>[] interfaces = clazz.getInterfaces();
-		for(int i = 0; i < interfaces.length; i++){
+		for (int i = 0; i < interfaces.length; i++) {
 			result.addAll(getNonPrivateFields(interfaces[i]));
 		}
 		return result;
 	}
-	
 
-	public static SymbolType findFieldType(SymbolType scope, String fieldName) {
+	public static SymbolType findFieldType(SymbolTable symTable,
+			SymbolType scope, String fieldName) {
 
 		SymbolType result = null;
 		if (scope != null) {
@@ -75,12 +75,15 @@ public class FieldInspector {
 									fieldName);
 							if (field == null) {
 								// check a field with no visibility
+								SymbolType st = symTable.getType("this");
 
-								Class<?> internal = TypesLoaderVisitor
-										.getClassLoader().loadClass(
-												clazz.getName() + "$"
-														+ fieldName);
-								result = new SymbolType(internal);
+								Class<?> internal = ClassInspector
+										.findClassMember(st.getClazz()
+												.getPackage(), fieldName, clazz);
+								if (internal != null) {
+									result = new SymbolType(internal);
+								}
+
 							}
 						}
 						if (result == null) {
@@ -94,9 +97,6 @@ public class FieldInspector {
 									typeMapping);
 						}
 					}
-				} catch (ClassNotFoundException e) {
-					throw new NoSuchExpressionTypeException(e);
-
 				} catch (Exception e) {
 					throw new NoSuchExpressionTypeException(e);
 

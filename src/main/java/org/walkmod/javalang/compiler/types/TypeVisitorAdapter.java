@@ -328,7 +328,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				}
 			} else {
 
-				SymbolType fieldType = FieldInspector.findFieldType(scopeType,
+				SymbolType fieldType = FieldInspector.findFieldType(symbolTable, scopeType,
 						n.getField());
 				n.setSymbolData(fieldType);
 
@@ -500,7 +500,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			SwitchStmt stmt = (SwitchStmt) parentNode.getParentNode();
 			SymbolType scope = (SymbolType) stmt.getSelector().getSymbolData();
 			if (scope.getClazz().isEnum()) {
-				type = FieldInspector.findFieldType(scope, n.getName());
+				type = FieldInspector.findFieldType(symbolTable, scope, n.getName());
 			}
 		}
 		if (type == null) {
