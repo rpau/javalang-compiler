@@ -979,7 +979,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 	
 	@Test
-	public void test1() throws Exception{
+	public void testBug1() throws Exception{
 		CompilationUnit cu = run("import java.util.*; public class A<K,V> { public static <T> T firstNonNull( T first, T second) { return null;} public Map<K, Collection<V>> asMap() {return null;} void foo(K key, Collection<V> value) { A.firstNonNull(asMap().remove(key),value); } }");
 		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
 		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);

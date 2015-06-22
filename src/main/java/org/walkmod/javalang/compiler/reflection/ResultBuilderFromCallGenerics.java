@@ -74,26 +74,6 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 			Symbol<?> s = symbolTable.findSymbol(symbolName);
 			if (s != null) {
 				Scope scope = s.getInnerScope();
-				/*
-				if (scope != null) {
-					Class<?> clazz = this.scope.getClazz();
-					if (clazz != null) {
-						clazz = clazz.getSuperclass();
-					}
-					if (method != null
-							&& clazz != null
-							&& method.getDeclaringClass().isAssignableFrom(
-									clazz)) {
-						// we need to find for the super type params to resolve
-						// the method
-						Symbol<?> superSymbol = scope.findSymbol("super");
-						if (superSymbol != null) {
-							scope = superSymbol.getInnerScope();
-						}
-
-					}
-				}*/
-
 				if (scope != null) {
 					Map<String, SymbolType> typeParams = scope.getTypeParams();
 
@@ -141,9 +121,15 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 				if (s != null) {
 					boolean isInTheTopScope = genericsSymbolTable.getScopes()
 							.peek().findSymbol(vname) != null;
-					SymbolType refactor = s.getType().refactor(vname,
-							parameterizedType, genericArgs || isInTheTopScope);
-					s.setType(refactor);
+					SymbolType st = s.getType();
+					if (st != null) {
+						SymbolType refactor = s.getType().refactor(vname,
+								parameterizedType,
+								genericArgs || isInTheTopScope);
+						s.setType(refactor);
+					} else {
+						s.setType(parameterizedType);
+					}
 
 				} else {
 					genericsSymbolTable.pushSymbol(vname, ReferenceType.TYPE,
@@ -209,13 +195,14 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 						genericsSymbolTable, st, genericArgs);
 
 			} else if (type instanceof Class) {
-				
+
 				Class<?> clazz = (Class<?>) type;
 				Map<String, SymbolType> updateMapping = new LinkedHashMap<String, SymbolType>();
-				
+
 				SymbolType rewrittenType = SymbolType.valueOf(clazz,
 						parameterizedType, updateMapping, null);
-				java.lang.reflect.TypeVariable[] tparams = clazz.getTypeParameters();
+				java.lang.reflect.TypeVariable[] tparams = clazz
+						.getTypeParameters();
 				List<SymbolType> paramTypes = rewrittenType
 						.getParameterizedTypes();
 				if (paramTypes != null) {

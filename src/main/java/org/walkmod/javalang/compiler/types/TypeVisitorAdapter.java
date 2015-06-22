@@ -294,11 +294,11 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(DoubleLiteralExpr n, A arg) {
 		String value = n.getValue();
 		String typeName = "double";
-		if(value != null){
-			char lastChar = value.charAt(value.length()-1);
-			if(Character.toLowerCase(lastChar) == 'f'){
+		if (value != null) {
+			char lastChar = value.charAt(value.length() - 1);
+			if (Character.toLowerCase(lastChar) == 'f') {
 				typeName = "float";
-			}	
+			}
 		}
 		n.setSymbolData(new SymbolType(typeName));
 	}
@@ -328,8 +328,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				}
 			} else {
 
-				SymbolType fieldType = FieldInspector.findFieldType(symbolTable, scopeType,
-						n.getField());
+				SymbolType fieldType = FieldInspector.findFieldType(
+						symbolTable, scopeType, n.getField());
 				n.setSymbolData(fieldType);
 
 			}
@@ -422,25 +422,36 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			// for static imports
 			Symbol<?> s = symbolTable.findSymbol(n.getName(), scope,
 					symbolTypes, ReferenceType.METHOD);
+			boolean lookUpMethodByReflection = (s == null);
 
 			if (s != null) {
+
 				MethodSymbol methodSymbol = (MethodSymbol) s;
+			
 				Method m = methodSymbol.getReferencedMethod();
+				SymbolType methodScope = new SymbolType(m.getDeclaringClass());
+				if (scope == null //is static import
+						|| methodScope.isCompatible(scope)) { //is a method inside the CU
+					if (MethodInspector.isGeneric(m)) {
+						// it is may return a parameterized type
+						Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+						GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
+								typeMapping, n.getArgs(), scope, symbolTypes,
+								n.getTypeArgs(), symbolTable);
 
-				if (MethodInspector.isGeneric(m)) {
-					// it is may return a parameterized type
-					Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
-					GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
-							typeMapping, n.getArgs(), scope, symbolTypes,
-							n.getTypeArgs(), symbolTable);
-
-					builder.build(m);
-					SymbolType aux = SymbolType.valueOf(m, typeMapping);
-					n.setSymbolData(aux);
-				} else {
-					n.setSymbolData(s.getType());
+						builder.build(m);
+						SymbolType aux = SymbolType.valueOf(m, typeMapping);
+						n.setSymbolData(aux);
+					} else {
+						n.setSymbolData(s.getType());
+					}
 				}
-			} else {
+				else{
+					lookUpMethodByReflection = true;
+				}
+			}
+
+			if (lookUpMethodByReflection) {
 				if (scope == null) {
 					scope = symbolTable.getType("this", ReferenceType.VARIABLE);
 					LOG.debug("scope (this): " + scope.getName() + " method "
@@ -500,7 +511,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			SwitchStmt stmt = (SwitchStmt) parentNode.getParentNode();
 			SymbolType scope = (SymbolType) stmt.getSelector().getSymbolData();
 			if (scope.getClazz().isEnum()) {
-				type = FieldInspector.findFieldType(symbolTable, scope, n.getName());
+				type = FieldInspector.findFieldType(symbolTable, scope,
+						n.getName());
 			}
 		}
 		if (type == null) {
@@ -528,7 +540,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 	@Override
 	public void visit(ObjectCreationExpr n, A arg) {
-	
+
 		if (n.getScope() != null) {
 			n.getScope().accept(this, arg);
 		}
@@ -770,7 +782,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		} else {
 			if (n.getSymbolData() == null) {
-				
+
 				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
 						ReferenceType.TYPE_PARAM, ReferenceType.TYPE,
 						ReferenceType.VARIABLE);
@@ -778,16 +790,18 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 					type = s.getType().clone();
 				} else {
 					Node parentNode = n.getParentNode();
-					if(parentNode instanceof ObjectCreationExpr){
+					if (parentNode instanceof ObjectCreationExpr) {
 						ObjectCreationExpr expr = (ObjectCreationExpr) parentNode;
 						Expression grandParent = expr.getScope();
-						if(grandParent != null){
-							type = new SymbolType(grandParent.getSymbolData().getClazz().getName()+"$"+typeName);
+						if (grandParent != null) {
+							type = new SymbolType(grandParent.getSymbolData()
+									.getClazz().getName()
+									+ "$" + typeName);
 							type.getClazz();
 						}
-						
+
 					}
-					if(type == null){
+					if (type == null) {
 						type = ASTSymbolTypeResolver.getInstance().valueOf(n);
 					}
 

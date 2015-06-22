@@ -152,6 +152,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 									if (e instanceof ClassExpr) {
 
 										SymbolType eType = getType(((ClassExpr) e));
+
 										symbolTable.pushSymbol(letter,
 												ReferenceType.TYPE, eType, e);
 
@@ -238,35 +239,39 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 						paramType.getRawType(), typeArg, updateMapping, null);
 
 				List<SymbolType> callParams = typeArg.getParameterizedTypes();
+				String name = rewrittenType.getName();
+				if (name == null || !"java.lang.Class".equals(name)) {
 
-				List<SymbolType> rewrittenParams = rewrittenType
-						.getParameterizedTypes();
-				if (rewrittenParams != null) {
-					Iterator<SymbolType> itP = rewrittenParams.iterator();
-					Iterator<SymbolType> auxIt = null;
-					if (callParams != null) {
-						auxIt = callParams.iterator();
+					List<SymbolType> rewrittenParams = rewrittenType
+							.getParameterizedTypes();
+					if (rewrittenParams != null) {
+						Iterator<SymbolType> itP = rewrittenParams.iterator();
+						Iterator<SymbolType> auxIt = null;
+						if (callParams != null) {
+							auxIt = callParams.iterator();
 
-					}
-					int i = 0;
-					while (itP.hasNext() && i < args.length) {
-						SymbolType st = itP.next();
-						if ((st.getName() == null || Object.class.equals(st
-								.getClazz()))) {
-							if (auxIt != null && auxIt.hasNext()) {
-								// it is defined by the parameters of the
-								// implicit object.Eg: (List<String> a = null;
-								// a.add("hello"));
-								typeMappingUpdate(args[i], auxIt.next());
+						}
+						int i = 0;
+						while (itP.hasNext() && i < args.length) {
+							SymbolType st = itP.next();
+							if ((st.getName() == null || Object.class.equals(st
+									.getClazz()))) {
+								if (auxIt != null && auxIt.hasNext()) {
+									// it is defined by the parameters of the
+									// implicit object.Eg: (List<String> a =
+									// null;
+									// a.add("hello"));
+									typeMappingUpdate(args[i], auxIt.next());
+								} else {
+									typeMappingUpdate(args[i], st);
+								}
 							} else {
+								// it is defined by the rewritten type eg: (A
+								// implements B<String>) => st = String
 								typeMappingUpdate(args[i], st);
 							}
-						} else {
-							// it is defined by the rewritten type eg: (A
-							// implements B<String>) => st = String
-							typeMappingUpdate(args[i], st);
+							i++;
 						}
-						i++;
 					}
 				}
 
