@@ -999,6 +999,19 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
+	}
+	
+	@Test
+	public void testTemplateResults() throws Exception{
+		CompilationUnit cu = run("public class A<X> { public static <C extends Comparable<?>> A<C> all(){ return null;} void foo() { A.<Integer>all(); } }");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("A", sd.getName());
+		Assert.assertNotNull(sd.getParameterizedTypes());
+		Assert.assertEquals("java.lang.Integer", sd.getParameterizedTypes().get(0).getName());
 		
 	}
 }

@@ -79,8 +79,9 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 
 					Scope newScope = new Scope();
 					for (String key : typeParams.keySet()) {
-						newScope.addSymbol(key, typeParams.get(key).clone(),
-								null);
+						SymbolType aux = typeParams.get(key).clone();
+						aux.setTemplateVariable(key);
+						newScope.addSymbol(key, aux,null);
 					}
 
 					genericsSymbolTable.pushScope(newScope);
@@ -98,9 +99,11 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 			genericsSymbolTable.pushScope(newScope);
 			TypeVariable<?>[] typeParams = method.getTypeParameters();
 			for (int i = 0; i < typeParams.length; i++) {
+				SymbolType aux = SymbolType.valueOf(typeParams[i], null);
+				aux.setTemplateVariable(typeParams[i].getName());
 				genericsSymbolTable.pushSymbol(typeParams[i].getName(),
 						ReferenceType.TYPE_PARAM,
-						SymbolType.valueOf(typeParams[i], null), null);
+						aux, null);
 			}
 		} else {
 			Scope newScope = new Scope();
@@ -126,6 +129,7 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 						SymbolType refactor = s.getType().refactor(vname,
 								parameterizedType,
 								genericArgs || isInTheTopScope);
+						refactor.setTemplateVariable(vname);
 						s.setType(refactor);
 					} else {
 						s.setType(parameterizedType);
