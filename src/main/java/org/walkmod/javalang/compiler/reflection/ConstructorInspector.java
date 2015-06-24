@@ -30,11 +30,23 @@ public class ConstructorInspector {
 	private static GenericBuilderFromGenericClasses b1 = new GenericBuilderFromGenericClasses();
 
 	public static SymbolType findConstructor(SymbolType scope,
-			ArrayFilter<Constructor<?>> filter) throws Exception {
+			SymbolType[] args, ArrayFilter<Constructor<?>> filter)
+			throws Exception {
 		ExecutableSorter<Constructor<?>> sorter = new ExecutableSorter<Constructor<?>>();
+		Class<?>[] argClasses = null;
+		int size = 0;
+		if (args != null) {
+			size = args.length;
+		}
+		argClasses = new Class<?>[size];
+		for (int i = 0; i < size; i++) {
+			if (args[i] != null) {
+				argClasses[i] = args[i].getClazz();
+			}
+		}
 
 		List<Constructor<?>> auxList = sorter.sort(scope.getClazz()
-				.getConstructors());
+				.getConstructors(), argClasses);
 		Constructor<?>[] auxArray = new Constructor[auxList.size()];
 		auxList.toArray(auxArray);
 		filter.setElements(auxArray);
@@ -46,7 +58,7 @@ public class ConstructorInspector {
 	}
 
 	public static SymbolType findConstructor(SymbolType scope,
-			ArrayFilter<Constructor<?>> filter,
+			SymbolType[] args, ArrayFilter<Constructor<?>> filter,
 			CompositeBuilder<Constructor<?>> builder,
 			Map<String, SymbolType> typeMapping) throws Exception {
 		b1.setParameterizedTypes(scope.getParameterizedTypes());
@@ -69,6 +81,6 @@ public class ConstructorInspector {
 			}
 		}
 
-		return findConstructor(scope, filter);
+		return findConstructor(scope, args, filter);
 	}
 }

@@ -476,7 +476,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						typeMapping, n.getArgs(), scope, symbolTypes, n
 								.getTypeArgs(), symbolTable));
 
-				SymbolType st = MethodInspector.findMethodType(scope, filter,
+				SymbolType st = MethodInspector.findMethodType(scope,symbolTypes, filter,
 						builder, typeMapping);
 
 				n.setSymbolData(st);
@@ -592,7 +592,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				typeMapping, n.getArgs(), symbolTypes, symbolTable));
 
 		try {
-			SymbolType aux = ConstructorInspector.findConstructor(st, filter,
+			SymbolType aux = ConstructorInspector.findConstructor(st,symbolTypes, filter,
 					builder, typeMapping);
 			n.setSymbolData(aux);
 		} catch (Exception e) {
@@ -936,7 +936,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						scope, this, null, arg, symbolTable));
 				SymbolData sd = null;
 				try {
-					sd = MethodInspector.findMethodType(scope, filter, null,
+					sd = MethodInspector.findMethodType(scope, null, filter, null,
 							null);
 				} catch (Exception e) {
 					throw new NoSuchExpressionTypeException(e);
@@ -1003,7 +1003,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		try {
 			SymbolType st = MethodInspector.findMethodType(
-					symbolTable.getType("this", ReferenceType.VARIABLE),
+					symbolTable.getType("this", ReferenceType.VARIABLE), typeArgs,
 					filter, null, typeMapping);
 			n.setSymbolData(st);
 		} catch (Exception e) {
@@ -1021,7 +1021,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		try {
 			SymbolType st = ConstructorInspector
 					.findConstructor(
-							symbolTable.getType("this", ReferenceType.VARIABLE),
+							symbolTable.getType("this", ReferenceType.VARIABLE),typeArgs,
 							filter);
 			n.setSymbolData(st);
 		} catch (Exception e) {

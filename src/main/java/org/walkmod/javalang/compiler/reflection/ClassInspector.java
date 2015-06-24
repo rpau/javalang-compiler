@@ -33,10 +33,10 @@ import org.walkmod.javalang.compiler.types.Types;
 
 public class ClassInspector {
 
-	public static List<Type> getInterfaceOrSuperclassImplementations(Type implementation,
-			Class<?> interf) {
+	public static List<Type> getInterfaceOrSuperclassImplementations(
+			Type implementation, Class<?> interf) {
 		List<Type> result = new LinkedList<Type>();
-		
+
 		Set<Type> types = getEquivalentParametrizableClasses(implementation);
 		if (types != null) {
 			Iterator<Type> it = types.iterator();
@@ -232,8 +232,6 @@ public class ClassInspector {
 
 		return result;
 	}
-	
-
 
 	public static Set<Type> getEquivalentParametrizableClasses(Type clazz) {
 		Set<Type> result = new LinkedHashSet<Type>();
@@ -242,10 +240,10 @@ public class ClassInspector {
 			result.add(clazz);
 			ParameterizedType ptype = (ParameterizedType) clazz;
 			Type rawType = ptype.getRawType();
-			if(rawType instanceof Class<?>){
-				classToAnalyze = (Class<?>)rawType;
+			if (rawType instanceof Class<?>) {
+				classToAnalyze = (Class<?>) rawType;
 			}
-			
+
 		} else if (clazz instanceof Class<?>) {
 			Class<?> type = (Class<?>) clazz;
 			if (type.getTypeParameters().length > 0) {
@@ -253,7 +251,7 @@ public class ClassInspector {
 			}
 			classToAnalyze = type;
 		}
-		if(classToAnalyze != null){
+		if (classToAnalyze != null) {
 			result.addAll(getEquivalentParametrizableClasses(classToAnalyze
 					.getGenericSuperclass()));
 			Type[] interfaces = classToAnalyze.getGenericInterfaces();
@@ -322,6 +320,32 @@ public class ClassInspector {
 		Integer order1 = Types.basicTypeEvaluationOrder(clazz1);
 		if (order1 != null && order2 != null) {
 			return order2 <= order1;
+		}
+		boolean isAssignable = Types.isAssignable(clazz2, clazz1);
+		if (!isAssignable) {
+			if (Types.isAssignable(clazz1, clazz2)) {
+				isMethod2First = false;
+			} else {
+				int h2 = ClassInspector.getClassHierarchyHeight(clazz2);
+				int h1 = ClassInspector.getClassHierarchyHeight(clazz1);
+				isMethod2First = h2 > h1;
+			}
+		} else {
+			isMethod2First = true;
+		}
+
+		return isMethod2First;
+	}
+
+	public static boolean isMoreSpecficFor(Class<?> clazz2, Class<?> clazz1,
+			Class<?> reference) {
+		boolean isMethod2First = true;
+		Integer order2 = Types.basicTypeEvaluationOrder(clazz2);
+		Integer order1 = Types.basicTypeEvaluationOrder(clazz1);
+		if (order1 != null && order2 != null) {
+			return (order2 <= order1)
+					|| ((reference == null || !reference.isPrimitive())
+							&& !clazz2.isPrimitive() && clazz1.isPrimitive());
 		}
 		boolean isAssignable = Types.isAssignable(clazz2, clazz1);
 		if (!isAssignable) {

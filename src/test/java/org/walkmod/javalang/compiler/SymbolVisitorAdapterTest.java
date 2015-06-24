@@ -1020,4 +1020,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("import java.util.*; public class A { public Object get() { Map<String,String> aux = new HashMap<String, String>() {}; return new HashMap<String, String>() {boolean iteratorCalled;}; }}");
 		Assert.assertTrue(true);
 	}
+	
+	@Test
+	public void testPriorityObjectVersusInt() throws Exception{
+		CompilationUnit cu = run("import java.util.*; public class A { void foo(List<Integer> contents, int i) { contents.remove(Integer.valueOf(i)); }}");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("boolean", sd.getName());
+	}
+	
 }

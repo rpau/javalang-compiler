@@ -37,12 +37,12 @@ public class MethodInspector {
 	private static GenericBuilderFromGenericClasses b1 = new GenericBuilderFromGenericClasses();
 
 	public static SymbolType findMethodType(SymbolType scope,
-			ArrayFilter<Method> filter, CompositeBuilder<Method> builder,
+			SymbolType[] args, ArrayFilter<Method> filter,
+			CompositeBuilder<Method> builder,
 			Map<String, SymbolType> typeMapping) throws Exception {
 
 		SymbolType result = null;
 		List<Class<?>> bounds = scope.getBoundClasses();
-		
 
 		b1.setParameterizedTypes(scope.getParameterizedTypes());
 
@@ -57,12 +57,26 @@ public class MethodInspector {
 				}
 			}
 		}
+		Class<?>[] argClasses = null;
+		int params = 0;
+		if (args != null) {
+			params = args.length;
+		}
+		argClasses = new Class<?>[params];
+		if (args != null) {
+			for (int i = 0; i < args.length; i++) {
+				if (args[i] != null) {
+					argClasses[i] = args[i].getClazz();
+				}
+			}
+		}
 
 		while (it.hasNext() && result == null) {
 			Class<?> bound = it.next();
-			
+
 			if (scope.getArrayCount() != 0) {
-			   bound = Array.newInstance(bound, scope.getArrayCount()).getClass();
+				bound = Array.newInstance(bound, scope.getArrayCount())
+						.getClass();
 			}
 			b1.setClazz(bound);
 			Map<String, SymbolType> mapping = b1.build(typeMapping);
@@ -71,10 +85,11 @@ public class MethodInspector {
 					pred.setTypeMapping(mapping);
 				}
 			}
-			result = findMethodType(bound, filter, builder, mapping, false);
-			if(scope.getArrayCount() != 0){
+			result = findMethodType(bound, argClasses, filter, builder,
+					mapping, false);
+			if (scope.getArrayCount() != 0) {
 				Method method = result.getMethod();
-				if(method != null && method.getName().equals("clone")){
+				if (method != null && method.getName().equals("clone")) {
 					result.setArrayCount(scope.getArrayCount());
 				}
 			}
@@ -93,12 +108,12 @@ public class MethodInspector {
 		return isGeneric;
 	}
 
-	public static SymbolType findMethodType(Class<?> clazz,
+	public static SymbolType findMethodType(Class<?> clazz, Class<?>[] args,
 			ArrayFilter<Method> filter, CompositeBuilder<Method> builder,
 			Map<String, SymbolType> typeMapping, boolean throwException)
 			throws Exception {
 		ExecutableSorter<Method> sorter = new ExecutableSorter<Method>();
-		List<Method> auxList = sorter.sort(clazz.getDeclaredMethods());
+		List<Method> auxList = sorter.sort(clazz.getDeclaredMethods(), args);
 		Method[] auxArray = new Method[auxList.size()];
 		auxList.toArray(auxArray);
 		filter.setElements(auxArray);
@@ -118,18 +133,18 @@ public class MethodInspector {
 
 			if (clazz.isMemberClass()) {
 
-				result = findMethodType(clazz.getDeclaringClass(), filter,
-						builder, typeMapping, false);
+				result = findMethodType(clazz.getDeclaringClass(), args,
+						filter, builder, typeMapping, false);
 
 			} else if (clazz.isAnonymousClass()) {
 
-				result = findMethodType(clazz.getEnclosingClass(), filter,
-						builder, typeMapping, false);
+				result = findMethodType(clazz.getEnclosingClass(), args,
+						filter, builder, typeMapping, false);
 			}
 			if (result == null) {
 				Class<?> superClass = clazz.getSuperclass();
 				if (superClass != null) {
-					result = findMethodType(superClass, filter, builder,
+					result = findMethodType(superClass, args, filter, builder,
 							typeMapping, false);
 				}
 
@@ -142,14 +157,14 @@ public class MethodInspector {
 							Class<?> type = SymbolType.valueOf(types[i],
 									typeMapping).getClazz();
 
-							result = findMethodType(type, filter, builder,
-									typeMapping, false);
+							result = findMethodType(type, args, filter,
+									builder, typeMapping, false);
 						}
 
 					}
 					if (result == null && clazz.isInterface()) {
-						result = findMethodType(Object.class, filter, builder,
-								typeMapping, false);
+						result = findMethodType(Object.class, args, filter,
+								builder, typeMapping, false);
 					}
 				}
 			}
@@ -159,8 +174,6 @@ public class MethodInspector {
 		}
 		return result;
 	}
-
-
 
 	public static Set<Method> getNonPrivateMethods(Class<?> clazz) {
 		Set<Method> result = new HashSet<Method>();

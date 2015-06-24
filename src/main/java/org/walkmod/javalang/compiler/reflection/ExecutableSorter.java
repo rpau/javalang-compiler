@@ -16,7 +16,6 @@
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,9 +29,11 @@ import java.util.Set;
 
 public class ExecutableSorter<T extends Executable> implements Comparator<T> {
 
-   public List<T> sort(T[] methods) {
+   private Class<?>[] args = null;
+	
+   public List<T> sort(T[] methods, Class<?>[] args) {
       Map<String, List<T>> map = new HashMap<String, List<T>>();
-
+      this.args = args;
       LinkedList<T> result = new LinkedList<T>();
       for (T method : methods) {
          List<T> aux = map.get(method.getName());
@@ -94,12 +95,16 @@ public class ExecutableSorter<T extends Executable> implements Comparator<T> {
 
                Class<?> clazz2 = params2[i].getType();
                Class<?> clazz1 = params1[i].getType();
-
+               Class<?> arg = null;
+               if(args != null && i < args.length){
+            	   arg = args[i];
+               }
+               
                if (i == params1.length - 1) {
                   boolean isVarArgs1 = method1.isVarArgs();
                   boolean isVarArgs2 = method2.isVarArgs();
                   if ((isVarArgs1 && isVarArgs2) || (!isVarArgs1 && !isVarArgs2)) {
-                     isMethod2First = ClassInspector.isAssignable(clazz2, clazz1);
+                     isMethod2First = ClassInspector.isMoreSpecficFor(clazz2, clazz1, arg);
 
                   } else {
 
@@ -111,7 +116,7 @@ public class ExecutableSorter<T extends Executable> implements Comparator<T> {
                      clazz2 = clazz2.getComponentType();
                      clazz1 = clazz1.getComponentType();
                   }
-                  isMethod2First = ClassInspector.isAssignable(clazz2, clazz1);
+                  isMethod2First = ClassInspector.isMoreSpecficFor(clazz2, clazz1, arg);
                }
 
             }
