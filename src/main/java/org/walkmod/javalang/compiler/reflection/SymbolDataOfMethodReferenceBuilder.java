@@ -16,6 +16,7 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.GenericArrayType;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +47,33 @@ public class SymbolDataOfMethodReferenceBuilder<T> implements TypeMappingBuilder
 		MethodSymbolData st =  n.getSymbolData();
 		if (args != null) {
 			int i = 0;
+			if(st == null){
+				Expression scope = n.getScope();
+				String scopeName = "empty";
+				if(scope!= null){
+					scopeName = scope.getSymbolData().toString();
+				}
+				String argsTypeName = "empty";
+				List<Expression> argExpr = n.getArgs();
+				if(argExpr != null){
+					argsTypeName = "[";
+					Iterator<Expression> it = argExpr.iterator();
+					while(it.hasNext()){
+						Expression arg = it.next();
+						if(arg != null){
+							argsTypeName += " "+arg.getSymbolData().toString();
+						}
+						else{
+							argsTypeName +=" null";
+						}
+						if(it.hasNext()){
+							argsTypeName+=",";
+						}
+					}
+					argsTypeName+="]";
+				}
+				throw new Exception("Ops! The method call "+n.toString()+" is not resolved. The scope is ["+scopeName+"] , and the args are : "+argsTypeName);
+			}
 			java.lang.reflect.Type[] argClasses = st.getMethod()
 					.getGenericParameterTypes();
 			int paramCount = st.getMethod().getParameterTypes().length;
