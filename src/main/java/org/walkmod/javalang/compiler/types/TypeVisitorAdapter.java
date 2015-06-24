@@ -82,6 +82,7 @@ import org.walkmod.javalang.ast.type.VoidType;
 import org.walkmod.javalang.ast.type.WildcardType;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
+import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.CompatibleConstructorArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.CompatibleFunctionalConstructorPredicate;
@@ -476,8 +477,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						typeMapping, n.getArgs(), scope, symbolTypes, n
 								.getTypeArgs(), symbolTable));
 
-				SymbolType st = MethodInspector.findMethodType(scope,symbolTypes, filter,
-						builder, typeMapping);
+				SymbolType st = MethodInspector.findMethodType(scope,
+						symbolTypes, filter, builder, typeMapping);
 
 				n.setSymbolData(st);
 
@@ -592,8 +593,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				typeMapping, n.getArgs(), symbolTypes, symbolTable));
 
 		try {
-			SymbolType aux = ConstructorInspector.findConstructor(st,symbolTypes, filter,
-					builder, typeMapping);
+			SymbolType aux = ConstructorInspector.findConstructor(st,
+					symbolTypes, filter, builder, typeMapping);
 			n.setSymbolData(aux);
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException(e);
@@ -762,18 +763,28 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						// it is an inner class
 						typeName = data.getName() + "$" + n.getName();
 					}
-					try {
-						// there is no import nor a inner class inside the CU
-						// unit. We need to load it by reflection
-						clazz = TypesLoaderVisitor.getClassLoader().loadClass(
-								typeName);
-					} catch (ClassNotFoundException e) {
-						if (data != null) {
-							throw new NoSuchExpressionTypeException(
-									"Ops! The class " + n.toString()
-											+ " can't be resolved", null);
+
+					if (data == null) {
+						try {
+							clazz = TypesLoaderVisitor.getClassLoader()
+									.loadClass(typeName);
+						} catch (ClassNotFoundException e) {
 						}
 					}
+					if (clazz == null && data != null) {
+						SymbolType st = symbolTable.getType("this");
+
+						// there is no import nor a inner class inside the CU
+						// unit. We need to load it by reflection
+						clazz = ClassInspector.findClassMember(st.getClazz()
+								.getPackage(), n.getName(), data.getClazz());
+					}
+					if (data != null && clazz == null) {
+						throw new NoSuchExpressionTypeException(
+								"Ops! The class " + n.toString()
+										+ " can't be resolved", null);
+					}
+
 					if (clazz != null) {
 						type = new SymbolType(clazz);
 					}
@@ -936,8 +947,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						scope, this, null, arg, symbolTable));
 				SymbolData sd = null;
 				try {
-					sd = MethodInspector.findMethodType(scope, null, filter, null,
-							null);
+					sd = MethodInspector.findMethodType(scope, null, filter,
+							null, null);
 				} catch (Exception e) {
 					throw new NoSuchExpressionTypeException(e);
 				}
@@ -1003,8 +1014,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 
 		try {
 			SymbolType st = MethodInspector.findMethodType(
-					symbolTable.getType("this", ReferenceType.VARIABLE), typeArgs,
-					filter, null, typeMapping);
+					symbolTable.getType("this", ReferenceType.VARIABLE),
+					typeArgs, filter, null, typeMapping);
 			n.setSymbolData(st);
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException(e);
@@ -1019,10 +1030,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				null);
 		filter.appendPredicate(new CompatibleConstructorArgsPredicate(typeArgs));
 		try {
-			SymbolType st = ConstructorInspector
-					.findConstructor(
-							symbolTable.getType("this", ReferenceType.VARIABLE),typeArgs,
-							filter);
+			SymbolType st = ConstructorInspector.findConstructor(
+					symbolTable.getType("this", ReferenceType.VARIABLE),
+					typeArgs, filter);
 			n.setSymbolData(st);
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException(e);
