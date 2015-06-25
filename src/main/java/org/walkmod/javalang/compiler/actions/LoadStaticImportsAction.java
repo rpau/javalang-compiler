@@ -18,6 +18,7 @@ package org.walkmod.javalang.compiler.actions;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.List;
 
 import org.walkmod.javalang.ast.CompilationUnit;
@@ -68,7 +69,6 @@ public class LoadStaticImportsAction extends SymbolAction {
 											.equals(pkgName));
 
 							if (isVisible) {
-								Class<?> returnClass = m.getReturnType();
 								Class<?>[] params = m.getParameterTypes();
 								SymbolType[] args = null;
 								if (params.length > 0) {
@@ -81,7 +81,7 @@ public class LoadStaticImportsAction extends SymbolAction {
 									}
 								}
 
-								SymbolType st = new SymbolType(returnClass);
+								SymbolType st = SymbolType.valueOf(m, null);
 								MethodSymbol method = new MethodSymbol(
 										m.getName(), st, n, symbol.getType(),
 										args, true, m.isVarArgs(), m,
