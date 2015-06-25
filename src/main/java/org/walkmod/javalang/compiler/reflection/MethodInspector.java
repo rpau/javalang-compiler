@@ -57,19 +57,7 @@ public class MethodInspector {
 				}
 			}
 		}
-		Class<?>[] argClasses = null;
-		int params = 0;
-		if (args != null) {
-			params = args.length;
-		}
-		argClasses = new Class<?>[params];
-		if (args != null) {
-			for (int i = 0; i < args.length; i++) {
-				if (args[i] != null) {
-					argClasses[i] = args[i].getClazz();
-				}
-			}
-		}
+		Class<?>[] argClasses = SymbolType.toClassArray(args);
 
 		while (it.hasNext() && result == null) {
 			Class<?> bound = it.next();

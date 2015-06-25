@@ -1045,4 +1045,23 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals("int", sd.getName());
 	}
 	
+	@Test
+	public void methodOrderingArrays() throws Exception{
+		String m1 = "public static byte[] aryEq(final byte[] value) {return null;} ";
+		String m2 = "public static char[] aryEq(final char[] value) {return null;} ";
+		String m3 = "public static double[] aryEq(final double[] value) {return null;} ";
+		String m4 = "public static float[] aryEq(final float[] value) {return null;} ";
+		String m5 = "public static int[] aryEq(final int[] value) {return null;} ";
+		String m6 = "public static long[] aryEq(final long[] value) {return null;} ";
+		String m7 = "public static short[] aryEq(final short[] value) {return null; }";
+		String m8 = "public static <T> T[] aryEq(final T[] value) {return null; }";
+		CompilationUnit cu = run("public class A { public void foo(byte[] arg){aryEq(arg);} "+m1+m2+m3+m4+m5+m6+m7+m8+"}");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("byte", sd.getName());
+	}
+	
 }

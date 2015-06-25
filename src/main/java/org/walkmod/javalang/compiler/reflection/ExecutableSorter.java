@@ -27,6 +27,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.compiler.symbols.MethodSymbol;
+
 public class ExecutableSorter<T extends Executable> implements Comparator<T> {
 
    private Class<?>[] args = null;
@@ -77,6 +79,8 @@ public class ExecutableSorter<T extends Executable> implements Comparator<T> {
 
       return result;
    }
+   
+
 
    @Override
    public int compare(T method1, T method2) {
@@ -95,6 +99,11 @@ public class ExecutableSorter<T extends Executable> implements Comparator<T> {
 
                Class<?> clazz2 = params2[i].getType();
                Class<?> clazz1 = params1[i].getType();
+               while (clazz2.isArray() && clazz1.isArray()) {
+                   clazz2 = clazz2.getComponentType();
+                   clazz1 = clazz1.getComponentType();
+                }
+               
                Class<?> arg = null;
                if(args != null && i < args.length){
             	   arg = args[i];
@@ -111,11 +120,7 @@ public class ExecutableSorter<T extends Executable> implements Comparator<T> {
                      isMethod2First = method1.isVarArgs() && !method2.isVarArgs();
 
                   }
-               } else {
-                  if (clazz2.isArray() && clazz1.isArray()) {
-                     clazz2 = clazz2.getComponentType();
-                     clazz1 = clazz1.getComponentType();
-                  }
+               } else {                  
                   isMethod2First = ClassInspector.isMoreSpecficFor(clazz2, clazz1, arg);
                }
 

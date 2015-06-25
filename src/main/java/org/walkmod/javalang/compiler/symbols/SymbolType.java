@@ -940,5 +940,23 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			return aux;
 		}
 	}
+	
+	public static Class<?>[] toClassArray(SymbolType[] args){
+		
+		Class<?>[] argClasses = null;
+		int params = 0;
+		if (args != null) {
+			params = args.length;
+		}
+		argClasses = new Class<?>[params];
+		if (args != null) {
+			for (int i = 0; i < args.length; i++) {
+				if (args[i] != null) {
+					argClasses[i] = args[i].getClazz();
+				}
+			}
+		}
+		return argClasses;
+	}
 
 }

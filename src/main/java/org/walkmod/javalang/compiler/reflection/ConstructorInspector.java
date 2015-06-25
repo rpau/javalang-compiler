@@ -46,7 +46,7 @@ public class ConstructorInspector {
 		}
 
 		List<Constructor<?>> auxList = sorter.sort(scope.getClazz()
-				.getConstructors(), argClasses);
+				.getDeclaredConstructors(), argClasses);
 		Constructor<?>[] auxArray = new Constructor[auxList.size()];
 		auxList.toArray(auxArray);
 		filter.setElements(auxArray);

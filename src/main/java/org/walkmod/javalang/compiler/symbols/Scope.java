@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
+import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
@@ -45,6 +47,8 @@ public class Scope {
 	private boolean hasFieldsLoaded = false;
 
 	private Map<String, SymbolType> typeParams = null;
+	
+	private static ExecutableSorter<Executable> sorter = new ExecutableSorter<Executable>();
 
 	public Scope() {
 	}
@@ -225,12 +229,41 @@ public class Scope {
 			List<Symbol<?>> values = symbols.get(name);
 			if (values != null) {
 				Iterator<Symbol<?>> it = values.iterator();
-				while (it.hasNext() && result == null) {
+				
+				Map<Integer, Executable> execs = new HashMap<Integer, Executable>();
+				int i = 0;
+				while (it.hasNext()) {
 					Symbol<?> symbol = it.next();
 					if (symbol instanceof MethodSymbol) {
 						MethodSymbol aux = (MethodSymbol) symbol;
+						Executable m = aux.getReferencedMethod();
+						if(m == null){
+							m = aux.getReferencedConstructor();
+						}
 						if (aux.hasCompatibleSignature(scope, args)) {
-							result = aux;
+							if(m != null){
+								execs.put(i, m);
+							}
+						}
+					}
+					i++;
+				}
+				if(execs.isEmpty()){
+					result = null;
+				}
+				else if(execs.size() == 1){
+					result = values.get(execs.keySet().iterator().next());
+				}
+				else{					
+					Executable[] methods = new Executable[execs.size()];
+					List<Executable> sortedMethods = sorter.sort(execs.values().toArray(methods), SymbolType.toClassArray(args));
+					Executable exec = sortedMethods.get(0);
+					Set<Integer> keys = execs.keySet();
+					Iterator<Integer> itKeys = keys.iterator();					
+					while(itKeys.hasNext() && result == null){
+						Integer key = itKeys.next();
+						if(execs.get(key) == exec){
+							result = values.get(key);
 						}
 					}
 				}
