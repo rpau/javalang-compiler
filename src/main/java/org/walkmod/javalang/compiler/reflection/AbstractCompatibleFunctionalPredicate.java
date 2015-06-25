@@ -98,7 +98,7 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 		boolean found = false;
 		Map<String, SymbolType> aux = createMapping(interfaceToInspect);
 		aux.putAll(typeMapping);
-		CompatibleMethodReferencePredicate<T> predArgs = new CompatibleMethodReferencePredicate<T>(
+		CompatibleMethodReferencePredicate<T, Method> predArgs = new CompatibleMethodReferencePredicate<T, Method>(
 				methodRef, typeResolver, ctx, aux, symTable);
 
 		Method[] methods = interfaceToInspect.getMethods();

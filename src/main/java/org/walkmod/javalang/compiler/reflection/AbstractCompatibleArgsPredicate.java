@@ -51,7 +51,7 @@ public abstract class AbstractCompatibleArgsPredicate {
 				|| (isVarAgs && numParams >= (paramsCount - 1))) {
 
 			// if I enter again, is that the previous method is not valid
-			if (methodArgsMapping != null && !methodArgsMapping.isEmpty()) {
+			if (methodArgsMapping != null && !methodArgsMapping.isEmpty() && typeMapping != null) {
 				// we restore the typeMapping values, to the original ones.
 				for (String key : methodArgsMapping.keySet()) {
 					typeMapping.remove(key);

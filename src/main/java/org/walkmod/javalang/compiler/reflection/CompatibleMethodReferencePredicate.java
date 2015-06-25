@@ -16,6 +16,7 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Iterator;
@@ -30,8 +31,8 @@ import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
-public class CompatibleMethodReferencePredicate<A> extends
-		CompatibleArgsPredicate implements Predicate<Method> {
+public class CompatibleMethodReferencePredicate<A, T extends Executable> extends
+		CompatibleArgsPredicate<T> implements Predicate<T> {
 
 	private MethodReferenceExpr expression = null;
 
@@ -58,7 +59,7 @@ public class CompatibleMethodReferencePredicate<A> extends
 	}
 
 	@Override
-	public boolean filter(Method elem) throws Exception {
+	public boolean filter(Executable elem) throws Exception {
 
 		sd = (SymbolType)expression.getScope().getSymbolData();
 		if (sd == null) {
@@ -136,8 +137,8 @@ public class CompatibleMethodReferencePredicate<A> extends
 				found = super.filter(elem);
 			}
 		}
-		if (found) {
-			SymbolType st = SymbolType.valueOf(elem, getTypeMapping());
+		if (found && elem instanceof Method) {
+			SymbolType st = SymbolType.valueOf((Method)elem, getTypeMapping());
 			expression.setReferencedMethodSymbolData(st);
 			expression.setReferencedArgsSymbolData(getTypeArgs());
 		}

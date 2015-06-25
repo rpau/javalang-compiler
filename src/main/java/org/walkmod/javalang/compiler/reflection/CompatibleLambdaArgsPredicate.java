@@ -15,14 +15,14 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Executable;
 import java.util.List;
 
 import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.expr.LambdaExpr;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
-public class CompatibleLambdaArgsPredicate extends CompatibleArgsPredicate{
+public class CompatibleLambdaArgsPredicate<A extends Executable> extends CompatibleArgsPredicate<A>{
 
 	private LambdaExpr lambda;
 	
@@ -32,7 +32,7 @@ public class CompatibleLambdaArgsPredicate extends CompatibleArgsPredicate{
 	}
 	
 	@Override
-	public boolean filter(Method method) throws Exception {
+	public boolean filter(Executable method) throws Exception {
 		List<Parameter> lambdaParams = lambda.getParameters();
 
 		if (lambdaParams != null) {

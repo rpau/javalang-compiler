@@ -30,7 +30,11 @@ import java.util.Set;
 
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
+import org.walkmod.javalang.compiler.ArrayFilter;
+import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.ExecutableSorter;
+import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
+import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
 
 public class Scope {
 
@@ -47,7 +51,7 @@ public class Scope {
 	private boolean hasFieldsLoaded = false;
 
 	private Map<String, SymbolType> typeParams = null;
-	
+
 	private static ExecutableSorter<Executable> sorter = new ExecutableSorter<Executable>();
 
 	public Scope() {
@@ -229,7 +233,7 @@ public class Scope {
 			List<Symbol<?>> values = symbols.get(name);
 			if (values != null) {
 				Iterator<Symbol<?>> it = values.iterator();
-				
+
 				Map<Integer, Executable> execs = new HashMap<Integer, Executable>();
 				int i = 0;
 				while (it.hasNext()) {
@@ -237,32 +241,44 @@ public class Scope {
 					if (symbol instanceof MethodSymbol) {
 						MethodSymbol aux = (MethodSymbol) symbol;
 						Executable m = aux.getReferencedMethod();
-						if(m == null){
+						if (m == null) {
 							m = aux.getReferencedConstructor();
 						}
-						if (aux.hasCompatibleSignature(scope, args)) {
-							if(m != null){
-								execs.put(i, m);
-							}
+
+						if (m != null) {
+							execs.put(i, m);
 						}
+
 					}
 					i++;
 				}
-				if(execs.isEmpty()){
+				if (execs.isEmpty()) {
 					result = null;
-				}
-				else if(execs.size() == 1){
+				} else if (execs.size() == 1) {
 					result = values.get(execs.keySet().iterator().next());
-				}
-				else{					
+				} else {
 					Executable[] methods = new Executable[execs.size()];
-					List<Executable> sortedMethods = sorter.sort(execs.values().toArray(methods), SymbolType.toClassArray(args));
-					Executable exec = sortedMethods.get(0);
+					List<Executable> sortedMethods = sorter.sort(execs.values()
+							.toArray(methods), SymbolType.toClassArray(args));
+					ArrayFilter<Executable> filter = new ArrayFilter<Executable>(
+							sortedMethods.toArray(methods));
+					CompatibleArgsPredicate<Executable> cap = new CompatibleArgsPredicate<Executable>(
+							args);
+					cap.setTypeMapping(getTypeParams());
+					filter.appendPredicate(cap);
+
+					Executable exec = null;
+					;
+					try {
+						exec = filter.filterOne();
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
 					Set<Integer> keys = execs.keySet();
-					Iterator<Integer> itKeys = keys.iterator();					
-					while(itKeys.hasNext() && result == null){
+					Iterator<Integer> itKeys = keys.iterator();
+					while (itKeys.hasNext() && result == null) {
 						Integer key = itKeys.next();
-						if(execs.get(key) == exec){
+						if (execs.get(key) == exec) {
 							result = values.get(key);
 						}
 					}
@@ -409,6 +425,5 @@ public class Scope {
 	public void incrInnerAnonymousClassCounter() {
 		innerAnonymousClassCounter++;
 	}
-
 
 }

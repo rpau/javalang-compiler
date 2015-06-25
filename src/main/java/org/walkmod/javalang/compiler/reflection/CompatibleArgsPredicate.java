@@ -15,12 +15,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Executable;
 
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
-public class CompatibleArgsPredicate extends AbstractCompatibleArgsPredicate
-		implements TypeMappingPredicate<Method> {
+public class CompatibleArgsPredicate<T extends Executable> extends AbstractCompatibleArgsPredicate
+		implements TypeMappingPredicate<T> {
 
 	public CompatibleArgsPredicate() {
 	}
@@ -30,7 +30,7 @@ public class CompatibleArgsPredicate extends AbstractCompatibleArgsPredicate
 	}
 
 	@Override
-	public boolean filter(Method method) throws Exception {
+	public boolean filter(Executable method) throws Exception {
 		setVarAgs(method.isVarArgs());
 		setGenericParameterTypes(method.getGenericParameterTypes());
 		setParameterTypesLenght(method.getParameterTypes().length);
