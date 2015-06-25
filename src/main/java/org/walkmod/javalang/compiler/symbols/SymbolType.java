@@ -474,11 +474,14 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		SymbolType returnType = null;
 		if (type instanceof Class<?>) {
 			Class<?> aux = ((Class<?>) type);
-			returnType = new SymbolType(aux.getName());
-			if (aux.isArray()) {
-				returnType.setArrayCount(1);
-				returnType.setName(aux.getComponentType().getName());
+			returnType = new SymbolType();
+			int arrayCount = 0;
+			while (aux.isArray()) {
+				arrayCount++;
+				aux = aux.getComponentType();
 			}
+			returnType.setArrayCount(arrayCount);
+			returnType.setName(aux.getName());
 			Type[] typeParams = aux.getTypeParameters();
 			if (typeParams.length > 0) {
 

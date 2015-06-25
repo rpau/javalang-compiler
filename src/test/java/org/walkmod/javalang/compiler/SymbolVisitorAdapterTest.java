@@ -37,6 +37,7 @@ import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
+import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
@@ -1030,6 +1031,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("boolean", sd.getName());
+	}
+	
+	@Test
+	public void testMethodsThatReturnsMatrixs() throws Exception{
+		CompilationUnit cu = run("public class A { char[][] bar(){ return new char[0][0]; } void foo(String s) { int i = bar().length; }}");
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		VariableDeclarationExpr vexpr = (VariableDeclarationExpr)stmt.getExpression();
+		Expression expr = vexpr.getVars().get(0).getInit();
+		SymbolData sd = expr.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("int", sd.getName());
 	}
 	
 }
