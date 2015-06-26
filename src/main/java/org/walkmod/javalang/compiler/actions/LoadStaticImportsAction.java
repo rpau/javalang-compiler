@@ -42,13 +42,15 @@ public class LoadStaticImportsAction extends SymbolAction {
 		if (n instanceof ImportDeclaration) {
 			ImportDeclaration id = (ImportDeclaration) n;
 			if (id.isStatic()) {
+
 				Class<?> clazz = symbol.getType().getClazz();
-				Method[] methods = clazz.getDeclaredMethods();
+
 				Package pkg = clazz.getPackage();
 				String importPkgName = "";
 				if (pkg != null) {
 					importPkgName = pkg.getName();
 				}
+
 				if (pkgName == null) {
 					CompilationUnit cu = (CompilationUnit) id.getParentNode();
 					PackageDeclaration pkgDeclaration = cu.getPackage();
@@ -58,6 +60,32 @@ public class LoadStaticImportsAction extends SymbolAction {
 						pkgName = "";
 					}
 				}
+
+				Class<?>[] declaredClasses = clazz.getDeclaredClasses();
+
+				for (int i = 0; i < declaredClasses.length; i++) {
+					if (!id.isAsterisk() && id.getName().getName()
+									.equals(declaredClasses[i].getSimpleName())) {
+						int modifiers = declaredClasses[i].getModifiers();
+
+						if (Modifier.isStatic(modifiers)) {
+							boolean isVisible = Modifier.isPublic(modifiers)
+									|| (!Modifier.isPrivate(modifiers) && importPkgName
+											.equals(pkgName));
+							if (isVisible) {
+
+								SymbolType st = new SymbolType(
+										declaredClasses[i]);
+								table.pushSymbol(
+										declaredClasses[i].getSimpleName(),
+										ReferenceType.TYPE, st, n);
+							}
+						}
+					}
+				}
+
+				Method[] methods = clazz.getDeclaredMethods();
+
 				for (Method m : methods) {
 					if (id.isAsterisk()
 							|| id.getName().getName().equals(m.getName())) {

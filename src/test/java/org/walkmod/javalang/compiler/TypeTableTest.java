@@ -107,5 +107,21 @@ public class TypeTableTest extends SemanticTest {
 
 		Assert.assertNotNull(st.findSymbol("Foo"));
 	}
+	
+	@Test
+	public void testInnerClassesInsideClassesOfTheSamePackage() throws Exception{
+		String code1 = "package foo; class A {}";
+		String code2 = "package foo; class B { class C {}}";
+		CompilationUnit cu = compile(code1, code2);
+		SymbolTable st = new SymbolTable();
+		st.pushScope();
+		TypesLoaderVisitor<?> ttl = new TypesLoaderVisitor<Object>(st, null, null);
+
+		ttl.clear();
+		ttl.setClassLoader(getClassLoader());
+		cu.accept(ttl, null);
+		Assert.assertNotNull(st.findSymbol("B.C"));
+		Assert.assertNull(st.findSymbol("C"));
+	}
 
 }

@@ -447,7 +447,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 							Package pkg = clazz.getPackage();
 							if (pkg != null) {
-								if (pkg.getName().equals(packageName)) {
+								if (pkg.getName().equals(packageName) && node != null) {
 
 									symbolTable
 											.pushSymbol(

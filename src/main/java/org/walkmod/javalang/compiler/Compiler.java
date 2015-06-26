@@ -20,7 +20,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 import javax.tools.JavaCompiler;
@@ -32,7 +31,6 @@ import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ParseException;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.PackageDeclaration;
-import org.walkmod.javalang.ast.body.ModifierSet;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 
 public class Compiler {
@@ -71,15 +69,11 @@ public class Compiler {
 			List<TypeDeclaration> types = cu.getTypes();
 			String name = null;
 			if (types != null) {
-				boolean finish = false;
-				Iterator<TypeDeclaration> it = types.iterator();
-				while (it.hasNext() && !finish) {
-					TypeDeclaration next = it.next();
-					finish = ModifierSet.isPublic(next.getModifiers());
-					if (finish) {
-						name = next.getName() + ".java";
-					}
-				}
+
+				TypeDeclaration next = types.get(0);
+				
+				name = next.getName() + ".java";
+
 			}
 			PackageDeclaration pd = cu.getPackage();
 
@@ -99,6 +93,7 @@ public class Compiler {
 				sources[i] = tmpClass;
 
 			}
+			i++;
 		}
 		compile(compilationDir, sources);
 	}
