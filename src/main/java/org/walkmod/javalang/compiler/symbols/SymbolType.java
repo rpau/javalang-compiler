@@ -261,7 +261,22 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			Iterator<SymbolType> it = upperBounds.iterator();
 
 			while (it.hasNext() && isCompatible) {
-				isCompatible = it.next().isCompatible(other);
+				SymbolType bound = it.next();
+				List<SymbolType> bounds = null;
+
+				if (other != null) {
+					bounds = other.getBounds();
+				}
+				if (bounds == null) {
+					bounds = new LinkedList<SymbolType>();
+					bounds.add(other);
+				}
+				Iterator<SymbolType> otherIt = bounds.iterator();
+				boolean found = false;
+				while (otherIt.hasNext() && !found) {
+					found = bound.isCompatible(otherIt.next());
+				}
+				isCompatible = found;
 			}
 
 			return isCompatible;
@@ -940,21 +955,26 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			return aux;
 		}
 	}
-	
-	public SymbolType refactor(Map<String,SymbolType> mapping){
+
+	public SymbolType refactor(Map<String, SymbolType> mapping) {
+		return refactor(mapping, true);
+	}
+
+	public SymbolType refactor(Map<String, SymbolType> mapping,
+			boolean dynamicVar) {
 		SymbolType result = this;
-		if(mapping != null){
+		if (mapping != null) {
 			Set<String> keys = mapping.keySet();
-			for(String key: keys){
-				result = result.refactor(key, mapping.get(key), true);
+			for (String key : keys) {
+				result = result.refactor(key, mapping.get(key), dynamicVar);
 			}
 		}
-		
+
 		return result;
 	}
-	
-	public static Class<?>[] toClassArray(SymbolType[] args){
-		
+
+	public static Class<?>[] toClassArray(SymbolType[] args) {
+
 		Class<?>[] argClasses = null;
 		int params = 0;
 		if (args != null) {

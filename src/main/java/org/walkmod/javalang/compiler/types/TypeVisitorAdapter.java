@@ -1010,7 +1010,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		filter.appendPredicate(new MethodsByNamePredicate(n.getName()))
 				.appendPredicate(new InvokableMethodsPredicate())
 				.appendPredicate(new CompatibleArgsPredicate(typeArgs));
-		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+		Map<String, SymbolType> typeMapping = symbolTable.getTypeParams();
 
 		try {
 			SymbolType st = MethodInspector.findMethodType(

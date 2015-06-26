@@ -214,19 +214,29 @@ public class ASTSymbolTypeResolver extends
 								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
 				if (result == null) {
 					// in the code appears B.C
-					SymbolType scopeType = type.getScope().accept(this, arg);
+					SymbolType scopeType = null;
+					if(type.getScope() != null){
+						scopeType = type.getScope().accept(this, arg);
+					}
 					if (scopeType != null) {
-						result = new SymbolType();
-						SymbolType thisType = symbolTable.getType("this");
-						if (thisType != null) {
-							Class<?> resolvedClass = ClassInspector
-									.findClassMember(thisType.getClazz()
-											.getPackage(), name, scopeType
-											.getClazz());
-							result.setName(resolvedClass.getName());
-							result.setClazz(resolvedClass);
-						} else {
-							result.setName(scopeType.getName() + "$" + name);
+						result = symbolTable
+								.getType(
+										scopeType.getClazz().getCanonicalName()
+												+ "." + name,
+										org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
+						if (result == null) {
+							result = new SymbolType();
+							SymbolType thisType = symbolTable.getType("this");
+							if (thisType != null) {
+								Class<?> resolvedClass = ClassInspector
+										.findClassMember(thisType.getClazz()
+												.getPackage(), name, scopeType
+												.getClazz());
+								result.setName(resolvedClass.getName());
+								result.setClazz(resolvedClass);
+							} else {
+								result.setName(scopeType.getName() + "$" + name);
+							}
 						}
 					} else {
 

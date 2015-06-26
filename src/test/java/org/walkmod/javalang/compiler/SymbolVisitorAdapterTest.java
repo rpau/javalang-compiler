@@ -1079,4 +1079,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals("byte", sd.getName());
 	}
 	
+	@Test
+	public void testMethodResolutionWithRecursiveGenericsInMethodScope() throws Exception{
+		run("import java.util.*; class A { public <K extends List<V>, V extends List<K>> void withMutualRecursiveBound(List<Map<K, V>> list) {}}");
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testMethodResolutionWithMultipleBoundsGenericsInMethodScope() throws Exception{
+		run("import java.util.*; class A { <T extends Number & CharSequence> void withUpperBound(List<T> list) {} }");
+		Assert.assertTrue(true);
+	}
+	
 }
