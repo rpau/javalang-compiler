@@ -183,7 +183,8 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 							Class<?> clazz = s.getType().getClazz();
 							Set<Field> fields = FieldInspector
 									.getNonPrivateFields(clazz);
-							
+
+
 							for (Field field : fields) {
 								try {
 									table.pushSymbol(field.getName(),
@@ -191,6 +192,7 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 													.valueOf(field
 															.getGenericType(),
 															typeParams), null,
+
 											true);
 								} catch (InvalidTypeException e) {
 									throw new RuntimeException(e);
