@@ -60,43 +60,47 @@ public class Compiler {
 		}
 	}
 
-	public void compile(File compilationDir, File sourcesDir, String code)
+	public void compile(File compilationDir, File sourcesDir, String... codes)
 			throws IOException, ParseException {
 
-		CompilationUnit cu = ASTManager.parse(code);
+		File[] sources = new File[codes.length];
+		int i = 0;
+		for (String code : codes) {
+			CompilationUnit cu = ASTManager.parse(code);
 
-		List<TypeDeclaration> types = cu.getTypes();
-		String name = null;
-		if (types != null) {
-			boolean finish = false;
-			Iterator<TypeDeclaration> it = types.iterator();
-			while (it.hasNext() && !finish) {
-				TypeDeclaration next = it.next();
-				finish = ModifierSet.isPublic(next.getModifiers());
-				if (finish) {
-					name = next.getName() + ".java";
+			List<TypeDeclaration> types = cu.getTypes();
+			String name = null;
+			if (types != null) {
+				boolean finish = false;
+				Iterator<TypeDeclaration> it = types.iterator();
+				while (it.hasNext() && !finish) {
+					TypeDeclaration next = it.next();
+					finish = ModifierSet.isPublic(next.getModifiers());
+					if (finish) {
+						name = next.getName() + ".java";
+					}
 				}
 			}
+			PackageDeclaration pd = cu.getPackage();
+
+			if (pd != null) {
+				String pckg = pd.getName().toString();
+				sourcesDir = new File(sourcesDir, pckg.replaceAll(".", "//"));
+			}
+
+			if ((sourcesDir.mkdirs() || sourcesDir.exists())
+					&& sourcesDir.canWrite()) {
+
+				File tmpClass = new File(sourcesDir, name);
+				FileWriter fw = new FileWriter(tmpClass);
+				fw.write(code);
+				fw.flush();
+				fw.close();
+				sources[i] = tmpClass;
+
+			}
 		}
-		PackageDeclaration pd = cu.getPackage();
-
-		if (pd != null) {
-			String pckg = pd.getName().toString();
-			sourcesDir = new File(sourcesDir, pckg.replaceAll(".", "//"));
-		}
-
-		if ((sourcesDir.mkdirs() || sourcesDir.exists())
-				&& sourcesDir.canWrite()) {
-
-			File tmpClass = new File(sourcesDir, name);
-			FileWriter fw = new FileWriter(tmpClass);
-			fw.write(code);
-			fw.flush();
-			fw.close();
-
-			compile(compilationDir, tmpClass);
-		}
-
+		compile(compilationDir, sources);
 	}
 
 }

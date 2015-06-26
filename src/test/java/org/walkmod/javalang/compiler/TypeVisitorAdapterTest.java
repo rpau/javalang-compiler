@@ -52,11 +52,11 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Override
-	public CompilationUnit compile(String code) throws Exception {
-		return compile(code, false);
+	public CompilationUnit compile(String... code) throws Exception {
+		return compile( false, code);
 	}
 
-	public CompilationUnit compile(String code, boolean useTypeTable)
+	public CompilationUnit compile(boolean useTypeTable, String... code)
 			throws Exception {
 
 		CompilationUnit cu = super.compile(code);
@@ -949,7 +949,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testReferencesToInnerClasses() throws Exception {
-		compile("public class OuterClass { public class InnerClass { } }", true);
+		compile(true, "public class OuterClass { public class InnerClass { } }");
 
 		SymbolTable symTable = getSymbolTable();
 		ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);

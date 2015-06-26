@@ -68,15 +68,17 @@ public abstract class SemanticTest {
 		symTable = null;
 	}
 
-	public CompilationUnit compile(String code) throws Exception {
+	public CompilationUnit compile(String... sources) throws Exception {
 		Compiler compiler = new Compiler();
-		compiler.compile(new File(CLASSES_DIR), new File(SOURCES_DIR), code);
-		cu = ASTManager.parse(code);
-		populateSemantics();
+		compiler.compile(new File(CLASSES_DIR), new File(SOURCES_DIR), sources);
+		if (sources != null) {
+			cu = ASTManager.parse(sources[0]);
+			populateSemantics();
+		}
 		return cu;
 	}
-	
-	public void populateSemantics() throws Exception{
+
+	public void populateSemantics() throws Exception {
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 		visitor.setClassLoader(getClassLoader());
 		visitor.visit(cu, new HashMap<String, Object>());
@@ -93,15 +95,15 @@ public abstract class SemanticTest {
 	public TypesLoaderVisitor getTypeTable() throws Exception {
 		if (tt == null) {
 			getSymbolTable().pushScope();
-			tt = new TypesLoaderVisitor(getSymbolTable(),null, null);
+			tt = new TypesLoaderVisitor(getSymbolTable(), null, null);
 			tt.setClassLoader(getClassLoader());
-			
+
 			cu.accept(tt, null);
 		}
 		return tt;
 	}
-	
-	public void initTypes()throws Exception{
+
+	public void initTypes() throws Exception {
 		getTypeTable();
 	}
 
