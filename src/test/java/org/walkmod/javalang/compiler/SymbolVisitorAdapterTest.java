@@ -1064,4 +1064,19 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals("byte", sd.getName());
 	}
 	
+	@Test
+	public void testGenericsOnInheritedAttributes() throws Exception{
+		CompilationUnit cu = run("public class A { class C<T> { T data; } class D extends C<byte[]> { void foo(byte[] x){} void aux(){foo(data);}} }");
+		TypeDeclaration td = (TypeDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		MethodDeclaration md = (MethodDeclaration) td.getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
+		SymbolData sd = mce.getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals(Void.class.getName(), sd.getName());
+		sd = mce.getArgs().get(0).getSymbolData();
+		Assert.assertNotNull(sd);
+		Assert.assertEquals("byte", sd.getName());
+	}
+	
 }

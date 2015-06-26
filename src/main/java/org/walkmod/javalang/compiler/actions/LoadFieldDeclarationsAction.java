@@ -18,6 +18,7 @@ package org.walkmod.javalang.compiler.actions;
 import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.walkmod.javalang.ast.Node;
@@ -132,6 +133,17 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 		public void loadExtendsOrImplements(
 				List<ClassOrInterfaceType> extendsList) {
 			if (extendsList != null) {
+				Symbol<?> superSym = table.findSymbol("super");
+				Map<String, SymbolType> typeParams = null;
+				Scope superScope = null;
+				if (superSym != null) {
+					superScope = superSym.getInnerScope();
+
+					if (superScope != null) {
+						typeParams = superScope.getTypeParams();
+					}
+				}
+
 				for (ClassOrInterfaceType type : extendsList) {
 					String name = type.getName();
 					ClassOrInterfaceType scope = type.getScope();
@@ -139,24 +151,47 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 						name = scope.toString() + "." + name;
 					}
 					Symbol<?> s = table.findSymbol(name, ReferenceType.TYPE);
+
 					if (s != null) {
+						Scope inner = s.getInnerScope();
 						Object location = s.getLocation();
 						if (location != null
 								&& location instanceof TypeDeclaration) {
-							((TypeDeclaration) location).accept(this,
-									s.getInnerScope());
+							((TypeDeclaration) location).accept(this, inner);
+							List<SymbolType> parameters = s.getType()
+									.getParameterizedTypes();
+							if (parameters != null && typeParams != null) {
+								List<Symbol<?>> symbols = inner
+										.getSymbolsByType(ReferenceType.VARIABLE);
+								table.pushScope(superScope);
+								for (Symbol<?> sym : symbols) {
+									String symName = sym.getName();
+									if (!"this".equals(symName)
+											&& !"super".equals(symName)) {
+										SymbolType refactorized = sym.getType()
+												.refactor(typeParams);
+
+										table.pushSymbol(symName,
+												ReferenceType.VARIABLE,
+												refactorized, sym.getLocation());
+									}
+								}
+								table.popScope(true);
+							}
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
 							Set<Field> fields = FieldInspector
 									.getNonPrivateFields(clazz);
+							
 							for (Field field : fields) {
 								try {
 									table.pushSymbol(field.getName(),
 											ReferenceType.VARIABLE, SymbolType
 													.valueOf(field
 															.getGenericType(),
-															null), null, true);
+															typeParams), null,
+											true);
 								} catch (InvalidTypeException e) {
 									throw new RuntimeException(e);
 								}
