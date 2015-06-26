@@ -941,6 +941,18 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		}
 	}
 	
+	public SymbolType refactor(Map<String,SymbolType> mapping){
+		SymbolType result = this;
+		if(mapping != null){
+			Set<String> keys = mapping.keySet();
+			for(String key: keys){
+				result = result.refactor(key, mapping.get(key), true);
+			}
+		}
+		
+		return result;
+	}
+	
 	public static Class<?>[] toClassArray(SymbolType[] args){
 		
 		Class<?>[] argClasses = null;
