@@ -1097,4 +1097,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 	
+	@Test
+	public void testNestedClasses() throws Exception{
+		run("class A { private static class Owner<T>{ void foo() { Object o =new Owner<Integer>().new Inner<String>() {}; } private static abstract class Nested<X> {} private abstract class Inner<Y> extends Nested<Y> {}}  } ");
+		Assert.assertTrue(true);
+	}
+	
 }

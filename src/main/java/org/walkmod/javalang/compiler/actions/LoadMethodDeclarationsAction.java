@@ -90,22 +90,22 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 			args = new SymbolType[params.size()];
 			for (int i = 0; i < args.length; i++) {
 				Parameter currentParam = params.get(i);
-				
+
 				args[i] = ASTSymbolTypeResolver.getInstance().valueOf(
 						currentParam.getType(), tps);
 				int arrayCount = currentParam.getId().getArrayCount();
-				if(arrayCount > 0){
-					args[i].setArrayCount(args[i].getArrayCount()+arrayCount);
+				if (arrayCount > 0) {
+					args[i].setArrayCount(args[i].getArrayCount() + arrayCount);
 				}
 				params.get(i).getType().setSymbolData(args[i]);
 				if (i == args.length - 1) {
 					hasDynamicArgs = params.get(i).isVarArgs();
-					if(hasDynamicArgs){
+					if (hasDynamicArgs) {
 						args[i] = args[i].clone();
-						args[i].setArrayCount(args[i].getArrayCount()+1);
+						args[i].setArrayCount(args[i].getArrayCount() + 1);
 					}
 				}
-				
+
 			}
 		}
 
@@ -119,7 +119,7 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 				st, args, false, hasDynamicArgs, (Method) null, actions);
 		sc.setRootSymbol(method);
 		method.setInnerScope(sc);
-		
+
 		md.accept(expressionTypeAnalyzer, null);
 		table.popScope(true);
 		method.setReferencedMethod(md.getSymbolData().getMethod());
@@ -190,29 +190,34 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 		@Override
 		public void visit(ObjectCreationExpr o, Scope scope) {
-			table.pushScope(scope);
-			List<ClassOrInterfaceType> types = new LinkedList<ClassOrInterfaceType>();
-			types.add(o.getType());
-			loadExtendsOrImplements(types);
-			loadMethods(o.getAnonymousClassBody(), scope);
+			if (!scope.hasMethodsLoaded()) {
+				table.pushScope(scope);
+				List<ClassOrInterfaceType> types = new LinkedList<ClassOrInterfaceType>();
+				types.add(o.getType());
+				loadExtendsOrImplements(types);
+				loadMethods(o.getAnonymousClassBody(), scope);
 
-			table.popScope(true);
+				table.popScope(true);
+			}
 		}
 
 		@Override
 		public void visit(EnumConstantDeclaration o, Scope scope) {
-			table.pushScope(scope);
-			loadMethods(o.getClassBody(), scope);
-			table.popScope(true);
+			if (!scope.hasMethodsLoaded()) {
+				table.pushScope(scope);
+				loadMethods(o.getClassBody(), scope);
+				table.popScope(true);
+			}
 		}
 
 		@Override
 		public void visit(ClassOrInterfaceDeclaration n, Scope scope) {
-			table.pushScope(scope);
-			loadExtendsOrImplements(n.getExtends());
-			loadMethods(n.getMembers(), scope);
-
-			table.popScope(true);
+			if (!scope.hasMethodsLoaded()) {
+				table.pushScope(scope);
+				loadExtendsOrImplements(n.getExtends());
+				loadMethods(n.getMembers(), scope);
+				table.popScope(true);
+			}
 		}
 
 		private void loadMethods(List<BodyDeclaration> members, Scope scope) {
@@ -278,8 +283,9 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 					if (s == null) {
 						SymbolType st = ASTSymbolTypeResolver.getInstance()
 								.valueOf(type);
-						if(st == null || st.getClazz() == null){
-							throw new RuntimeException("Error resolving  "+name);
+						if (st == null || st.getClazz() == null) {
+							throw new RuntimeException("Error resolving  "
+									+ name);
 						}
 						name = st.getClazz().getCanonicalName();
 						s = table.findSymbol(name, ReferenceType.TYPE);
@@ -329,7 +335,8 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 										TypeVariable<?>[] typeParams = method
 												.getDeclaringClass()
 												.getTypeParameters();
-										for (int i = 0; i < params.size() && i < typeParams.length; i++) {
+										for (int i = 0; i < params.size()
+												&& i < typeParams.length; i++) {
 											SymbolType.valueOf(typeParams[i],
 													params.get(i),
 													parameterTypes, null);
