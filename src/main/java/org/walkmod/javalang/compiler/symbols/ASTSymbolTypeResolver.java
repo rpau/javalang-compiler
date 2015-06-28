@@ -179,10 +179,11 @@ public class ASTSymbolTypeResolver extends
 			// it is a fully qualified name or a inner class (>1 hop)
 
 			String scopeName = "";
+			String parentName = "";
 			if (isObjectCreationCtxt) {
-				scopeName = ((ObjectCreationExpr) parent).getScope()
+				parentName = ((ObjectCreationExpr) parent).getScope()
 						.getSymbolData().getName()
-						+ ".";
+						+ "$";
 			}
 			ClassOrInterfaceType ctxt = type;
 			while (ctxt.getScope() != null) {
@@ -193,6 +194,7 @@ public class ASTSymbolTypeResolver extends
 					scopeName = ctxt.getName() + "." + scopeName;
 				}
 			}
+			scopeName = parentName + scopeName;
 
 			String innerClassName = name;
 			if (scopeName.length() > 1) {
@@ -215,7 +217,7 @@ public class ASTSymbolTypeResolver extends
 				if (result == null) {
 					// in the code appears B.C
 					SymbolType scopeType = null;
-					if(type.getScope() != null){
+					if (type.getScope() != null) {
 						scopeType = type.getScope().accept(this, arg);
 					}
 					if (scopeType != null) {

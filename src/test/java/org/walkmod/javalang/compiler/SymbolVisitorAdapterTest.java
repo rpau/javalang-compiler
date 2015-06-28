@@ -1091,4 +1091,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 	
+	@Test
+	public void testObjectCreationExprWithScope() throws Exception{
+		run("class Owner<T>{ class Inner<T> {} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
+		Assert.assertTrue(true);
+	}
+	
 }

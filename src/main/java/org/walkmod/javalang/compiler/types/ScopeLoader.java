@@ -126,7 +126,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
    public Scope visit(ObjectCreationExpr n, SymbolTable symbolTable) {
       List<BodyDeclaration> body = n.getAnonymousClassBody();
       if (body != null) {
-
+    	 
          SymbolType st = ASTSymbolTypeResolver.getInstance().valueOf(n.getType());
 
          Scope scope = new Scope();

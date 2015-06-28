@@ -278,6 +278,9 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 					if (s == null) {
 						SymbolType st = ASTSymbolTypeResolver.getInstance()
 								.valueOf(type);
+						if(st == null || st.getClazz() == null){
+							throw new RuntimeException("Error resolving  "+name);
+						}
 						name = st.getClazz().getCanonicalName();
 						s = table.findSymbol(name, ReferenceType.TYPE);
 					}
