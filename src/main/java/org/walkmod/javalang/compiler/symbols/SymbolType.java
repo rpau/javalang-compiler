@@ -235,7 +235,10 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public boolean equals(Object o) {
 		if (o instanceof SymbolType) {
 			SymbolType aux = (SymbolType) o;
-			return name.equals(aux.getName())
+			String auxName = aux.getName();
+			boolean equalName = name !=null && auxName != null && name.equals(auxName);
+			equalName = equalName || (isTemplateVariable() && aux.isTemplateVariable() && templateVariable.equals(aux.templateVariable));
+			return equalName
 					&& arrayCount == aux.getArrayCount();
 		}
 		return false;

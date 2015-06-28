@@ -119,7 +119,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void populateSemantics() throws Exception {
 	}
 
-	private CompilationUnit run(String code) throws Exception {
+	private CompilationUnit run(String... code) throws Exception {
 		CompilationUnit cu = compile(code);
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 		visitor.setClassLoader(getClassLoader());
@@ -1098,8 +1098,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 	
 	@Test
-	public void testNestedClasses() throws Exception{
+	public void testInheritanceOnNestedClassesFromAnObjectCreation() throws Exception{
 		run("class A { private static class Owner<T>{ void foo() { Object o =new Owner<Integer>().new Inner<String>() {}; } private static abstract class Nested<X> {} private abstract class Inner<Y> extends Nested<Y> {}}  } ");
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void testMethodCallsOnAnonymousClasses() throws Exception{
+		String mainClass = "public class A { public void testTwoStageResolution() { class ForTwoStageResolution<X extends Number> {  <B extends X> void verifyTwoStageResolution() { TypeToken type = new TypeToken<B>(getClass()) {}.where(new TypeParameter<B>() {}, (Class) Integer.class); } } } }";
+		String typeTokenClass = "public class TypeToken<T> { public TypeToken(Class clazz) {}  public final <X> TypeToken<T> where(TypeParameter<X> typeParam, Class<X> typeArg) {return null;} }";
+		String typeParamClass = "public class TypeParameter<T> {}";
+		run(mainClass , typeTokenClass , typeParamClass);
 		Assert.assertTrue(true);
 	}
 	

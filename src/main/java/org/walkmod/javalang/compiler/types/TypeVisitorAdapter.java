@@ -374,23 +374,6 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 	@Override
 	public void visit(MethodCallExpr n, A arg) {
 		try {
-			SymbolType scope = null;
-
-			if (n.getScope() != null) {
-
-				n.getScope().accept(this, arg);
-
-				scope = (SymbolType) n.getScope().getSymbolData();
-
-				LOG.debug("scope: (" + n.getScope().toString() + ")"
-						+ scope.getName() + " method " + n.toString());
-
-			}
-			if (scope != null && "sun.misc.Unsafe".equals(scope.getName())
-					&& n.getName().equals("getUnsafe")) {
-				n.setSymbolData(scope);
-				return;
-			}
 			SymbolType[] symbolTypes = null;
 			boolean hasFunctionalExpressions = false;
 			if (n.getArgs() != null) {
@@ -420,6 +403,25 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				symbolTypes = new SymbolType[0];
 			}
 
+			
+			SymbolType scope = null;
+
+			if (n.getScope() != null) {
+
+				n.getScope().accept(this, arg);
+
+				scope = (SymbolType) n.getScope().getSymbolData();
+
+				LOG.debug("scope: (" + n.getScope().toString() + ")"
+						+ scope.getName() + " method " + n.toString());
+
+			}
+			if (scope != null && "sun.misc.Unsafe".equals(scope.getName())
+					&& n.getName().equals("getUnsafe")) {
+				n.setSymbolData(scope);
+				return;
+			}
+			
 			// for static imports
 			Symbol<?> s = symbolTable.findSymbol(n.getName(), scope,
 					symbolTypes, ReferenceType.METHOD);
