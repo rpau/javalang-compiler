@@ -165,7 +165,12 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				Symbol<?> superSymbol = symbolTable.pushSymbol("super",
 						ReferenceType.VARIABLE, st, n,
 						(List<SymbolAction>) null);
-				Symbol<?> superType = symbolTable.findSymbol(st.getClazz()
+				
+				if(st == null){
+					throw new RuntimeException("Error resolving "+n.getType().toString()+" in "+n.toString()+", line: "+n.getBeginLine());
+				}
+				Class<?> superTypeClass = st.getClazz();
+				Symbol<?> superType = symbolTable.findSymbol(superTypeClass
 						.getCanonicalName(), ReferenceType.TYPE);
 				if (superType != null) {
 					superSymbol.setInnerScope(superType.getInnerScope());

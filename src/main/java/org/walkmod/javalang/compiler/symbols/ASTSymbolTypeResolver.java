@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.walkmod.javalang.ast.Node;
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
@@ -181,9 +182,13 @@ public class ASTSymbolTypeResolver extends
 			String scopeName = "";
 			String parentName = "";
 			if (isObjectCreationCtxt) {
-				parentName = ((ObjectCreationExpr) parent).getScope()
-						.getSymbolData().getName()
-						+ "$";
+				SymbolData sd = ((ObjectCreationExpr) parent).getScope()
+						.getSymbolData();
+				Class<?> ctxClass = sd.getClazz();
+				if (ctxClass.isAnonymousClass()) {
+					ctxClass = ctxClass.getSuperclass();
+				}
+				parentName = ctxClass.getName() + "$";
 			}
 			ClassOrInterfaceType ctxt = type;
 			while (ctxt.getScope() != null) {

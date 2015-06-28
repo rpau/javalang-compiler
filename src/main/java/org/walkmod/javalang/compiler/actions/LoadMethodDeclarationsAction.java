@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.TypeParameter;
@@ -122,7 +123,11 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 		md.accept(expressionTypeAnalyzer, null);
 		table.popScope(true);
-		method.setReferencedMethod(md.getSymbolData().getMethod());
+		MethodSymbolData msd = md.getSymbolData();
+		if(msd == null){
+			throw new RuntimeException("Ops! The following method can't be solved: "+md.toString());
+		}
+		method.setReferencedMethod(msd.getMethod());
 		table.pushSymbol(method, true);
 	}
 
@@ -239,7 +244,7 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 						}
 					}
 				} catch (Exception e) {
-					throw new RuntimeException(e);
+					throw new RuntimeException("Error loading methods in a given scope", e);
 				}
 				scope.setHasMethodsLoaded(true);
 			}

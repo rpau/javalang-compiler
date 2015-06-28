@@ -21,10 +21,12 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.Builder;
@@ -65,7 +67,7 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 			scope.setParameterizedTypes(Arrays.asList(syms));
 			genericsSymbolTable.pushScope();
 			updateTypeMapping(method.getGenericReturnType(),
-					genericsSymbolTable, scope, true);
+					genericsSymbolTable, scope, true, new HashSet<String>());
 		} else if (scope != null) {
 			String symbolName = scope.getClazz().getName();
 			if (scope.getClazz().isMemberClass()) {
@@ -89,7 +91,7 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 			}
 
 			updateTypeMapping(method.getDeclaringClass(), genericsSymbolTable,
-					scope, false);
+					scope, false, new HashSet<String>());
 
 			Scope newScope = new Scope();
 			genericsSymbolTable.pushScope(newScope);
@@ -110,40 +112,47 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 
 	private void updateTypeMapping(java.lang.reflect.Type type,
 			SymbolTable genericsSymbolTable, SymbolType parameterizedType,
-			boolean genericArgs) throws InvalidTypeException {
+			boolean genericArgs, Set<String> processedTypeVariables)
+			throws InvalidTypeException {
 		if (parameterizedType != null) {
 			if (type instanceof TypeVariable) {
 				TypeVariable<?> tv = (TypeVariable<?>) type;
 				String vname = tv.getName();
-				Symbol<?> s = genericsSymbolTable.findSymbol(vname);
-				if (s != null) {
-					boolean isInTheTopScope = genericsSymbolTable.getScopes()
-							.peek().findSymbol(vname) != null;
-					SymbolType st = s.getType();
-					if (st != null) {
-						SymbolType refactor = s.getType().refactor(vname,
-								parameterizedType,
-								genericArgs || isInTheTopScope);
-						refactor.setTemplateVariable(vname);
-						s.setType(refactor);
+				if (!processedTypeVariables.contains(vname)) {
+					processedTypeVariables.add(vname);
+					Symbol<?> s = genericsSymbolTable.findSymbol(vname);
+					if (s != null) {
+						boolean isInTheTopScope = genericsSymbolTable
+								.getScopes().peek().findSymbol(vname) != null;
+						SymbolType st = s.getType();
+						if (st != null) {
+							SymbolType refactor = s.getType().refactor(vname,
+									parameterizedType,
+									genericArgs || isInTheTopScope);
+							refactor.setTemplateVariable(vname);
+							s.setType(refactor);
+						} else {
+							s.setType(parameterizedType);
+						}
+
 					} else {
-						s.setType(parameterizedType);
+						genericsSymbolTable.pushSymbol(vname,
+								ReferenceType.TYPE, parameterizedType, null);
+
 					}
 
-				} else {
-					genericsSymbolTable.pushSymbol(vname, ReferenceType.TYPE,
-							parameterizedType, null);
-
-				}
-
-				java.lang.reflect.Type[] bounds = tv.getBounds();
-				List<SymbolType> paramBounds = parameterizedType.getBounds();
-				if (paramBounds != null) {
-					for (int i = 0; i < bounds.length; i++) {
-						// to avoid recursive type declarations Enum<E>
-						if (!parameterizedType.equals(paramBounds.get(i))) {
-							updateTypeMapping(bounds[i], genericsSymbolTable,
-									paramBounds.get(i), genericArgs);
+					java.lang.reflect.Type[] bounds = tv.getBounds();
+					List<SymbolType> paramBounds = parameterizedType
+							.getBounds();
+					if (paramBounds != null) {
+						for (int i = 0; i < bounds.length; i++) {
+							// to avoid recursive type declarations Enum<E>
+							//if (!parameterizedType.equals(paramBounds.get(i))) {
+								updateTypeMapping(bounds[i],
+										genericsSymbolTable,
+										paramBounds.get(i), genericArgs,
+										processedTypeVariables);
+							//}
 						}
 					}
 				}
@@ -155,7 +164,8 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 				if (paramBounds != null) {
 					for (int i = 0; i < bounds.length; i++) {
 						updateTypeMapping(bounds[i], genericsSymbolTable,
-								paramBounds.get(i), genericArgs);
+								paramBounds.get(i), genericArgs,
+								processedTypeVariables);
 					}
 				}
 				bounds = wildcard.getLowerBounds();
@@ -163,7 +173,8 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 				if (paramBounds != null) {
 					for (int i = 0; i < bounds.length; i++) {
 						updateTypeMapping(bounds[i], genericsSymbolTable,
-								paramBounds.get(i), genericArgs);
+								paramBounds.get(i), genericArgs,
+								processedTypeVariables);
 					}
 				}
 
@@ -181,7 +192,7 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 							st = paramTypeParams.get(i);
 						}
 						updateTypeMapping(typeArgs[i], genericsSymbolTable, st,
-								genericArgs);
+								genericArgs, processedTypeVariables);
 					}
 				}
 
@@ -191,7 +202,8 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 				st.setArrayCount(parameterizedType.getArrayCount() - 1);
 
 				updateTypeMapping(arrayType.getGenericComponentType(),
-						genericsSymbolTable, st, genericArgs);
+						genericsSymbolTable, st, genericArgs,
+						processedTypeVariables);
 
 			} else if (type instanceof Class) {
 
@@ -211,7 +223,7 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 						if (st != null) {
 							st.setTemplateVariable(tparams[i].getName());
 							updateTypeMapping(tparams[i], genericsSymbolTable,
-									st, true);
+									st, true, processedTypeVariables);
 						}
 					}
 				}

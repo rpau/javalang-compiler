@@ -1112,4 +1112,23 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 	
+	@Test
+	public void testClassesInsideAnonymousIds() throws Exception{
+		String mainClass = "public class A { void foo() {new From<Integer>() {}.new To<String>().type();}}";
+		String fromClass = "public class From<T>{ public class To<T> { void type(){}} }";
+		
+		run(mainClass, fromClass);
+		Assert.assertTrue(true);
+	}
+
+	
+	@Test
+	public void testClassesInsideAnonymousIds2() throws Exception{
+		String mainClass = "public class A { void foo() {new From<Integer>() {}.new To<String>() {}.type();}}";
+		String fromClass = "public class From<T>{ public class To<T> { void type(){}} }";
+		
+		run(mainClass, fromClass);
+		Assert.assertTrue(true);
+	}
+	
 }

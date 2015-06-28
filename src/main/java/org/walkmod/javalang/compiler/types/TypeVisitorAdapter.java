@@ -807,8 +807,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						ObjectCreationExpr expr = (ObjectCreationExpr) parentNode;
 						Expression grandParent = expr.getScope();
 						if (grandParent != null) {
-							type = new SymbolType(grandParent.getSymbolData()
-									.getClazz().getName()
+							Class<?> clazz = grandParent.getSymbolData()
+									.getClazz();
+							if(clazz.isAnonymousClass()){
+								clazz = clazz.getSuperclass();
+							}
+							type = new SymbolType(clazz.getName()
 									+ "$" + typeName);
 							type.getClazz();
 						}
