@@ -346,7 +346,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testAnnonymousClass() throws Exception {
 		String code = "public class Foo{ public void bar() { Foo o = new Foo() { private String name; public void bar() { System.out.println(\"hello\"); }};}}";
-		CompilationUnit cu = runRemoveUnusedMembers(code);
+		CompilationUnit cu = run(code);
 		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
 				.getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
@@ -355,18 +355,21 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		ObjectCreationExpr oce = (ObjectCreationExpr) expr.getVars().get(0)
 				.getInit();
 		// The name attribute should be removed
-		Assert.assertEquals(1, oce.getAnonymousClassBody().size());
+		FieldDeclaration fd =(FieldDeclaration)oce.getAnonymousClassBody().get(0);
+		
+		Assert.assertNull(fd.getUsages());
 	}
 
 	@Test
 	public void testMethodsOverwritingInAnnonymousClasses() throws Exception {
 		String code = "public class A{ public Object get() { return null; } public A foo = new A() { public String get(){ return name();} private String name(){ return \"hello\"; }};}";
-		CompilationUnit cu = runRemoveUnusedMembers(code);
+		CompilationUnit cu = run(code);
 		BodyDeclaration bd = cu.getTypes().get(0).getMembers().get(1);
 		FieldDeclaration aux = (FieldDeclaration) bd;
 		ObjectCreationExpr expr = (ObjectCreationExpr) aux.getVariables()
 				.get(0).getInit();
-		Assert.assertEquals(2, expr.getAnonymousClassBody().size());
+		MethodDeclaration md = (MethodDeclaration)expr.getAnonymousClassBody().get(1);
+		Assert.assertNotNull(md.getUsages());
 	}
 
 	@Test
@@ -1128,6 +1131,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String fromClass = "public class From<T>{ public class To<T> { void type(){}} }";
 		
 		run(mainClass, fromClass);
+		Assert.assertTrue(true);
+	}
+	
+	@Test
+	public void loadMethodsInsideAnonymousClasses() throws Exception{
+		String stmt="Service service2=new Service() {@Override public final void addListener(Listener listener, Executor executor) {}};";
+		String mainClass="import java.util.concurrent.Executor; public class A { void foo() {"+stmt+"}}";
+		String serviceClass ="import java.util.concurrent.Executor; public class Service{ abstract class Listener {}  public void addListener(Listener listener, Executor executor){} }";
+		String listenerClass ="class Listener {}";
+		run(mainClass, serviceClass, listenerClass);
 		Assert.assertTrue(true);
 	}
 	

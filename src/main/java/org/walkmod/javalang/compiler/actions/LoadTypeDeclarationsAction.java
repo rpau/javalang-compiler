@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.actions;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -94,6 +95,10 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 		@Override
 		public void visit(ObjectCreationExpr n, A ctx) {
 			n.accept(typeTable, null);
+			ClassOrInterfaceType type = n.getType();
+			List<ClassOrInterfaceType> extendsList = new LinkedList<ClassOrInterfaceType>();
+			extendsList.add(type);
+			loadExtendsOrImplements(extendsList);
 		}
 
 		private void loadExtendsOrImplements(
