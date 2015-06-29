@@ -1144,4 +1144,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(true);
 	}
 	
+	@Test
+	public void testImportsWithAsteriskUsages() throws Exception{
+		CompilationUnit cu = run("import java.util.*; class A { List<String> list; }");
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+	}
+	
 }

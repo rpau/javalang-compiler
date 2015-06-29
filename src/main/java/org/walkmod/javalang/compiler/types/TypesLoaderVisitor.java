@@ -391,7 +391,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				String typeName = id.getName().toString();
 
 				if (!id.isStatic()) {
-					loadClassesFromPackage(typeName, actions);
+					loadClassesFromPackage(typeName, actions, id);
 				} else {
 
 					symbolTable.pushSymbol(typeName, ReferenceType.TYPE,
@@ -521,7 +521,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		}
 	}
 
-	private void loadClassesFromJar(JarFile jar, String directory) {
+	private void loadClassesFromJar(JarFile jar, String directory, Node node) {
 
 		Enumeration<JarEntry> entries = jar.entries();
 		while (entries.hasMoreElements()) {
@@ -538,7 +538,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 				String[] split = name.split("\\$\\d");
 				if (split.length == 1) {
-					addType(name, false, null, actions);
+					addType(name, false, node, actions);
 				}
 
 			}
@@ -546,12 +546,12 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 	}
 
 	private void loadClassesFromPackage(String packageName,
-			List<SymbolAction> actions) {
+			List<SymbolAction> actions, Node node) {
 
 		URL[] urls = ((URLClassLoader) classLoader.getParent()).getURLs();
 		String directory = packageName.replaceAll("\\.", "/");
 
-		loadClassesFromJar(SDKJar, directory);
+		loadClassesFromJar(SDKJar, directory, node);
 
 		for (URL url : urls) {
 			File file = new File(url.getFile());
@@ -564,7 +564,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				}
-				loadClassesFromJar(jar, directory);
+				loadClassesFromJar(jar, directory, node);
 
 			} else if (file.isDirectory() && file.canRead()) {
 				File aux = new File(file, directory);
@@ -581,7 +581,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 							String[] split = resource.getName().split("\\$\\d");
 							if (split.length == 1) {
-								addType(name, false, null, actions);
+								addType(name, false, node, actions);
 							}
 
 						}
@@ -654,7 +654,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		}
 
 		packageName = contextName;
-		loadClassesFromPackage(packageName, actions);
+		loadClassesFromPackage(packageName, actions, null);
 		if (cu.getImports() != null) {
 			for (ImportDeclaration i : cu.getImports()) {
 				i.accept(this, context);
