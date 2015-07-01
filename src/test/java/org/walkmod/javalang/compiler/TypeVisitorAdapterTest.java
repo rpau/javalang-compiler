@@ -416,6 +416,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		compile("import java.util.ArrayList; import java.io.Serializable;"
 				+ " public class A { public static <T> T pick(T a1, T a2) { return a2; }}");
 		SymbolTable symTable = getSymbolTable();
+		ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
 		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);

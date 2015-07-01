@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.SymbolData;
+import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
@@ -1096,8 +1097,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	
 	@Test
 	public void testObjectCreationExprWithScope() throws Exception{
-		run("class Owner<T>{ class Inner<T> {} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
-		Assert.assertTrue(true);
+		CompilationUnit cu = run("class Owner<T>{ class Inner<T> {} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		Assert.assertNotNull(type.getUsages());
+	}
+	
+	@Test
+	public void testObjectCreationExprWithScope2() throws Exception{
+		CompilationUnit cu = run("class A { class Owner<T>{ class Inner<T> {}} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		type = (ClassOrInterfaceDeclaration)type.getMembers().get(0);
+		Assert.assertNotNull(type.getUsages());
 	}
 	
 	@Test
@@ -1135,6 +1145,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 	
 	@Test
+	public void testClassesInsideAnonymousIds3() throws Exception{
+		String mainClass = "public class A { void foo() {new From<Integer>() {}.new To<String>() {};} class From<T>{ class To<T> { }}}";
+		
+		CompilationUnit cu = run(mainClass);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		ObjectCreationExpr call = (ObjectCreationExpr)stmt.getExpression();
+		SymbolReference ref = call.getType();
+		Assert.assertNotNull(ref.getSymbolDefinition());
+	}
+	
+	@Test
 	public void loadMethodsInsideAnonymousClasses() throws Exception{
 		String stmt="Service service2=new Service() {@Override public final void addListener(Listener listener, Executor executor) {}};";
 		String mainClass="import java.util.concurrent.Executor; public class A { void foo() {"+stmt+"}}";
@@ -1147,6 +1169,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testImportsWithAsteriskUsages() throws Exception{
 		CompilationUnit cu = run("import java.util.*; class A { List<String> list; }");
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+	}
+	
+	@Test
+	public void testObjectCreationReferences() throws Exception{
+		
+		CompilationUnit cu = run("import java.util.LinkedList; class A { void foo() { new LinkedList<String>(); }}");
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
 	

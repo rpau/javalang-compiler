@@ -403,7 +403,6 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				symbolTypes = new SymbolType[0];
 			}
 
-			
 			SymbolType scope = null;
 
 			if (n.getScope() != null) {
@@ -421,7 +420,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				n.setSymbolData(scope);
 				return;
 			}
-			
+
 			// for static imports
 			Symbol<?> s = symbolTable.findSymbol(n.getName(), scope,
 					symbolTypes, ReferenceType.METHOD);
@@ -794,30 +793,54 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			}
 
 		} else {
-			if (n.getSymbolData() == null) {
 
-				Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n,
-						ReferenceType.TYPE_PARAM, ReferenceType.TYPE,
-						ReferenceType.VARIABLE);
+			if (n.getSymbolData() == null) {
+				Symbol<?> s = null;
+				Node parentNode = n.getParentNode();
+				if (parentNode instanceof ObjectCreationExpr) {
+					ObjectCreationExpr expr = (ObjectCreationExpr) parentNode;
+					Expression grandParent = expr.getScope();
+					if (grandParent != null) {
+						Class<?> clazz = grandParent.getSymbolData().getClazz();
+						if (clazz.isAnonymousClass()) {
+
+							clazz = clazz.getSuperclass();
+						}
+						Symbol<?> parentSymbol = symbolTable.findSymbol(
+								clazz.getCanonicalName(), ReferenceType.TYPE);
+						if (parentSymbol != null) {
+							Scope innerScope = parentSymbol.getInnerScope();
+							if (innerScope != null) {
+								symbolTable.pushScope(innerScope);
+
+								s = symbolTable.lookUpSymbolForRead(typeName,
+										n, ReferenceType.TYPE_PARAM,
+										ReferenceType.TYPE,
+										ReferenceType.VARIABLE);
+
+								symbolTable.popScope();
+							}
+						}
+						if (s == null) {
+							typeName = clazz.getName() + "$" + typeName;
+							type = new SymbolType(typeName);
+						}
+					}
+					else{
+						s = symbolTable.lookUpSymbolForRead(typeName, n,
+								ReferenceType.TYPE_PARAM, ReferenceType.TYPE,
+								ReferenceType.VARIABLE);
+					}
+
+				} else {
+					s = symbolTable.lookUpSymbolForRead(typeName, n,
+							ReferenceType.TYPE_PARAM, ReferenceType.TYPE,
+							ReferenceType.VARIABLE);
+				}
 				if (s != null) {
 					type = s.getType().clone();
 				} else {
-					Node parentNode = n.getParentNode();
-					if (parentNode instanceof ObjectCreationExpr) {
-						ObjectCreationExpr expr = (ObjectCreationExpr) parentNode;
-						Expression grandParent = expr.getScope();
-						if (grandParent != null) {
-							Class<?> clazz = grandParent.getSymbolData()
-									.getClazz();
-							if(clazz.isAnonymousClass()){
-								clazz = clazz.getSuperclass();
-							}
-							type = new SymbolType(clazz.getName()
-									+ "$" + typeName);
-							type.getClazz();
-						}
 
-					}
 					if (type == null) {
 						type = ASTSymbolTypeResolver.getInstance().valueOf(n);
 					}
