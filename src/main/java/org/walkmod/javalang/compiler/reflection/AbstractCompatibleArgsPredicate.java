@@ -16,6 +16,7 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,6 +42,7 @@ public abstract class AbstractCompatibleArgsPredicate {
 	public AbstractCompatibleArgsPredicate(SymbolType[] typeArgs) {
 		this.typeArgs = typeArgs;
 	}
+	
 
 	public boolean filter() throws Exception {
 		int numParams = typeArgs == null ? 0 : typeArgs.length;

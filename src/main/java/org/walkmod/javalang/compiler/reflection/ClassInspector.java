@@ -354,7 +354,19 @@ public class ClassInspector {
 			} else {
 				int h2 = ClassInspector.getClassHierarchyHeight(clazz2);
 				int h1 = ClassInspector.getClassHierarchyHeight(clazz1);
-				isMethod2First = h2 > h1;
+
+				if (h1 == h2) {
+					isMethod2First = clazz2 != null && clazz1 != null
+							&& clazz2.isArray() && !clazz1.isArray();
+					if (!isMethod2First) {
+						isMethod2First = clazz2 != null && reference != null
+								&& !clazz2.isArray() 
+								&& !clazz2.isPrimitive()
+								&& clazz2.isAssignableFrom(reference);
+					}
+				} else {
+					isMethod2First = h2 > h1;
+				}
 			}
 		} else {
 			isMethod2First = true;
