@@ -53,24 +53,26 @@ public class ExecutableSorter<T extends Executable> implements Comparator<T> {
 			ArrayList<T> sortedList = new ArrayList<T>();
 			Iterator<T> it = aux.iterator();
 			while (it.hasNext()) {
-				ListIterator<T> li = sortedList.listIterator(sortedList.size());
+				Iterator<T> li = sortedList.iterator();
 				T method = it.next();
 				boolean inserted = false;
 				if (sortedList.isEmpty()) {
 					sortedList.add(method);
 				} else {
-					int pos = sortedList.size() - 1;
-					while (!inserted && li.hasPrevious()) {
-						T previous = li.previous();
-						if (compare(method, previous) == 1) {
-							sortedList.add(pos + 1, method);
+					int pos = 0;
+
+					while (!inserted && li.hasNext()) {
+						T previous = li.next();
+						if (compare(method, previous) == -1) {
+							// sortedList.add(pos, method);
 							inserted = true;
+						} else {
+							pos++;
 						}
-						pos--;
 					}
-					if (!inserted) {
-						sortedList.add(0, method);
-					}
+
+					sortedList.add(pos, method);
+
 				}
 			}
 
@@ -99,17 +101,16 @@ public class ExecutableSorter<T extends Executable> implements Comparator<T> {
 						arg = args[i];
 					}
 
-					while(arg != null && arg.isArray()){
+					while (arg != null && arg.isArray()) {
 						arg = arg.getComponentType();
 					}
-					
-					
+
 					Class<?> clazz2 = params2[i].getType();
 					Class<?> clazz1 = params1[i].getType();
 					while (clazz2.isArray() && clazz1.isArray()) {
 						clazz2 = clazz2.getComponentType();
 						clazz1 = clazz1.getComponentType();
-						
+
 					}
 
 					if (i == params1.length - 1) {

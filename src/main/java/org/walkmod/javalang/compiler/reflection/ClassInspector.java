@@ -340,13 +340,19 @@ public class ClassInspector {
 	public static boolean isMoreSpecficFor(Class<?> clazz2, Class<?> clazz1,
 			Class<?> reference) {
 		boolean isMethod2First = true;
+		// we compare, in case these are basic types, their evaluation order.
 		Integer order2 = Types.basicTypeEvaluationOrder(clazz2);
 		Integer order1 = Types.basicTypeEvaluationOrder(clazz1);
 		if (order1 != null && order2 != null) {
+			// if both are primitive or wrapper classes, we check class2 vs
+			// class1 or if the reference and the class2 and reference are not
+			// primitive (ex clazz2 = Object, clazz1 = int,  ref = Integer)
 			return (order2 <= order1)
 					|| ((reference == null || !reference.isPrimitive())
 							&& !clazz2.isPrimitive() && clazz1.isPrimitive());
 		}
+		// we check if clazz2 is subtype of clazz1. Notice that Object is supper
+		// type of every interface.
 		boolean isAssignable = Types.isAssignable(clazz2, clazz1);
 		if (!isAssignable) {
 			if (Types.isAssignable(clazz1, clazz2)) {
@@ -356,12 +362,17 @@ public class ClassInspector {
 				int h1 = ClassInspector.getClassHierarchyHeight(clazz1);
 
 				if (h1 == h2) {
-					isMethod2First = clazz2 != null && clazz1 != null
-							&& clazz2.isArray() && !clazz1.isArray();
+					// our priority are arrays vs non array types and classes vs
+					// interfaces
+					isMethod2First = clazz2 != null
+							&& clazz1 != null
+							&& (clazz2.isArray() && !clazz1.isArray() || (!clazz2
+									.isInterface() && clazz1.isInterface()));
 					if (!isMethod2First) {
+						// we compare if the class is assignable to reference.
+						// If so, it has priority
 						isMethod2First = clazz2 != null && reference != null
-								&& !clazz2.isArray() 
-								&& !clazz2.isPrimitive()
+								&& !clazz2.isArray() && !clazz2.isPrimitive()
 								&& clazz2.isAssignableFrom(reference);
 					}
 				} else {

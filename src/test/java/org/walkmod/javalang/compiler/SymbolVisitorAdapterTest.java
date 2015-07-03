@@ -1192,4 +1192,36 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals("java.lang.Iterable", call.getSymbolData().getMethod().getReturnType().getName());
 	}
 	
+	@Test
+	public void testMethodsOrderAsStaticImport2() throws Exception{
+		String importedClass="package test; import java.util.*; public class Test { public static <T extends Comparable<?>> List<T> assertThat(T target) {return null;}\n "+
+				"public static List assertThat(List target) {return null;}"+
+				"public static LinkedList assertThat(LinkedList target) {return null;}"+
+				"public static Collection assertThat(Collection target) {return null;}"+
+				"public static Boolean assertThat(Boolean target) {return null;}"+
+				"public static String assertThat(String target) {return null;}"+
+				"public static Object assertThat(Object target) {return null;}"+
+				"}";
+		String mainClass ="import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
+		CompilationUnit cu = run(mainClass, importedClass);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
+		
+		Assert.assertEquals("java.lang.String", call.getSymbolData().getMethod().getReturnType().getName());
+	}
+	
+	@Test
+	public void testMethodsOrderAsStaticImport3() throws Exception{
+		String importedClass="package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "+
+				"public static Iterable<?> assertThat(Object target) {return null;}"+"}";
+		String mainClass ="import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
+		CompilationUnit cu = run(mainClass, importedClass);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
+		
+		Assert.assertEquals("java.lang.Comparable", call.getSymbolData().getMethod().getReturnType().getName());
+	}
+	
 }
