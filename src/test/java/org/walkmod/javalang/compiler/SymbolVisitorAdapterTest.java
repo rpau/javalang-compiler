@@ -1179,4 +1179,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
 	
+	@Test
+	public void testMethodsOrderAsStaticImport() throws Exception{
+		String importedClass="package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "+
+				"public static Iterable<?> assertThat(Iterable target) {return null;}"+"}";
+		String mainClass ="import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(new LinkedList<String>()); } }";
+		CompilationUnit cu = run(mainClass, importedClass);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
+		
+		Assert.assertEquals("java.lang.Iterable", call.getSymbolData().getMethod().getReturnType().getName());
+	}
+	
 }
