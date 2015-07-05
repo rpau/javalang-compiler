@@ -1224,4 +1224,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals("java.lang.Comparable", call.getSymbolData().getMethod().getReturnType().getName());
 	}
 	
+	@Test
+	public void testMultipleStaticImportsFromTheSameClass() throws Exception{
+		String externalClass = "package foo; class Files { public static void touch() {} public static void createTempDir(){} public static void bar3(){} }";
+		String mainClass = "package foo; import static foo.Files.createTempDir; import static foo.Files.touch; import java.io.File; class A { void foo() { Files.createTempDir(); }}";
+		CompilationUnit cu = run(mainClass, externalClass);
+		Assert.assertNull(cu.getImports().get(0).getUsages());
+		Assert.assertNull(cu.getImports().get(1).getUsages());
+	}
+	
 }

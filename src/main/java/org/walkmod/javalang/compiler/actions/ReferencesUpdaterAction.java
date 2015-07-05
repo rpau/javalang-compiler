@@ -20,6 +20,10 @@ import java.util.Stack;
 
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
+import org.walkmod.javalang.ast.expr.FieldAccessExpr;
+import org.walkmod.javalang.ast.expr.MethodCallExpr;
+import org.walkmod.javalang.compiler.symbols.MethodSymbol;
+import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
@@ -53,8 +57,22 @@ public class ReferencesUpdaterAction extends SymbolAction {
 	public void doRead(Symbol<?> symbol, SymbolTable table,
 			SymbolReference emitter) {
 		SymbolDefinition def = symbol.getLocation();
+
 		if (def != null) {
-			def.addUsage(emitter);
+			boolean addUsage = true;
+			ReferenceType refType = symbol.getReferenceType();
+			if (refType.equals(ReferenceType.METHOD)) {
+				MethodSymbol ms = (MethodSymbol) symbol;
+				if (ms.isStaticallyImported()) {
+					if (emitter instanceof MethodCallExpr) {
+						MethodCallExpr mce = (MethodCallExpr) emitter;
+						addUsage = mce.getScope() == null;
+					}
+				}
+			}
+			if (addUsage) {
+				def.addUsage(emitter);
+			}
 		}
 		updateDefinitions(table, emitter);
 	}

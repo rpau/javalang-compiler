@@ -47,25 +47,25 @@ public abstract class SemanticTest {
 	@After
 	public void clean() throws Exception {
 		File sourcesDir = new File(SOURCES_DIR);
-		File[] sources = sourcesDir.listFiles();
-		if (sources != null) {
-			for (File source : sources) {
-				source.delete();
-			}
-		}
 
-		File compilerDir = new File(CLASSES_DIR);
-		File[] files = compilerDir.listFiles();
-		if (files != null) {
-			for (File file : files) {
-				file.delete();
-			}
-		}
-		compilerDir.delete();
+		removeRecursively(sourcesDir);
+
 		tt = null;
 		cu = null;
 		cl = null;
 		symTable = null;
+	}
+
+	public void removeRecursively(File file) {
+		if (file.isDirectory()) {
+			File[] files = file.listFiles();
+			if (files != null) {
+				for (File aux : files) {
+					removeRecursively(aux);
+				}
+			}
+		}
+		file.delete();
 	}
 
 	public CompilationUnit compile(String... sources) throws Exception {
