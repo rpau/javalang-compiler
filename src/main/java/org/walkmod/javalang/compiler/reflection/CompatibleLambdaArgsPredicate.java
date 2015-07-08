@@ -41,6 +41,7 @@ public class CompatibleLambdaArgsPredicate<A extends Executable> extends Compati
 			int i = 0;
 			for(Parameter param: lambdaParams){
 				typeArgs[i] = (SymbolType)param.getSymbolData();
+				i++;
 			}
 			
 			setTypeArgs(typeArgs);

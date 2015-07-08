@@ -61,6 +61,12 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 		this.typeArgs = typeArgs;
 		this.symTable = symTable;
 	}
+	
+	public AbstractGenericsBuilderFromParameterTypes(
+			Map<String, SymbolType> typeMapping, SymbolTable symTable) {
+		this.typeMapping = typeMapping;
+		this.symTable = symTable;
+	}
 
 	public SymbolTable getSymbolTable() {
 		return symTable;

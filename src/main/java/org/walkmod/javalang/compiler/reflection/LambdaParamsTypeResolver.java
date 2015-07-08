@@ -26,12 +26,14 @@ import org.walkmod.javalang.visitors.VoidVisitor;
 public class LambdaParamsTypeResolver implements Predicate<Method> {
 
 	private LambdaExpr lambda;
-	
-	private  VoidVisitor<?> typeResolver;
-	
+
+	private VoidVisitor<?> typeResolver;
+
 	private Map<String, SymbolType> mapping;
 
-	public LambdaParamsTypeResolver(LambdaExpr expr, VoidVisitor<?> typeResolver, Map<String, SymbolType> mapping) {
+
+	public LambdaParamsTypeResolver(LambdaExpr expr,
+			VoidVisitor<?> typeResolver, Map<String, SymbolType> mapping) {
 		this.lambda = expr;
 		this.typeResolver = typeResolver;
 		this.mapping = mapping;
@@ -39,12 +41,11 @@ public class LambdaParamsTypeResolver implements Predicate<Method> {
 
 	@Override
 	public boolean filter(Method elem) throws Exception {
-		
 
 		LambdaParamsSymbolDataBuilder builder = new LambdaParamsSymbolDataBuilder(
 				elem, typeResolver, mapping);
 		builder.build(lambda);
-		
+
 		return true;
 	}
 

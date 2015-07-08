@@ -60,7 +60,7 @@ public class GenericsBuilderFromMethodParameterTypes extends
 
 		// we store in the symbol table a new scope with the generics of the
 		// containing class of the method
-		ResultBuilderFromCallGenerics generics = new ResultBuilderFromCallGenerics(
+		ResultBuilderFromGenerics generics = new ResultBuilderFromGenerics(
 				scope, method, getSymbolTable());
 		generics.build(symbolTable);
 
@@ -70,7 +70,7 @@ public class GenericsBuilderFromMethodParameterTypes extends
 
 		// we store in the symbol table a new scope with the generics regarding
 		// the call method call explicit result parameter types
-		generics = new ResultBuilderFromCallGenerics(callArgs, method);
+		generics = new ResultBuilderFromGenerics(callArgs, method);
 		generics.build(symbolTable);
 	
 

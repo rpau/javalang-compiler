@@ -15,7 +15,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
@@ -50,6 +53,7 @@ import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.test.SemanticTest;
+import org.walkmod.javalang.util.FileUtils;
 
 public class SymbolVisitorAdapterTest extends SemanticTest {
 
@@ -356,8 +360,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		ObjectCreationExpr oce = (ObjectCreationExpr) expr.getVars().get(0)
 				.getInit();
 		// The name attribute should be removed
-		FieldDeclaration fd =(FieldDeclaration)oce.getAnonymousClassBody().get(0);
-		
+		FieldDeclaration fd = (FieldDeclaration) oce.getAnonymousClassBody()
+				.get(0);
+
 		Assert.assertNull(fd.getUsages());
 	}
 
@@ -369,7 +374,8 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		FieldDeclaration aux = (FieldDeclaration) bd;
 		ObjectCreationExpr expr = (ObjectCreationExpr) aux.getVariables()
 				.get(0).getInit();
-		MethodDeclaration md = (MethodDeclaration)expr.getAnonymousClassBody().get(1);
+		MethodDeclaration md = (MethodDeclaration) expr.getAnonymousClassBody()
+				.get(1);
 		Assert.assertNotNull(md.getUsages());
 	}
 
@@ -754,13 +760,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(md.getUsages());
 		Assert.assertEquals(1, md.getUsages().size());
 	}
-	
+
 	@Test
 	public void testConstructorOrdering() throws Exception {
 		String code = "public class A { A(long i) {} A(int i) {} void bar(){ A aux = new A(1); }}";
 		CompilationUnit cu = run(code);
-		ConstructorDeclaration md = (ConstructorDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		ConstructorDeclaration md = (ConstructorDeclaration) cu.getTypes()
+				.get(0).getMembers().get(0);
 		Assert.assertNull(md.getUsages());
 		md = (ConstructorDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		Assert.assertNotNull(md.getUsages());
@@ -842,215 +848,236 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		run("public class A { private static int indexOf(short[] array, short target, int start, int end) { return 0; } void bar(short[] array, Short target,int start, int end) { int aux = A.indexOf(array,target,start, end) + 1; }}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
 	public void testGenericsInsideAnonymousClasses() throws Exception {
 		run("import java.util.Iterator; public class A { class C<T> {  Iterator<T> get() { return null; } } void bar() { C aux = new C<String>() { void test(String s) { get().next().concat(s).length(); }}; }}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
 	public void testGenericsInsideAnonymousClasses2() throws Exception {
 		run("import java.util.Iterator; public class A { class C<T> {  Iterator<T> get() { return null; } } void bar() { C aux = new C<String>() { void test(String s) { super.get().next().concat(s).length(); }}; }}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testTypeDeclarationStmts2() throws Exception{
+	public void testTypeDeclarationStmts2() throws Exception {
 		run("public enum A { B { public Object foo() { class D { int c = 0; int x = c;} return new D(); }}, C {}; public Object foo() { class B { int c = 0; int x = c;} return new B(); }}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testConditionalArgument() throws Exception{
+	public void testConditionalArgument() throws Exception {
 		run("public class A  { String newTypeVariableImpl(String name, Integer[] bounds){ return null; }  void newArtificialTypeVariable(String name, Integer... bounds) { newTypeVariableImpl(name, (bounds.length == 0)? new Integer[] { new Integer(1) }: bounds).concat(\"hello\").length(); }}  ");
 		Assert.assertTrue(true);
 	}
-	
-	
+
 	@Test
-	public void testSuperExpressionsWithClassContext() throws Exception{
+	public void testSuperExpressionsWithClassContext() throws Exception {
 		run("import java.util.*; public class A extends LinkedList{ void foo(){ A.super.add(null);}}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testInnerClassReferencesFromVarDeclarations() throws Exception{
+	public void testInnerClassReferencesFromVarDeclarations() throws Exception {
 		run("public class A { void bar() { B.C aux = new B.C(); aux.foo(); } private static final class B { private static final class C { void foo() {}}} }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testTypeCompatibilityWithGenericsAndBasicTypes() throws Exception{
+	public void testTypeCompatibilityWithGenericsAndBasicTypes()
+			throws Exception {
 		run("import java.util.*; public class A { void foo(List<Number> list) { boolean a = list.add(3) && true;} }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testUpperBoundsInAResolvedType() throws Exception{
+	public void testUpperBoundsInAResolvedType() throws Exception {
 		CompilationUnit cu = run("import java.util.*; public class EquivalenceTester<T> { List<? super T> aux; EquivalenceTester(List<? super T> aux){ this.aux = aux;} void foo(){  EquivalenceTester.of(new LinkedList<String>()); } public static <T> EquivalenceTester<T> of(List<? super T> equivalence) {return new EquivalenceTester<T>(equivalence);}}");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(2);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		SymbolData sd = stmt.getExpression().getSymbolData();
 		Assert.assertNotNull(sd);
-		Assert.assertEquals(String.class.getName(), sd.getParameterizedTypes().get(0).getName());
+		Assert.assertEquals(String.class.getName(), sd.getParameterizedTypes()
+				.get(0).getName());
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testFloats() throws Exception{
+	public void testFloats() throws Exception {
 		CompilationUnit cu = run("public class A { void foo() { foo(1.0f); } void foo(float f){} }");
 		Assert.assertTrue(true);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
-		SymbolData sd =  mce.getArgs().get(0).getSymbolData();
+		SymbolData sd = mce.getArgs().get(0).getSymbolData();
 		Assert.assertEquals(float.class.getName(), sd.getName());
 	}
-	
+
 	@Test
-	public void genericsWithBasicTypes() throws Exception{
+	public void genericsWithBasicTypes() throws Exception {
 		CompilationUnit cu = run("public class A { void foo() { java.util.Arrays.asList(1, 2, 3, null); } }");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
-		Assert.assertEquals(Integer.class.getName(), sd.getParameterizedTypes().get(0).getName());
+		Assert.assertEquals(Integer.class.getName(), sd.getParameterizedTypes()
+				.get(0).getName());
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testInnerClassesPlusTypeStmtPlusEnums() throws Exception{
+	public void testInnerClassesPlusTypeStmtPlusEnums() throws Exception {
 		run("public enum A { B{}, C{}; void foo() { class B {} } void foo1() { class B{} } void foo2(){ class B{ class C{}} new B().new C().toString(); }  }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testInnerClassesInsideTypeStmts() throws Exception{
+	public void testInnerClassesInsideTypeStmts() throws Exception {
 		run("public class A { void foo() { class B {} } void foo1() { class B{} } void foo2(){ class B{ class C{}} new B().new C().toString(); }  }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testInnerClassesInsideTypeStmts2() throws Exception{
+	public void testInnerClassesInsideTypeStmts2() throws Exception {
 		run("public class A { void foo() { class B {} } void foo1() { class C{} } void foo2(){ class B{ class C{}} new B().new C().toString(); }  }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testDynamicArraysInMethodCalls() throws Exception{
+	public void testDynamicArraysInMethodCalls() throws Exception {
 		CompilationUnit cu = run("public class A { private byte[] toByteArray(int... bytes) { return null; }  private void assertWellFormed(int... bytes) { toByteArray(bytes); } } ");
 		Assert.assertTrue(true);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
 		Assert.assertNotNull(md.getUsages());
 	}
-	
+
 	@Test
-	public void testInterfaceImplementationsWithGenerics() throws Exception{
+	public void testInterfaceImplementationsWithGenerics() throws Exception {
 		CompilationUnit cu = run("public class A { interface B<T> { public T get();} class C implements B<String> { public String get (){return null;}} <F> F bar(B<F> b) { return null; } void car() { bar(new C()); }}");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(3);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(3);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals(String.class.getName(), sd.getName());
-		
+
 	}
-	
+
 	@Test
-	public void testImplementationWithGenericsRewrittingLetters() throws Exception{
+	public void testImplementationWithGenericsRewrittingLetters()
+			throws Exception {
 		CompilationUnit cu = run("public class A { class B <B,K,V> { B get() { return null; }} class C<K,V> extends B<C<K,V>,K, V>{} void foo() { C<String,String> c = new C<String,String>(); c.get(); } }");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(1);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(2);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("A$C", sd.getName());
 	}
-	
+
 	@Test
-	public void testImplementationWithGenericsRewrittingLetters2() throws Exception{
+	public void testImplementationWithGenericsRewrittingLetters2()
+			throws Exception {
 		CompilationUnit cu = run("import java.util.*; public class A { class Z <B> { B get() { return null; }}  class D<K, V> extends C <HashMap<K, V>> {} class C<X> extends Z<X>{} void foo() { D<String, String> c = new D<String, String>(); c.get(); } }");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(3);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(1);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(3);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("java.util.HashMap", sd.getName());
 		Assert.assertNotNull(sd.getParameterizedTypes());
-		Assert.assertEquals("java.lang.String", sd.getParameterizedTypes().get(0).getName());
-		Assert.assertEquals("java.lang.String", sd.getParameterizedTypes().get(1).getName());
+		Assert.assertEquals("java.lang.String",
+				sd.getParameterizedTypes().get(0).getName());
+		Assert.assertEquals("java.lang.String",
+				sd.getParameterizedTypes().get(1).getName());
 	}
-	
+
 	@Test
-	public void testBug1() throws Exception{
+	public void testBug1() throws Exception {
 		CompilationUnit cu = run("import java.util.*; public class A<K,V> { public static <T> T firstNonNull( T first, T second) { return null;} public Map<K, Collection<V>> asMap() {return null;} void foo(K key, Collection<V> value) { A.firstNonNull(asMap().remove(key),value); } }");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(2);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("java.util.Collection", sd.getName());
 		Assert.assertNotNull(sd.getParameterizedTypes());
-		Assert.assertEquals("java.lang.Object", sd.getParameterizedTypes().get(0).getName());
+		Assert.assertEquals("java.lang.Object",
+				sd.getParameterizedTypes().get(0).getName());
 	}
-	
+
 	@Test
-	public void testSingletonList() throws Exception{
+	public void testSingletonList() throws Exception {
 		CompilationUnit cu = run("import java.util.Collections; public class A { void foo(String[] array) { Collections.singletonList(array); } }");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 	}
-	
+
 	@Test
-	public void testTemplateResults() throws Exception{
+	public void testTemplateResults() throws Exception {
 		CompilationUnit cu = run("public class A<X> { public static <C extends Comparable<?>> A<C> all(){ return null;} void foo() { A.<Integer>all(); } }");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("A", sd.getName());
 		Assert.assertNotNull(sd.getParameterizedTypes());
-		Assert.assertEquals("java.lang.Integer", sd.getParameterizedTypes().get(0).getName());
-		
+		Assert.assertEquals("java.lang.Integer", sd.getParameterizedTypes()
+				.get(0).getName());
+
 	}
-	
+
 	@Test
-	public void testFieldDeclarationInsideAnonymousClass() throws Exception{
+	public void testFieldDeclarationInsideAnonymousClass() throws Exception {
 		run("import java.util.*; public class A { public Object get() { Map<String,String> aux = new HashMap<String, String>() {}; return new HashMap<String, String>() {boolean iteratorCalled;}; }}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testPriorityObjectVersusInt() throws Exception{
+	public void testPriorityObjectVersusInt() throws Exception {
 		CompilationUnit cu = run("import java.util.*; public class A { void foo(List<Integer> contents, int i) { contents.remove(Integer.valueOf(i)); }}");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("boolean", sd.getName());
 	}
-	
+
 	@Test
-	public void testMethodsThatReturnsMatrixs() throws Exception{
+	public void testMethodsThatReturnsMatrixs() throws Exception {
 		CompilationUnit cu = run("public class A { char[][] bar(){ return new char[0][0]; } void foo(String s) { int i = bar().length; }}");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		VariableDeclarationExpr vexpr = (VariableDeclarationExpr)stmt.getExpression();
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		VariableDeclarationExpr vexpr = (VariableDeclarationExpr) stmt
+				.getExpression();
 		Expression expr = vexpr.getVars().get(0).getInit();
 		SymbolData sd = expr.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("int", sd.getName());
 	}
-	
+
 	@Test
-	public void methodOrderingArrays() throws Exception{
+	public void methodOrderingArrays() throws Exception {
 		String m1 = "public static byte[] aryEq(final byte[] value) {return null;} ";
 		String m2 = "public static char[] aryEq(final char[] value) {return null;} ";
 		String m3 = "public static double[] aryEq(final double[] value) {return null;} ";
@@ -1059,21 +1086,24 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String m6 = "public static long[] aryEq(final long[] value) {return null;} ";
 		String m7 = "public static short[] aryEq(final short[] value) {return null; }";
 		String m8 = "public static <T> T[] aryEq(final T[] value) {return null; }";
-		CompilationUnit cu = run("public class A { public void foo(byte[] arg){aryEq(arg);} "+m1+m2+m3+m4+m5+m6+m7+m8+"}");
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		CompilationUnit cu = run("public class A { public void foo(byte[] arg){aryEq(arg);} "
+				+ m1 + m2 + m3 + m4 + m5 + m6 + m7 + m8 + "}");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("byte", sd.getName());
 	}
-	
+
 	@Test
-	public void testGenericsOnInheritedAttributes() throws Exception{
+	public void testGenericsOnInheritedAttributes() throws Exception {
 		CompilationUnit cu = run("public class A { class C<T> { T data; } class D extends C<byte[]> { void foo(byte[] x){} void aux(){foo(data);}} }");
-		TypeDeclaration td = (TypeDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		TypeDeclaration td = (TypeDeclaration) cu.getTypes().get(0)
+				.getMembers().get(1);
 		MethodDeclaration md = (MethodDeclaration) td.getMembers().get(1);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
@@ -1082,155 +1112,230 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("byte", sd.getName());
 	}
-	
+
 	@Test
-	public void testMethodResolutionWithRecursiveGenericsInMethodScope() throws Exception{
+	public void testMethodResolutionWithRecursiveGenericsInMethodScope()
+			throws Exception {
 		run("import java.util.*; class A { public <K extends List<V>, V extends List<K>> void withMutualRecursiveBound(List<Map<K, V>> list) {}}");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testMethodResolutionWithMultipleBoundsGenericsInMethodScope() throws Exception{
+	public void testMethodResolutionWithMultipleBoundsGenericsInMethodScope()
+			throws Exception {
 		run("import java.util.*; class A { <T extends Number & CharSequence> void withUpperBound(List<T> list) {} }");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testObjectCreationExprWithScope() throws Exception{
+	public void testObjectCreationExprWithScope() throws Exception {
 		CompilationUnit cu = run("class Owner<T>{ class Inner<T> {} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+				.getTypes().get(0).getMembers().get(0);
 		Assert.assertNotNull(type.getUsages());
 	}
-	
+
 	@Test
-	public void testObjectCreationExprWithScope2() throws Exception{
+	public void testObjectCreationExprWithScope2() throws Exception {
 		CompilationUnit cu = run("class A { class Owner<T>{ class Inner<T> {}} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		type = (ClassOrInterfaceDeclaration)type.getMembers().get(0);
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+				.getTypes().get(0).getMembers().get(0);
+		type = (ClassOrInterfaceDeclaration) type.getMembers().get(0);
 		Assert.assertNotNull(type.getUsages());
 	}
-	
+
 	@Test
-	public void testInheritanceOnNestedClassesFromAnObjectCreation() throws Exception{
+	public void testInheritanceOnNestedClassesFromAnObjectCreation()
+			throws Exception {
 		run("class A { private static class Owner<T>{ void foo() { Object o =new Owner<Integer>().new Inner<String>() {}; } private static abstract class Nested<X> {} private abstract class Inner<Y> extends Nested<Y> {}}  } ");
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testMethodCallsOnAnonymousClasses() throws Exception{
+	public void testMethodCallsOnAnonymousClasses() throws Exception {
 		String mainClass = "public class A { public void testTwoStageResolution() { class ForTwoStageResolution<X extends Number> {  <B extends X> void verifyTwoStageResolution() { TypeToken type = new TypeToken<B>(getClass()) {}.where(new TypeParameter<B>() {}, (Class) Integer.class); } } } }";
 		String typeTokenClass = "public class TypeToken<T> { public TypeToken(Class clazz) {}  public final <X> TypeToken<T> where(TypeParameter<X> typeParam, Class<X> typeArg) {return null;} }";
 		String typeParamClass = "public class TypeParameter<T> {}";
-		run(mainClass , typeTokenClass , typeParamClass);
+		run(mainClass, typeTokenClass, typeParamClass);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testClassesInsideAnonymousIds() throws Exception{
+	public void testClassesInsideAnonymousIds() throws Exception {
 		String mainClass = "public class A { void foo() {new From<Integer>() {}.new To<String>().type();}}";
 		String fromClass = "public class From<T>{ public class To<T> { void type(){}} }";
-		
+
 		run(mainClass, fromClass);
 		Assert.assertTrue(true);
 	}
 
-	
 	@Test
-	public void testClassesInsideAnonymousIds2() throws Exception{
+	public void testClassesInsideAnonymousIds2() throws Exception {
 		String mainClass = "public class A { void foo() {new From<Integer>() {}.new To<String>() {}.type();}}";
 		String fromClass = "public class From<T>{ public class To<T> { void type(){}} }";
-		
+
 		run(mainClass, fromClass);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testClassesInsideAnonymousIds3() throws Exception{
+	public void testClassesInsideAnonymousIds3() throws Exception {
 		String mainClass = "public class A { void foo() {new From<Integer>() {}.new To<String>() {};} class From<T>{ class To<T> { }}}";
-		
+
 		CompilationUnit cu = run(mainClass);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		ObjectCreationExpr call = (ObjectCreationExpr)stmt.getExpression();
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		ObjectCreationExpr call = (ObjectCreationExpr) stmt.getExpression();
 		SymbolReference ref = call.getType();
 		Assert.assertNotNull(ref.getSymbolDefinition());
 	}
-	
+
 	@Test
-	public void loadMethodsInsideAnonymousClasses() throws Exception{
-		String stmt="Service service2=new Service() {@Override public final void addListener(Listener listener, Executor executor) {}};";
-		String mainClass="import java.util.concurrent.Executor; public class A { void foo() {"+stmt+"}}";
-		String serviceClass ="import java.util.concurrent.Executor; public class Service{ abstract class Listener {}  public void addListener(Listener listener, Executor executor){} }";
-		String listenerClass ="class Listener {}";
+	public void loadMethodsInsideAnonymousClasses() throws Exception {
+		String stmt = "Service service2=new Service() {@Override public final void addListener(Listener listener, Executor executor) {}};";
+		String mainClass = "import java.util.concurrent.Executor; public class A { void foo() {"
+				+ stmt + "}}";
+		String serviceClass = "import java.util.concurrent.Executor; public class Service{ abstract class Listener {}  public void addListener(Listener listener, Executor executor){} }";
+		String listenerClass = "class Listener {}";
 		run(mainClass, serviceClass, listenerClass);
 		Assert.assertTrue(true);
 	}
-	
+
 	@Test
-	public void testImportsWithAsteriskUsages() throws Exception{
+	public void testImportsWithAsteriskUsages() throws Exception {
 		CompilationUnit cu = run("import java.util.*; class A { List<String> list; }");
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
-	
+
 	@Test
-	public void testObjectCreationReferences() throws Exception{
-		
+	public void testObjectCreationReferences() throws Exception {
+
 		CompilationUnit cu = run("import java.util.LinkedList; class A { void foo() { new LinkedList<String>(); }}");
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
-	
+
 	@Test
-	public void testMethodsOrderAsStaticImport() throws Exception{
-		String importedClass="package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "+
-				"public static Iterable<?> assertThat(Iterable target) {return null;}"+"}";
-		String mainClass ="import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(new LinkedList<String>()); } }";
+	public void testMethodsOrderAsStaticImport() throws Exception {
+		String importedClass = "package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "
+				+ "public static Iterable<?> assertThat(Iterable target) {return null;}"
+				+ "}";
+		String mainClass = "import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(new LinkedList<String>()); } }";
 		CompilationUnit cu = run(mainClass, importedClass);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
-		
-		Assert.assertEquals("java.lang.Iterable", call.getSymbolData().getMethod().getReturnType().getName());
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
+
+		Assert.assertEquals("java.lang.Iterable", call.getSymbolData()
+				.getMethod().getReturnType().getName());
 	}
-	
+
 	@Test
-	public void testMethodsOrderAsStaticImport2() throws Exception{
-		String importedClass="package test; import java.util.*; public class Test { public static <T extends Comparable<?>> List<T> assertThat(T target) {return null;}\n "+
-				"public static List assertThat(List target) {return null;}"+
-				"public static LinkedList assertThat(LinkedList target) {return null;}"+
-				"public static Collection assertThat(Collection target) {return null;}"+
-				"public static Boolean assertThat(Boolean target) {return null;}"+
-				"public static String assertThat(String target) {return null;}"+
-				"public static Object assertThat(Object target) {return null;}"+
-				"}";
-		String mainClass ="import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
+	public void testMethodsOrderAsStaticImport2() throws Exception {
+		String importedClass = "package test; import java.util.*; public class Test { public static <T extends Comparable<?>> List<T> assertThat(T target) {return null;}\n "
+				+ "public static List assertThat(List target) {return null;}"
+				+ "public static LinkedList assertThat(LinkedList target) {return null;}"
+				+ "public static Collection assertThat(Collection target) {return null;}"
+				+ "public static Boolean assertThat(Boolean target) {return null;}"
+				+ "public static String assertThat(String target) {return null;}"
+				+ "public static Object assertThat(Object target) {return null;}"
+				+ "}";
+		String mainClass = "import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
 		CompilationUnit cu = run(mainClass, importedClass);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
-		
-		Assert.assertEquals("java.lang.String", call.getSymbolData().getMethod().getReturnType().getName());
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
+
+		Assert.assertEquals("java.lang.String", call.getSymbolData()
+				.getMethod().getReturnType().getName());
 	}
-	
+
 	@Test
-	public void testMethodsOrderAsStaticImport3() throws Exception{
-		String importedClass="package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "+
-				"public static Iterable<?> assertThat(Object target) {return null;}"+"}";
-		String mainClass ="import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
+	public void testMethodsOrderAsStaticImport3() throws Exception {
+		String importedClass = "package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "
+				+ "public static Iterable<?> assertThat(Object target) {return null;}"
+				+ "}";
+		String mainClass = "import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
 		CompilationUnit cu = run(mainClass, importedClass);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
-		
-		Assert.assertEquals("java.lang.Comparable", call.getSymbolData().getMethod().getReturnType().getName());
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
+
+		Assert.assertEquals("java.lang.Comparable", call.getSymbolData()
+				.getMethod().getReturnType().getName());
 	}
-	
+
 	@Test
-	public void testMultipleStaticImportsFromTheSameClass() throws Exception{
+	public void testMultipleStaticImportsFromTheSameClass() throws Exception {
 		String externalClass = "package foo; class Files { public static void touch() {} public static void createTempDir(){} public static void bar3(){} }";
 		String mainClass = "package foo; import static foo.Files.createTempDir; import static foo.Files.touch; import java.io.File; class A { void foo() { Files.createTempDir(); }}";
 		CompilationUnit cu = run(mainClass, externalClass);
 		Assert.assertNull(cu.getImports().get(0).getUsages());
 		Assert.assertNull(cu.getImports().get(1).getUsages());
 	}
-	
+
+	@Test
+	public void testStreams() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+
+			run(FileUtils.fileToString("src/test/resources/codeStreams.txt"));
+			Assert.assertTrue(true);
+		}
+	}
+
+	@Test
+	public void testLambdasAsVariables() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			run("import java.util.function.Function; public class Lambda {  Function<Object, String> f = obj -> obj.toString(); }");
+			Assert.assertTrue(true);
+		}
+	}
+
+	@Test
+	public void testTemplatesWithMethodReferences() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			CompilationUnit cu = run("import java.util.concurrent.CompletableFuture; public class A { public static A parse(String s) { return null; } void foo(CompletableFuture<String> future) { future.thenApply(A::parse); } }");
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
+					.get(0);
+			SymbolData sd = stmt.getExpression().getSymbolData();
+			Assert.assertNotNull(sd);
+			Assert.assertEquals("java.util.concurrent.CompletableFuture",
+					sd.getName());
+			Assert.assertNotNull(sd.getParameterizedTypes());
+			Assert.assertEquals("A", sd.getParameterizedTypes().get(0)
+					.getName());
+
+		}
+	}
+
+	@Test
+	public void testMethodReferenceScopes() throws Exception {
+
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			run("import java.util.*; public class A { void foo(List<List<Integer>> subs) {  subs.forEach(System.out::println); }}");
+			Assert.assertTrue(true);
+		}
+	}
+
+	@Test
+	public void testTryStmtWithScope() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			run("import java.io.*; public class A { void foo() throws Exception { try (BufferedReader br = new BufferedReader(new FileReader(\"data.txt\"))) {  br.readLine(); } } } ");
+			Assert.assertTrue(true);
+		}
+	}
+
+	//@Test
+	public void testSortingWithLambdas() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			run("import java.util.List; public class A { void foo(List<String> list){ list.sort((a1, a2) -> a1.toLowerCase().compareTo(a2.toLowerCase()));} }");
+			Assert.assertTrue(true);
+		}
+	}
+
 }

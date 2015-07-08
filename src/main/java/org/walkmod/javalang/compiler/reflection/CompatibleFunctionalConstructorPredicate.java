@@ -29,8 +29,8 @@ public class CompatibleFunctionalConstructorPredicate<T> extends
 
 	public CompatibleFunctionalConstructorPredicate(SymbolType scope,
 			VoidVisitor<T> typeResolver, List<Expression> args, T ctx,
-			SymbolTable symTable) {
-		super(scope, typeResolver, args, ctx, symTable);
+			SymbolTable symTable, AbstractCompatibleArgsPredicate previousPredicate, SymbolType[] calculatedTypeArgs) {
+		super(scope, typeResolver, args, ctx, symTable, previousPredicate, calculatedTypeArgs);
 	}
 
 	@Override
@@ -38,7 +38,7 @@ public class CompatibleFunctionalConstructorPredicate<T> extends
 		Class<?>[] params = elem.getParameterTypes();
 		setParams(params);
 		setVarArgs(elem.isVarArgs());
-		return super.filter();
+		return super.filter(elem);
 	}
 
 }

@@ -60,7 +60,7 @@ public class SymbolDataOfMethodReferenceBuilder<T> implements TypeMappingBuilder
 					Iterator<Expression> it = argExpr.iterator();
 					while(it.hasNext()){
 						Expression arg = it.next();
-						if(arg != null){
+						if(arg != null && arg.getSymbolData() != null){
 							argsTypeName += " "+arg.getSymbolData().toString();
 						}
 						else{

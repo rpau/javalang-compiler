@@ -47,7 +47,7 @@ public class ClassInspector {
 					Class<?> clazz = (Class<?>) type;
 					if (interf.isAssignableFrom(clazz)) {
 						result.add(clazz);
-						found = interf.isInterface();
+						//found = interf.isInterface();
 					}
 				} else if (type instanceof ParameterizedType) {
 					ParameterizedType ptype = (ParameterizedType) type;
@@ -385,5 +385,6 @@ public class ClassInspector {
 
 		return isMethod2First;
 	}
+	
 
 }

@@ -16,9 +16,12 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.expr.LambdaExpr;
+import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
@@ -28,14 +31,18 @@ public class CompatibleLambdaResultPredicate<A> implements Predicate<Method> {
 	private LambdaExpr expr;
 
 	private VoidVisitor<A> typeResolver;
-	
+
 	private A ctx;
 
+	private Map<String, SymbolType> typeMapping;
+
 	public CompatibleLambdaResultPredicate(LambdaExpr expr,
-			VoidVisitor<A> typeResolver, A ctx) {
+			VoidVisitor<A> typeResolver, A ctx,
+			Map<String, SymbolType> typeMapping) {
 		this.expr = expr;
 		this.typeResolver = typeResolver;
 		this.ctx = ctx;
+		this.typeMapping = typeMapping;
 	}
 
 	@Override
@@ -52,10 +59,25 @@ public class CompatibleLambdaResultPredicate<A> implements Predicate<Method> {
 				returnType = new SymbolType(void.class);
 			}
 		}
-		SymbolType st = new SymbolType(method.getReturnType());
-		boolean isCompatible = (st.isCompatible((SymbolType) returnType));
-		if(isCompatible){
-			expr.setSymbolData(new SymbolType(method.getDeclaringClass()));
+		Map<String, SymbolType> updateMapping = new HashMap<String, SymbolType>();
+
+		SymbolType st = null;
+
+		if (void.class.equals(method.getReturnType())) {
+			st = new SymbolType(void.class);
+		} else {
+			st = SymbolType.valueOf(method.getGenericReturnType(),
+					(SymbolType) returnType, updateMapping, null);
+		}
+		Map<String, SymbolType> aux = new HashMap<String, SymbolType>(
+				typeMapping);
+		aux.putAll(updateMapping);
+
+		boolean isCompatible = ("void".equals(st.getName()) && (expr.getBody() instanceof ExpressionStmt))
+				|| (st.isCompatible((SymbolType) returnType));
+		if (isCompatible) {
+			expr.setSymbolData(SymbolType.valueOf(method.getDeclaringClass(),
+					aux));
 		}
 		return isCompatible;
 	}

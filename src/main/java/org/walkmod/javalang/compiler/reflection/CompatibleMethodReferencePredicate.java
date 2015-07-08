@@ -19,6 +19,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.TypeVariable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -31,8 +32,8 @@ import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
-public class CompatibleMethodReferencePredicate<A, T extends Executable> extends
-		CompatibleArgsPredicate<T> implements Predicate<T> {
+public class CompatibleMethodReferencePredicate<A, T extends Executable>
+		extends CompatibleArgsPredicate<T> implements Predicate<T> {
 
 	private MethodReferenceExpr expression = null;
 
@@ -43,14 +44,12 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable> extends
 	private SymbolType sd;
 
 	private List<Method> methodCallCandidates = null;
-	
+
 	private SymbolTable symTable;
 
-	public CompatibleMethodReferencePredicate(
-			MethodReferenceExpr expression,
-			VoidVisitor<A> typeResolver, 
-			A ctx, Map<String, SymbolType> mapping,
-			SymbolTable symTable) {
+	public CompatibleMethodReferencePredicate(MethodReferenceExpr expression,
+			VoidVisitor<A> typeResolver, A ctx,
+			Map<String, SymbolType> mapping, SymbolTable symTable) {
 		this.expression = expression;
 		this.typeResolver = typeResolver;
 		this.symTable = symTable;
@@ -60,8 +59,9 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable> extends
 
 	@Override
 	public boolean filter(Executable elem) throws Exception {
+		Executable equivalentMethod = null;
 
-		sd = (SymbolType)expression.getScope().getSymbolData();
+		sd = (SymbolType) expression.getScope().getSymbolData();
 		if (sd == null) {
 			expression.getScope().accept(typeResolver, ctx);
 			sd = (SymbolType) expression.getScope().getSymbolData();
@@ -86,7 +86,7 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable> extends
 				Method md = it.next();
 				int mdParameterCount = md.getParameterTypes().length;
 				int elemParameterCount = elem.getParameterTypes().length;
-				
+
 				FunctionalGenericsBuilder<MethodReferenceExpr> builder = new FunctionalGenericsBuilder<MethodReferenceExpr>(
 						md, typeResolver, getTypeMapping());
 				builder.build(expression);
@@ -94,31 +94,37 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable> extends
 				if (!Modifier.isStatic(md.getModifiers())) {
 					// the implicit parameter is an argument of the invisible
 					// lambda
-					
+
 					if (mdParameterCount == elemParameterCount - 1) {
 						SymbolType[] staticArgs = new SymbolType[args.length + 1];
 						for (int i = 0; i < args.length; i++) {
-							staticArgs[i+1] = args[i];
+							staticArgs[i + 1] = args[i];
 						}
 						staticArgs[0] = (SymbolType) sd;
 						args = staticArgs;
 						setTypeArgs(args);
 						found = super.filter(elem);
+
 					} else {
-						
+
 						String typeName = expression.getScope().toString();
-						
+
 						// it is a variable
-						if (symTable.findSymbol(typeName, ReferenceType.VARIABLE) != null
+						if (symTable.findSymbol(typeName,
+								ReferenceType.VARIABLE) != null
 								&& mdParameterCount == elemParameterCount) {
 							setTypeArgs(args);
 							found = super.filter(elem);
+
 						}
 					}
 
 				} else if (mdParameterCount == elemParameterCount) {
 					setTypeArgs(args);
 					found = super.filter(elem);
+				}
+				if (found) {
+					equivalentMethod = md;
 				}
 
 			}
@@ -135,13 +141,47 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable> extends
 				setTypeArgs(args);
 
 				found = super.filter(elem);
+				if (found) {
+					equivalentMethod = constructors[i];
+				}
 			}
 		}
 		if (found && elem instanceof Method) {
-			SymbolType st = SymbolType.valueOf((Method)elem, getTypeMapping());
+
+			Map<String, SymbolType> mapping = getTypeMapping();
+			SymbolType realResultType = null;
+			if (equivalentMethod instanceof Method) {
+
+				// R apply(T t); -> Quote::parse ( T= String y R = Quote)
+				realResultType = SymbolType.valueOf((Method) equivalentMethod,
+						mapping);
+
+				java.lang.reflect.Type genericReturnType = ((Method) elem)
+						.getGenericReturnType();
+				resolveTypeMapping(genericReturnType, realResultType, mapping);
+			}
+			realResultType = SymbolType.valueOf(elem.getDeclaringClass(),
+					mapping);
+			expression.setSymbolData(realResultType);
+			
+			SymbolType st = SymbolType.valueOf((Method) elem, mapping);
 			expression.setReferencedMethodSymbolData(st);
 			expression.setReferencedArgsSymbolData(getTypeArgs());
 		}
 		return found;
+	}
+
+	private void resolveTypeMapping(java.lang.reflect.Type type,
+			SymbolType reference, Map<String, SymbolType> mapping) {
+
+		if (type instanceof TypeVariable) {
+			TypeVariable<?> tv = (TypeVariable<?>) type;
+			SymbolType st = mapping.get(tv.getName());
+			if (st == null || "java.lang.Object".equals(st.getName())) {
+				mapping.put(tv.getName(), reference);
+			} else {
+				mapping.put(tv.getName(), (SymbolType) reference.merge(st));
+			}
+		}
 	}
 }

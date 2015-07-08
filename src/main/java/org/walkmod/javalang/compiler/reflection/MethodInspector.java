@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.ast.body.ModifierSet;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.Predicate;
@@ -161,6 +162,30 @@ public class MethodInspector {
 			throw new NoSuchMethodException("The method  cannot be found");
 		}
 		return result;
+	}
+
+	public static Method getLambdaMethod(Class<?> clazz) {
+		
+		if (clazz == null || clazz.equals(Object.class)) {
+			return null;
+		}
+		if (!clazz.isInterface()) {
+			return null;
+		}
+		Method[] declMethods = clazz.getDeclaredMethods();
+		for (int i = 0; i < declMethods.length; i++) {
+			int modifiers = declMethods[i].getModifiers();
+			if (!Modifier.isPrivate(modifiers)
+					&& !Modifier.isAbstract(modifiers)
+					&& !declMethods[i].isBridge()
+					&& !declMethods[i].isSynthetic()
+					&& !ModifierSet.isStatic(modifiers)) {
+				return declMethods[i];
+			}
+		}
+
+		return getLambdaMethod(clazz.getSuperclass());
+
 	}
 
 	public static Set<Method> getNonPrivateMethods(Class<?> clazz) {

@@ -38,25 +38,36 @@ import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 
-public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
+public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 
 	private List<Type> generics = null;
 	private Method method = null;
+	private Class<?> clazz = null;
 	private SymbolType scope = null;
 	private SymbolTable symbolTable;
 
-	public ResultBuilderFromCallGenerics(List<Type> generics, Method method) {
+	public ResultBuilderFromGenerics(List<Type> generics, Method method) {
 		this.generics = generics;
 		this.method = method;
 	}
 
-	public ResultBuilderFromCallGenerics(SymbolType scope, Method method,
+	public ResultBuilderFromGenerics(SymbolType scope, Method method,
 			SymbolTable symbolTable) {
 		this.scope = scope;
 		this.symbolTable = symbolTable;
 		this.method = method;
+		if(method != null){
+			clazz = method.getDeclaringClass();
+		}
 	}
-
+	
+	public ResultBuilderFromGenerics(SymbolType scope, Class<?> clazz,
+			SymbolTable symbolTable){
+		this.scope = scope;
+		this.symbolTable = symbolTable;
+		this.clazz = clazz;
+	}
+	
 	@Override
 	public SymbolTable build(SymbolTable genericsSymbolTable) throws Exception {
 
@@ -73,7 +84,7 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 			if (scope.getClazz().isMemberClass()) {
 				symbolName = scope.getClazz().getCanonicalName();
 			}
-			Symbol<?> s = symbolTable.findSymbol(symbolName);
+			Symbol<?> s = symbolTable.findSymbol(symbolName, ReferenceType.TYPE);
 			if (s != null) {
 				Scope scope = s.getInnerScope();
 				if (scope != null) {
@@ -90,18 +101,24 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 				}
 			}
 
-			updateTypeMapping(method.getDeclaringClass(), genericsSymbolTable,
+			updateTypeMapping(clazz, genericsSymbolTable,
 					scope, false, new HashSet<String>());
 
 			Scope newScope = new Scope();
 			genericsSymbolTable.pushScope(newScope);
-			TypeVariable<?>[] typeParams = method.getTypeParameters();
-			for (int i = 0; i < typeParams.length; i++) {
-				SymbolType aux = SymbolType.valueOf(typeParams[i], null);
-				aux.setTemplateVariable(typeParams[i].getName());
-				genericsSymbolTable.pushSymbol(typeParams[i].getName(),
-						ReferenceType.TYPE_PARAM, aux, null);
+		
+			if(method != null){
+				
+				TypeVariable<?>[] typeParams = method.getTypeParameters();
+				for (int i = 0; i < typeParams.length; i++) {
+					SymbolType aux = SymbolType.valueOf(typeParams[i], null);
+					aux.setTemplateVariable(typeParams[i].getName());
+					genericsSymbolTable.pushSymbol(typeParams[i].getName(),
+							ReferenceType.TYPE_PARAM, aux, null);
+				}
 			}
+			
+			
 		} else {
 			Scope newScope = new Scope();
 			genericsSymbolTable.pushScope(newScope);
@@ -223,7 +240,7 @@ public class ResultBuilderFromCallGenerics implements Builder<SymbolTable> {
 						if (st != null) {
 							st.setTemplateVariable(tparams[i].getName());
 							updateTypeMapping(tparams[i], genericsSymbolTable,
-									st, true, processedTypeVariables);
+									st, true, new HashSet<String>());
 						}
 					}
 				}

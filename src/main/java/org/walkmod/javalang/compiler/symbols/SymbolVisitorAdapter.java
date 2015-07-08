@@ -71,6 +71,7 @@ import org.walkmod.javalang.ast.stmt.SwitchEntryStmt;
 import org.walkmod.javalang.ast.stmt.SwitchStmt;
 import org.walkmod.javalang.ast.stmt.SynchronizedStmt;
 import org.walkmod.javalang.ast.stmt.ThrowStmt;
+import org.walkmod.javalang.ast.stmt.TryStmt;
 import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
 import org.walkmod.javalang.ast.stmt.WhileStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
@@ -530,6 +531,13 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		symbolTable.pushSymbol(n.getId().getName(), ReferenceType.VARIABLE,
 				type, n, actions);
 		n.setSymbolData(type);
+	}
+	
+	@Override
+	public void visit(TryStmt n, A arg) {
+		symbolTable.pushScope();
+		super.visit(n, arg);
+		symbolTable.popScope();
 	}
 
 	@Override

@@ -16,7 +16,6 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,12 +34,18 @@ public abstract class AbstractCompatibleArgsPredicate {
 	private boolean isVarAgs;
 
 	private int paramsCount;
+	
+	private SymbolType[] inferredMethodArgs;
 
 	public AbstractCompatibleArgsPredicate() {
 	}
 
 	public AbstractCompatibleArgsPredicate(SymbolType[] typeArgs) {
 		this.typeArgs = typeArgs;
+	}
+	
+	public SymbolType[] getInferredMethodArgs(){
+		return inferredMethodArgs;
 	}
 	
 
@@ -60,10 +65,10 @@ public abstract class AbstractCompatibleArgsPredicate {
 				}
 			}
 			methodArgsMapping = new HashMap<String, SymbolType>();
-			SymbolType[] methodArgs = new SymbolType[genericParameterTypes.length];
+			inferredMethodArgs = new SymbolType[genericParameterTypes.length];
 
 			for (int i = 0; i < genericParameterTypes.length && i < numParams; i++) {
-				methodArgs[i] = SymbolType.valueOf(genericParameterTypes[i],
+				inferredMethodArgs[i] = SymbolType.valueOf(genericParameterTypes[i],
 						typeArgs[i], methodArgsMapping, typeMapping);
 
 			}
@@ -75,7 +80,7 @@ public abstract class AbstractCompatibleArgsPredicate {
 								genericParameterTypes[paramsCount - 1],
 								typeMapping);
 					} else {
-						lastVariableTypeArg = methodArgs[methodArgs.length - 1];
+						lastVariableTypeArg = inferredMethodArgs[inferredMethodArgs.length - 1];
 					}
 					numParams = paramsCount;
 
@@ -87,8 +92,8 @@ public abstract class AbstractCompatibleArgsPredicate {
 						newTypeArgs[i] = typeArgs[i];
 					}
 
-					if (methodArgs.length == numParams && newTypeArgs[numParams-1] != null) {
-						if (methodArgs[numParams - 1].getArrayCount() != newTypeArgs[numParams - 1]
+					if (inferredMethodArgs.length == numParams && newTypeArgs[numParams-1] != null) {
+						if (inferredMethodArgs[numParams - 1].getArrayCount() != newTypeArgs[numParams - 1]
 								.getArrayCount()) {
 							newTypeArgs[newTypeArgs.length - 1] = lastVariableTypeArg
 									.clone();
@@ -99,9 +104,9 @@ public abstract class AbstractCompatibleArgsPredicate {
 					}
 
 				} else {
-					if (methodArgs.length > 0 && methodArgs[methodArgs.length-1] != null) {
-						methodArgs[methodArgs.length-1]
-								.setArrayCount(methodArgs[methodArgs.length-1]
+					if (inferredMethodArgs.length > 0 && inferredMethodArgs[inferredMethodArgs.length-1] != null) {
+						inferredMethodArgs[inferredMethodArgs.length-1]
+								.setArrayCount(inferredMethodArgs[inferredMethodArgs.length-1]
 										.getArrayCount() - 1);
 					}
 				}
@@ -110,7 +115,7 @@ public abstract class AbstractCompatibleArgsPredicate {
 			for (int i = 0; i < numParams && isCompatible; i++) {
 
 				isCompatible = newTypeArgs[i] == null
-						|| methodArgs[i].isCompatible(newTypeArgs[i]);
+						|| inferredMethodArgs[i].isCompatible(newTypeArgs[i]);
 
 			}
 
