@@ -1390,5 +1390,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 			//Comparator<T> List<E> 
 		}
 	}
+	
+	@Test
+	public void testStaticImportsWithNestedClasses() throws Exception{
+		
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			run("import static java.util.stream.Collector.Characteristics.*; public class A {}");
+			Assert.assertTrue(true);
+		}
+	}
 
 }

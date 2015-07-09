@@ -37,6 +37,7 @@ import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.reflection.ClassInspector;
+import org.walkmod.javalang.compiler.types.TypeNotFoundException;
 import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
@@ -344,7 +345,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			try {
 				clazz = TypesLoaderVisitor.getClassLoader().loadClass(this);
 			} catch (ClassNotFoundException e) {
-				throw new RuntimeException("Error resolving the class for "
+				throw new TypeNotFoundException("Error resolving the class for "
 						+ name, e.getCause());
 			}
 

@@ -18,7 +18,6 @@ package org.walkmod.javalang.compiler.actions;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
 import java.util.List;
 
 import org.walkmod.javalang.ast.CompilationUnit;
@@ -31,6 +30,8 @@ import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.compiler.types.TypeNotFoundException;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 
 public class LoadStaticImportsAction extends SymbolAction {
 
@@ -42,8 +43,33 @@ public class LoadStaticImportsAction extends SymbolAction {
 		if (n instanceof ImportDeclaration) {
 			ImportDeclaration id = (ImportDeclaration) n;
 			if (id.isStatic()) {
+				Class<?> clazz = null;
+				try {
+					clazz = symbol.getType().getClazz();
+				} catch (TypeNotFoundException e) {
+					String nameExpr = id.getName().toString();
+					int index = nameExpr.lastIndexOf(".");
 
-				Class<?> clazz = symbol.getType().getClazz();
+					while (index != -1 && clazz == null) {
+						nameExpr = nameExpr.substring(0, index) + "$"
+								+ nameExpr.substring(index + 1);
+						try {
+							clazz = TypesLoaderVisitor.getClassLoader()
+									.loadClass(nameExpr);
+						} catch (ClassNotFoundException e2) {
+
+						}
+						index = nameExpr.lastIndexOf(".");
+
+					}
+					if (clazz == null) {
+						throw e;
+					}
+					else{
+						symbol.getType().setName(nameExpr);
+						symbol.getType().getClazz();
+					}
+				}
 
 				Package pkg = clazz.getPackage();
 				String importPkgName = "";
@@ -64,7 +90,8 @@ public class LoadStaticImportsAction extends SymbolAction {
 				Class<?>[] declaredClasses = clazz.getDeclaredClasses();
 
 				for (int i = 0; i < declaredClasses.length; i++) {
-					if (!id.isAsterisk() && id.getName().getName()
+					if (!id.isAsterisk()
+							&& id.getName().getName()
 									.equals(declaredClasses[i].getSimpleName())) {
 						int modifiers = declaredClasses[i].getModifiers();
 
