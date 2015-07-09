@@ -95,6 +95,7 @@ public class FieldInspector {
 
 							result = SymbolType.valueOf(field.getGenericType(),
 									typeMapping);
+							result.setField(field);
 						}
 					}
 				} catch (Exception e) {

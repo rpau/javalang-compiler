@@ -17,8 +17,12 @@ package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,42 +64,127 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 		this.calculatedTypeArgs = calculatedTypeArgs;
 	}
 
-	public Map<String, SymbolType> createMapping(Class<?> interfaceToInspect,
-			SymbolType inferredArg, Executable method) throws Exception {
+	private void createEquivalenceMapping(
+			java.lang.reflect.Type classToInspect,
+			java.lang.reflect.Type receivedParameter,
+			Map<String, List<String>> equivalences) {
+
+		if (classToInspect instanceof Class<?>) {
+			Class<?> clazz1 = (Class<?>) classToInspect;
+			TypeVariable<?>[] params1 = clazz1.getTypeParameters();
+			if (receivedParameter instanceof Class<?>) {
+				Class<?> clazz2 = (Class<?>) receivedParameter;
+				TypeVariable<?>[] params2 = clazz2.getTypeParameters();
+				for (int i = 0; i < params1.length; i++) {
+					createEquivalenceMapping(params1[i], params2[i],
+							equivalences);
+				}
+			} else if (receivedParameter instanceof ParameterizedType) {
+				ParameterizedType ptype = (ParameterizedType) receivedParameter;
+				java.lang.reflect.Type[] typeArgs = ptype
+						.getActualTypeArguments();
+				for (int i = 0; i < params1.length; i++) {
+					createEquivalenceMapping(params1[i], typeArgs[i],
+							equivalences);
+				}
+			}
+		} else if (classToInspect instanceof TypeVariable) {
+			TypeVariable<?> tv1 = (TypeVariable<?>) classToInspect;
+			if (receivedParameter instanceof TypeVariable) {
+				TypeVariable<?> tv2 = (TypeVariable<?>) receivedParameter;
+				List<String> list = equivalences.get(tv2.getName());
+				if (list == null) {
+					list = new LinkedList<String>();
+				}
+				list.add(tv1.getName());
+				equivalences.put(tv2.getName(), list);
+			} else if (receivedParameter instanceof WildcardType) {
+				WildcardType wildcard = (WildcardType) receivedParameter;
+				java.lang.reflect.Type[] bounds = wildcard.getUpperBounds();
+				for (int i = 0; i < bounds.length; i++) {
+					createEquivalenceMapping(classToInspect, bounds[i],
+							equivalences);
+				}
+				bounds = wildcard.getLowerBounds();
+				for (int i = 0; i < bounds.length; i++) {
+					createEquivalenceMapping(classToInspect, bounds[i],
+							equivalences);
+				}
+			}
+		}
+
+	}
+
+	public Map<String, SymbolType> createMapping(Class<?> classToInspect,
+			java.lang.reflect.Type interfaceToInspect, SymbolType inferredArg,
+			Executable method) throws Exception {
 		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 
+		// infers the type mapping of the scope
 		GenericsBuilderFromClassParameterTypes builder = new GenericsBuilderFromClassParameterTypes(
 				typeMapping, scope, symTable);
 		builder.build(method.getDeclaringClass());
 		typeMapping = builder.getTypeMapping();
+		
+		
+		
 
+		// we want to infer the type mapping of the class that contains the
+		// method that
+		// is represented by a lambda expression using the type variables that
+		// appear in the generic parameter
 		Map<String, SymbolType> update = new HashMap<String, SymbolType>();
-		if (inferredArg != null) {
-			SymbolType.valueOf(interfaceToInspect, inferredArg, update, null);
-		}
-		Map<String, SymbolType> subset = new HashMap<String, SymbolType>();
-		Set<String> keys = update.keySet();
+
+		Map<String, List<String>> equivalences = new HashMap<String, List<String>>();
+		createEquivalenceMapping(classToInspect, interfaceToInspect,
+				equivalences);
+		Set<String> keys = equivalences.keySet();
+
 		for (String key : keys) {
-			SymbolType st1 = update.get(key);
-			Class<?> clazz = st1.getClazz();
-			if (Object.class.equals(clazz)) {
-				SymbolType aux = typeMapping.get(key);
-				if (aux != null) {
-					subset.put(key, aux);
-				} 
+			if (typeMapping.containsKey(key)) {
+				List<String> list = equivalences.get(key);
+				for (String key2 : list) {
+					update.put(key2, typeMapping.get(key));
+				}
 			}
+		}
+
+		keys = typeMapping.keySet();
+		for (String key : keys) {
+			if (!equivalences.containsKey(key)) {
+				update.put(key, typeMapping.get(key));
+			}
+		}
+
+	
+		if (inferredArg != null) {
+			//acording the template variables of the representative class, which are the corresponding SymbolTypes?
+			Map<String, SymbolType> paramsTypeMapping = new HashMap<String, SymbolType>();
+			SymbolType.valueOf(classToInspect, inferredArg, paramsTypeMapping, null);
+
+			// we delete the inferred Object classes
+			Map<String, SymbolType> subset = new HashMap<String, SymbolType>();
+			keys = paramsTypeMapping.keySet();
+			for (String key : keys) {
+				SymbolType st1 = paramsTypeMapping.get(key);
+				Class<?> clazz = st1.getClazz();
+				if (!Object.class.equals(clazz)) {
+					subset.put(key, st1);					
+				}
+
+			}
+			//we override the values defined by the generics that the scope gives.
+			update.putAll(subset);
 
 		}
-		update.clear();
-		if (inferredArg != null) {
-			SymbolType.valueOf(interfaceToInspect, inferredArg, update, subset);
-		}
-		update.putAll(subset);
+		
+		
 
 		return update;
 	}
 
 	public boolean filter(LambdaExpr lambda, Class<?> interfaceToInspect,
+			java.lang.reflect.Type equivalentTypeToInspect,
 			SymbolType inferredArg, Executable method) throws Exception {
 
 		boolean found = false;
@@ -105,7 +194,7 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 		ArrayFilter<Method> filter = new ArrayFilter<Method>(methods);
 
 		Map<String, SymbolType> typeMapping = createMapping(interfaceToInspect,
-				inferredArg, method);
+				equivalentTypeToInspect, inferredArg, method);
 		CompatibleLambdaArgsPredicate predArgs = new CompatibleLambdaArgsPredicate(
 				lambda);
 		predArgs.setTypeMapping(typeMapping);
@@ -116,18 +205,19 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 				.appendPredicate(predArgs)
 				.appendPredicate(
 						new CompatibleLambdaResultPredicate<T>(lambda,
-								typeResolver, ctx, typeMapping));
+								typeResolver, ctx, typeMapping, symTable));
 		found = filter.filterOne() != null;
 		return found;
 	}
 
 	public boolean filter(MethodReferenceExpr methodRef,
-			Class<?> interfaceToInspect, SymbolType inferredArg,
-			Executable method) throws Exception {
+			Class<?> interfaceToInspect,
+			java.lang.reflect.Type equivalentTypeToInspect,
+			SymbolType inferredArg, Executable method) throws Exception {
 
 		boolean found = false;
 		Map<String, SymbolType> aux = createMapping(interfaceToInspect,
-				inferredArg, method);
+				equivalentTypeToInspect, inferredArg, method);
 		aux.putAll(typeMapping);
 		CompatibleMethodReferencePredicate<T, Method> predArgs = new CompatibleMethodReferencePredicate<T, Method>(
 				methodRef, typeResolver, ctx, aux, symTable);
@@ -152,6 +242,8 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 		if (args != null && !args.isEmpty()) {
 			Iterator<Expression> it = args.iterator();
 			int i = 0;
+			java.lang.reflect.Type[] genericTypes = method
+					.getGenericParameterTypes();
 			while (it.hasNext() && !found) {
 				SymbolType argType = null;
 				if (inferredTypes != null) {
@@ -176,15 +268,19 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 					if (interfaceToInspect != null) {
 						if (current instanceof LambdaExpr) {
 							found = filter((LambdaExpr) current,
-									interfaceToInspect, argType, method);
-							if(found){
-								calculatedTypeArgs[i] = (SymbolType)current.getSymbolData();
+									interfaceToInspect, genericTypes[i],
+									argType, method);
+							if (found) {
+								calculatedTypeArgs[i] = (SymbolType) current
+										.getSymbolData();
 							}
 						} else {
 							found = filter((MethodReferenceExpr) current,
-									interfaceToInspect, argType, method);
-							if(found){
-								calculatedTypeArgs[i] = (SymbolType)current.getSymbolData();
+									interfaceToInspect, genericTypes[i],
+									argType, method);
+							if (found) {
+								calculatedTypeArgs[i] = (SymbolType) current
+										.getSymbolData();
 							}
 						}
 					}

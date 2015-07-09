@@ -724,12 +724,13 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			String comparator = "public class ComparisonProvider { public int compareByAge(Person p1, Person p2) { return p2.age -p1.age;}}";
 
-			String codeBase = "public class Person{ int age; " + comparator
+			String codeBase = "public class Person{ public ComparisonProvider myComparisonProvider; int age; " + comparator
 					+ " }";
 
 			String codeMain = "import java.util.Arrays; " + codeBase;
 			compile(codeMain);
-			SymbolType st = new SymbolType(getClassLoader().loadClass("Person"));
+			Class<?> clazz = getClassLoader().loadClass("Person");
+			SymbolType st = new SymbolType(clazz);
 			st.setArrayCount(1);
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
@@ -737,6 +738,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 			st = new SymbolType(getClassLoader().loadClass(
 					"Person$ComparisonProvider"));
+			st.setField(clazz.getField("myComparisonProvider"));
 
 			symTable.pushSymbol("myComparisonProvider", ReferenceType.VARIABLE,
 					st, null);

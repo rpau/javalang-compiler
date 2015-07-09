@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.Predicate;
@@ -107,11 +108,17 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 
 					} else {
 
-						String typeName = expression.getScope().toString();
-
+						Expression scope = expression.getScope();
+						
+						SymbolType stype = (SymbolType) scope.getSymbolData();
+						boolean isField = stype.getField() != null;
+						boolean isVariable = false;
+						if(!isField){
+							String name = scope.toString();
+							isVariable = (symTable.findSymbol(name, ReferenceType.VARIABLE) != null);
+						}
 						// it is a variable
-						if (symTable.findSymbol(typeName,
-								ReferenceType.VARIABLE) != null
+						if ((isField || isVariable)
 								&& mdParameterCount == elemParameterCount) {
 							setTypeArgs(args);
 							found = super.filter(elem);

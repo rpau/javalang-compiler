@@ -23,6 +23,7 @@ import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.expr.LambdaExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.compiler.Predicate;
+import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
@@ -35,23 +36,35 @@ public class CompatibleLambdaResultPredicate<A> implements Predicate<Method> {
 	private A ctx;
 
 	private Map<String, SymbolType> typeMapping;
+	
+	private SymbolTable symTable;
 
 	public CompatibleLambdaResultPredicate(LambdaExpr expr,
 			VoidVisitor<A> typeResolver, A ctx,
-			Map<String, SymbolType> typeMapping) {
+			Map<String, SymbolType> typeMapping, 
+			SymbolTable symTable) {
 		this.expr = expr;
 		this.typeResolver = typeResolver;
 		this.ctx = ctx;
 		this.typeMapping = typeMapping;
+		this.symTable = symTable;
 	}
 
 	@Override
 	public boolean filter(Method method) throws Exception {
+		
 		SymbolData returnType = expr.getBody().getSymbolData();
 		if (returnType == null) {
+			int scopeLevel = symTable.getScopeLevel();
 			try {
 				expr.accept(typeResolver, ctx);
 			} catch (Exception e) {
+				int currentScopeLevel = symTable.getScopeLevel();
+				while(currentScopeLevel > scopeLevel){
+					symTable.popScope(true);
+					currentScopeLevel --;
+				}
+				
 				return false;
 			}
 			returnType = expr.getBody().getSymbolData();

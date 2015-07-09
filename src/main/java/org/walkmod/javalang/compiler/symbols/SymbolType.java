@@ -400,6 +400,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		result.setName(name);
 		result.setClazz(clazz);
 		result.setArrayCount(arrayCount);
+		result.setField(field);
+		result.setMethod(method);
 		result.templateVariable = templateVariable;
 		if (parent == null) {
 			parent = new Stack<SymbolType>();

@@ -15,15 +15,14 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Stream;
 
 import javax.lang.model.SourceVersion;
 
@@ -1278,7 +1277,45 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
-	public void testStreams() throws Exception {
+	public void testStreams1() throws Exception{
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			CompilationUnit cu = run(
+					"import java.util.function.*;import java.util.*;import java.util.concurrent.*;import java.util.stream.*;"+
+					" public class A<T> {"+" Map<Object, Function<Stream<T>, ?>> forks; "+
+					" public void foo(){  "+
+						"List<BlockingQueue<T>> queues = new ArrayList<>(); "+
+						"forks.entrySet().stream().reduce("+
+							"new HashMap<Object, Future<?>>(), "+
+							"(map, e) -> { map.put(e.getKey(), getOperationResult(queues, e.getValue())); return map;},"+
+							"(m1, m2) -> {return m1;}); "+
+					 "} "+
+					"private Future<?> getOperationResult(List<BlockingQueue<T>> queues, Function<Stream<T>, ?> f) {return null; }}");
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
+					.get(1);
+			SymbolData sd = stmt.getExpression().getSymbolData();
+			Assert.assertNotNull(sd);
+		}
+		
+		
+	}
+	
+	@Test
+	public void testStreams2() throws Exception{
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String file1 ="package foo; import java.util.function.*;import java.util.stream.*; public class StreamForker<T>{  public StreamForker<T> fork(Object key, Function<Stream<T>, ?> f) {return null;}}";
+			String file2 = "package foo; public class Dish{ public String getName() {return null; } }";
+			String file3 ="package foo; import java.util.stream.*; public class A { public void foo(StreamForker<Dish> stream) { stream.fork(\"shortMenu\", s -> s.map(Dish::getName).collect(joining(\", \")));} "+
+			"public static Collector<CharSequence, ?, String> joining(CharSequence delimiter) {return null;}}";
+			CompilationUnit cu = run(file3, file2, file1);
+			Assert.assertTrue(true);
+		}	 
+		 
+	}
+	
+	@Test
+	public void  testStreams() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 
 			run(FileUtils.fileToString("src/test/resources/codeStreams.txt"));
@@ -1321,6 +1358,21 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 			Assert.assertTrue(true);
 		}
 	}
+	
+	@Test
+	public void testMethodReferenceScopes2() throws Exception {
+
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			CompilationUnit cu = run("import java.util.*; import java.util.stream.*; public class A { void foo(List<String> names) {Stream<String> s = names.stream(); s.forEach(System.out::println); }}");
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(0);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
+					.get(1);
+			SymbolData sd = stmt.getExpression().getSymbolData();
+			Assert.assertNotNull(sd);
+		}
+	}
+
 
 	@Test
 	public void testTryStmtWithScope() throws Exception {
@@ -1330,11 +1382,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		}
 	}
 
-	//@Test
+	@Test
 	public void testSortingWithLambdas() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			run("import java.util.List; public class A { void foo(List<String> list){ list.sort((a1, a2) -> a1.toLowerCase().compareTo(a2.toLowerCase()));} }");
 			Assert.assertTrue(true);
+			//Comparator<T> List<E> 
 		}
 	}
 
