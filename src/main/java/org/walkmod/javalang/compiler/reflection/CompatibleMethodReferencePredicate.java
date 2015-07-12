@@ -81,6 +81,10 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 							sd.getClazz(), thisClass);
 					methodsArray = new Method[methods.size()];
 					methods.toArray(methodsArray);
+					ExecutableSorter<Method> sorter = new ExecutableSorter<Method>();
+					
+					List<Method> sortedMethods = sorter.sort(methodsArray, null);
+					sortedMethods.toArray(methodsArray);
 				}
 
 				ArrayFilter<Method> filter = new ArrayFilter<Method>(
