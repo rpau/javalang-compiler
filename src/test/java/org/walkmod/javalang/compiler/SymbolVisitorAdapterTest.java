@@ -1423,5 +1423,28 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 			Assert.assertTrue(true);
 		}
 	}
+	
+	@Test
+	public void testMethodReferencesAsObjectCreation() throws Exception{
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			run("import java.util.function.Supplier;"+
+				"import java.util.HashMap;"+
+				"import java.util.Map;"+
+					"public class A{ "+
+					" static private interface Product {}"+
+					" static private class Loan implements Product {} "+
+					"final static private Map<String, Supplier<Product>> map = new HashMap<>();"+
+				"    static {map.put(\"loan\", Loan::new);}}");
+			Assert.assertTrue(true);
+		}
+	}
+	
+	@Test
+	public void testStaticFieldImportedButUnnecessary() throws Exception{
+		String code1 = "package foo; public class A { public static String name; }";
+		String code2 = "package foo; import static foo.A.name; public class B { String c = A.name; }";
+		CompilationUnit cu = run(code2, code1);
+		Assert.assertNull(cu.getImports().get(0).getUsages());
+	}
 
 }

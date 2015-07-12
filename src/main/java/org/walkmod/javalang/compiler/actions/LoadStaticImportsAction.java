@@ -160,8 +160,8 @@ public class LoadStaticImportsAction extends SymbolAction {
 							if (isVisible) {
 								Class<?> type = field.getType();
 								SymbolType st = new SymbolType(type);
-								table.pushSymbol(field.getName(),
-										ReferenceType.VARIABLE, st, n);
+								Symbol<?> s = new Symbol(field.getName(), st, n, ReferenceType.VARIABLE, true, null);
+								table.pushSymbol(s);
 							}
 						}
 					}

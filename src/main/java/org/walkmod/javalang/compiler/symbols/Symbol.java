@@ -39,15 +39,18 @@ public class Symbol<T extends Node & SymbolDefinition> {
 	private ReferenceType referenceType = ReferenceType.VARIABLE;
 
 	private Scope scopes;
+	
+	/* comes from an static import */
+	protected boolean staticallyImported = false;
 
 	public Symbol(String name, SymbolType type, T location) {
-		this(name, type, location, ReferenceType.VARIABLE,
+		this(name, type, location, ReferenceType.VARIABLE,false, 
 				(List<SymbolAction>) null);
 	}
 
 	public Symbol(String name, SymbolType type, T location,
 			ReferenceType referenceType) {
-		this(name, type, location, referenceType, (List<SymbolAction>) null);
+		this(name, type, location, referenceType, false, (List<SymbolAction>) null);
 	}
 
 	public Symbol(String name, SymbolType type, T location,
@@ -70,14 +73,20 @@ public class Symbol<T extends Node & SymbolDefinition> {
 	}
 
 	public Symbol(String name, SymbolType type, T location,
-			ReferenceType referenceType, List<SymbolAction> actions) {
+			ReferenceType referenceType,boolean staticallyImported, List<SymbolAction> actions) {
 		setName(name);
 		setType(type);
 		setLocation(location);
 		setReferenceType(referenceType);
 		this.actions = actions;
+		this.staticallyImported = staticallyImported;
+	}
+	
+	public boolean isStaticallyImported() {
+		return staticallyImported;
 	}
 
+	
 	public ReferenceType getReferenceType() {
 		return referenceType;
 	}

@@ -159,7 +159,7 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 
 			}
 		} else {
-			Constructor<?>[] constructors = sd.getClazz().getConstructors();
+			Constructor<?>[] constructors = sd.getClazz().getDeclaredConstructors();
 
 			for (int i = 0; i < constructors.length && !found; i++) {
 

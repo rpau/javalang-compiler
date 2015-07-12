@@ -228,7 +228,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 		Symbol added = null;
 		if (oldSymbol == null || !oldSymbol.getType().equals(st)) {
 			added = new Symbol(keyName, st, type,
-					ReferenceType.TYPE, actions);
+					ReferenceType.TYPE, false, actions);
 			added.setInnerScope(new Scope(added));
 			symbolTable.pushSymbol(added, true);
 
@@ -245,7 +245,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 					String innerClassName = getInnerName(st);
 					added = new Symbol(innerClassName, st, type,
-							ReferenceType.TYPE, actions);
+							ReferenceType.TYPE, false, actions);
 					added.setInnerScope(oldSymbol.getInnerScope());
 					symbolTable.pushSymbol(added, true);
 

@@ -94,7 +94,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 			}
 		}
 		Symbol<TypeDeclaration> thisSymbol = new Symbol<TypeDeclaration>(
-				"this", sym.getType(), declaration, ReferenceType.VARIABLE,
+				"this", sym.getType(), declaration, ReferenceType.VARIABLE, false,
 				actions);
 		thisSymbol.setInnerScope(sym.getInnerScope());
 		symbolTable.pushSymbol(thisSymbol);
@@ -183,7 +183,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				anonymousType.setInnerScope(scope);
 
 				Symbol<ObjectCreationExpr> thisSymbol = new Symbol<ObjectCreationExpr>(
-						"this", type, n, ReferenceType.VARIABLE, actions);
+						"this", type, n, ReferenceType.VARIABLE, false, actions);
 				scope.setRootSymbol(thisSymbol);
 				thisSymbol.setInnerScope(scope);
 

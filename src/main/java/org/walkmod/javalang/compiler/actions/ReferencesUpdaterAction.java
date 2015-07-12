@@ -62,10 +62,17 @@ public class ReferencesUpdaterAction extends SymbolAction {
 			boolean addUsage = true;
 			ReferenceType refType = symbol.getReferenceType();
 			if (refType.equals(ReferenceType.METHOD)) {
-				MethodSymbol ms = (MethodSymbol) symbol;
-				if (ms.isStaticallyImported()) {
+				if (symbol.isStaticallyImported()) {
 					if (emitter instanceof MethodCallExpr) {
 						MethodCallExpr mce = (MethodCallExpr) emitter;
+						addUsage = mce.getScope() == null;
+					}
+				}
+			}
+			else if(refType.equals(ReferenceType.VARIABLE)){
+				if (symbol.isStaticallyImported()) {
+					if (emitter instanceof FieldAccessExpr) {
+						FieldAccessExpr mce = (FieldAccessExpr) emitter;
 						addUsage = mce.getScope() == null;
 					}
 				}

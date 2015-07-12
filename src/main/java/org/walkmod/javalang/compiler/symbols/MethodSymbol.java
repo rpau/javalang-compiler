@@ -27,10 +27,7 @@ public class MethodSymbol extends Symbol {
 	private SymbolType scope;
 
 	private SymbolType[] args;
-
-	/* comes from an static import */
-	private boolean staticallyImported = false;
-
+	
 	private boolean hasDynamicArgs = false;
 
 	private Method referencedMethod = null;
@@ -69,11 +66,11 @@ public class MethodSymbol extends Symbol {
 			SymbolType scope, SymbolType[] args, boolean staticallyImported,
 			boolean hasDynamicArgs, Constructor<?> referencedConstructor,
 			List<SymbolAction> actions) {
-		super(name, type, location, ReferenceType.METHOD, actions);
+		super(name, type, location, ReferenceType.METHOD,staticallyImported, actions);
 
 		this.args = args;
 		this.scope = scope;
-		this.staticallyImported = staticallyImported;
+		
 		this.hasDynamicArgs = hasDynamicArgs;
 		this.referencedConstructor = referencedConstructor;
 		if (args == null) {
@@ -93,11 +90,10 @@ public class MethodSymbol extends Symbol {
 			SymbolType scope, SymbolType[] args, boolean staticallyImported,
 			boolean hasDynamicArgs, Method referencedMethod,
 			List<SymbolAction> actions) {
-		super(name, type, location, ReferenceType.METHOD, actions);
+		super(name, type, location, ReferenceType.METHOD, staticallyImported, actions);
 
 		this.args = args;
 		this.scope = scope;
-		this.staticallyImported = staticallyImported;
 		this.hasDynamicArgs = hasDynamicArgs;
 		this.referencedMethod = referencedMethod;
 		if (args == null) {
@@ -128,10 +124,7 @@ public class MethodSymbol extends Symbol {
 		return args;
 	}
 
-	public boolean isStaticallyImported() {
-		return staticallyImported;
-	}
-
+	
 	public boolean hasCompatibleSignature(SymbolType scope,
 			SymbolType[] otherArgs) {
 		boolean sameScope = (scope == null || this.scope == null)

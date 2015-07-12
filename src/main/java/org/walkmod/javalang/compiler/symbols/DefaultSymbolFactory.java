@@ -37,7 +37,7 @@ public class DefaultSymbolFactory implements SymbolFactory {
 	@Override
 	public Symbol create(String symbolName, ReferenceType referenceType,
 			SymbolType symbolType, Node location, List<SymbolAction> actions) {
-		return new Symbol(symbolName, symbolType, location, referenceType,
+		return new Symbol(symbolName, symbolType, location, referenceType, false,
 				actions);
 	}
 

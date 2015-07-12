@@ -256,11 +256,11 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 					containsLambda = true;
 					Class<?> interfaceToInspect = null;
 
-					if (params[i].isInterface()) {
-						interfaceToInspect = params[i];
+					if (inferredTypes[i].getClazz().isInterface()) {
+						interfaceToInspect = inferredTypes[i].getClazz();
 
 					} else if (isVarArgs && i == params.length - 1) {
-						Class<?> componentType = params[i].getComponentType();
+						Class<?> componentType = inferredTypes[i].getClazz();
 						if (componentType.isInterface()) {
 							interfaceToInspect = componentType;
 						}

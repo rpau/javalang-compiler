@@ -36,7 +36,7 @@ public class MultiTypeSymbol extends Symbol{
 	
 	@SuppressWarnings("unchecked")
 	public MultiTypeSymbol(String name, List<SymbolType> types, Node location, List<SymbolAction> actions){
-		super(name, types.get(0), location, ReferenceType.VARIABLE, actions);
+		super(name, types.get(0), location, ReferenceType.VARIABLE, false, actions);
 		this.types = types;
 	}
 	
