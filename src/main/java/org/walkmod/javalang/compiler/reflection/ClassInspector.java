@@ -22,14 +22,18 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.Types;
+import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 public class ClassInspector {
 
@@ -47,7 +51,7 @@ public class ClassInspector {
 					Class<?> clazz = (Class<?>) type;
 					if (interf.isAssignableFrom(clazz)) {
 						result.add(clazz);
-						//found = interf.isInterface();
+						// found = interf.isInterface();
 					}
 				} else if (type instanceof ParameterizedType) {
 					ParameterizedType ptype = (ParameterizedType) type;
@@ -63,6 +67,22 @@ public class ClassInspector {
 			}
 		}
 		return result;
+	}
+
+	public static void updateTypeMappingOfInterfaceSubclass(Class<?> subclass,
+			Class<?> interfaceClass, Map<String, SymbolType> mapping) throws InvalidTypeException {
+
+		List<Type> types = getInterfaceOrSuperclassImplementations(subclass, interfaceClass);
+		Iterator<Type> it = types.iterator();
+		while(it.hasNext()){
+			Type current = it.next();
+			if(current instanceof ParameterizedType){
+				ParameterizedType ptype = (ParameterizedType) current;
+				Map<String, SymbolType> update = new HashMap<String, SymbolType>();
+				SymbolType.valueOf(ptype, null, update, mapping);
+				mapping.putAll(update);
+			}
+		}
 	}
 
 	public static Class<?> getTheNearestSuperClass(Class<?> clazz1,
@@ -346,7 +366,7 @@ public class ClassInspector {
 		if (order1 != null && order2 != null) {
 			// if both are primitive or wrapper classes, we check class2 vs
 			// class1 or if the reference and the class2 and reference are not
-			// primitive (ex clazz2 = Object, clazz1 = int,  ref = Integer)
+			// primitive (ex clazz2 = Object, clazz1 = int, ref = Integer)
 			return (order2 <= order1)
 					|| ((reference == null || !reference.isPrimitive())
 							&& !clazz2.isPrimitive() && clazz1.isPrimitive());
@@ -385,6 +405,5 @@ public class ClassInspector {
 
 		return isMethod2First;
 	}
-	
 
 }

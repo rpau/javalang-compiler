@@ -164,27 +164,43 @@ public class MethodInspector {
 		return result;
 	}
 
-	public static Method getLambdaMethod(Class<?> clazz) {
-		
+	public static Method getLambdaMethod(Class<?> clazz, int paramsSize) {
+
 		if (clazz == null || clazz.equals(Object.class)) {
 			return null;
 		}
-		if (!clazz.isInterface()) {
+		boolean isAbstract = Modifier.isAbstract(clazz.getModifiers());
+		
+		if (!clazz.isInterface() && !isAbstract) {
+			//it is an
 			return null;
 		}
+
 		Method[] declMethods = clazz.getDeclaredMethods();
 		for (int i = 0; i < declMethods.length; i++) {
 			int modifiers = declMethods[i].getModifiers();
-			if (!Modifier.isPrivate(modifiers)
-					&& !Modifier.isAbstract(modifiers)
-					&& !declMethods[i].isBridge()
-					&& !declMethods[i].isSynthetic()
-					&& !ModifierSet.isStatic(modifiers)) {
+			/*
+			 * If a public, non-abstract, non-static method appears in an
+			 * interface, it must be a default method.
+			 */
+			boolean isDefault = Modifier.isPublic(modifiers)
+					&& !Modifier.isStatic(modifiers)
+					&& !Modifier.isAbstract(modifiers);
+
+			if (!isDefault
+					&& declMethods[i].getParameters().length == paramsSize) {
 				return declMethods[i];
 			}
 		}
-
-		return getLambdaMethod(clazz.getSuperclass());
+		Method result = getLambdaMethod(clazz.getSuperclass(), paramsSize);
+		if(isAbstract){
+			Class<?>[] interfaces = clazz.getInterfaces();
+			for(int i = 0; i < interfaces.length && result == null; i++){
+				result = getLambdaMethod(interfaces[i], paramsSize);
+			}
+		}
+		
+		return result;
 
 	}
 

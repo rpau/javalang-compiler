@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 import org.apache.log4j.Logger;
 import org.walkmod.javalang.ast.FieldSymbolData;
@@ -71,6 +72,7 @@ import org.walkmod.javalang.ast.expr.TypeExpr;
 import org.walkmod.javalang.ast.expr.UnaryExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
+import org.walkmod.javalang.ast.stmt.ReturnStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.stmt.SwitchEntryStmt;
 import org.walkmod.javalang.ast.stmt.SwitchStmt;
@@ -723,26 +725,54 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			Scope previous = null;
 			Symbol<?> ctxt = null;
 			Method md = null;
-			Class<?>[] classes = null;
-			if (n.getParentNode() instanceof VariableDeclarator) {
-				previous = symbolTable.getScopes().peek();
-				ctxt = previous.getRootSymbol();
+
+			Node parent = n.getParentNode();
+			if (parent instanceof VariableDeclarator
+					|| parent instanceof ReturnStmt) {
+				Stack<Scope> scopes = symbolTable.getScopes();
+				int j = scopes.size() - 1;
+				while (ctxt == null && j >= 0) {
+					previous = scopes.get(j);
+					ctxt = previous.getRootSymbol();
+					j--;
+				}
+
 			}
 
 			symbolTable.pushScope();
 			List<Parameter> params = n.getParameters();
 			if (params != null) {
 				int i = 0;
+				SymbolType[] args = new SymbolType[params.size()];
+				java.lang.reflect.Type[] classes = null;
 				for (Parameter p : params) {
 					if (md == null && ctxt != null) {
-						if (p.getType() == null) {
+						if (p.getType() == null && classes == null) {
 							Class<?> clazz = ctxt.getType().getClazz();
-							md = MethodInspector.getLambdaMethod(clazz);
-							classes = md.getParameterTypes();
+							md = MethodInspector.getLambdaMethod(clazz,
+									params.size());
+							Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+							try {
+								SymbolType.valueOf(clazz, ctxt.getType(),
+										typeMapping, null);
+
+								ClassInspector
+										.updateTypeMappingOfInterfaceSubclass(
+												clazz, md.getDeclaringClass(),
+												typeMapping);
+
+								classes = md.getGenericParameterTypes();
+								for (int j = 0; j < classes.length; j++) {
+									args[j] = SymbolType.valueOf(classes[i],
+											typeMapping);
+								}
+							} catch (InvalidTypeException e) {
+								throw new NoSuchExpressionTypeException(e);
+							}
 						}
-						if (i < classes.length) {
-							p.setSymbolData(new SymbolType(classes[i]));
-						}
+
+						p.setSymbolData(args[i]);
+
 					}
 					p.accept(semanticVisitor, arg);
 					i++;

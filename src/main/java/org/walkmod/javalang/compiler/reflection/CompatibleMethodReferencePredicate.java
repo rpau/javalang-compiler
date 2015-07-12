@@ -19,6 +19,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.Iterator;
 import java.util.List;
@@ -87,35 +88,57 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 				Method md = it.next();
 				int mdParameterCount = md.getParameterTypes().length;
 				int elemParameterCount = elem.getParameterTypes().length;
-
+				Map<String, SymbolType> typeMapping = getTypeMapping();
 				FunctionalGenericsBuilder<MethodReferenceExpr> builder = new FunctionalGenericsBuilder<MethodReferenceExpr>(
-						md, typeResolver, getTypeMapping());
+						md, typeResolver, typeMapping);
 				builder.build(expression);
 				SymbolType[] args = builder.getArgs();
 				if (!Modifier.isStatic(md.getModifiers())) {
-					// the implicit parameter is an argument of the invisible
-					// lambda
 
 					if (mdParameterCount == elemParameterCount - 1) {
-						SymbolType[] staticArgs = new SymbolType[args.length + 1];
-						for (int i = 0; i < args.length; i++) {
-							staticArgs[i + 1] = args[i];
+						// may be, just taking into account the type variables,
+						// it matches
+						Type[] genericParameterTypes = elem
+								.getGenericParameterTypes();
+						SymbolType[] genericArgs = new SymbolType[genericParameterTypes.length];
+						boolean allAreGenerics = true;
+						for (int i = 0; i < genericParameterTypes.length
+								&& allAreGenerics; i++) {
+							if (genericParameterTypes[i] instanceof TypeVariable<?>) {
+								TypeVariable<?> td = (TypeVariable<?>) genericParameterTypes[i];
+								genericArgs[i] = typeMapping.get(td.getName());
+								allAreGenerics = genericArgs[i] != null;
+							} else {
+								allAreGenerics = false;
+							}
 						}
-						staticArgs[0] = (SymbolType) sd;
-						args = staticArgs;
-						setTypeArgs(args);
-						found = super.filter(elem);
+						if (allAreGenerics) {
+							setTypeArgs(genericArgs);
+							found = super.filter(elem);
+						} else {
+							// the implicit parameter is an argument of the invisible
+							// lambda
+							SymbolType[] staticArgs = new SymbolType[args.length + 1];
+							for (int i = 0; i < args.length; i++) {
+								staticArgs[i + 1] = args[i];
+							}
+							staticArgs[0] = (SymbolType) sd;
+							args = staticArgs;
+							setTypeArgs(args);
+							found = super.filter(elem);
+						}
 
 					} else {
 
 						Expression scope = expression.getScope();
-						
+
 						SymbolType stype = (SymbolType) scope.getSymbolData();
 						boolean isField = stype.getField() != null;
 						boolean isVariable = false;
-						if(!isField){
+						if (!isField) {
 							String name = scope.toString();
-							isVariable = (symTable.findSymbol(name, ReferenceType.VARIABLE) != null);
+							isVariable = (symTable.findSymbol(name,
+									ReferenceType.VARIABLE) != null);
 						}
 						// it is a variable
 						if ((isField || isVariable)
@@ -170,7 +193,7 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 			realResultType = SymbolType.valueOf(elem.getDeclaringClass(),
 					mapping);
 			expression.setSymbolData(realResultType);
-			
+
 			SymbolType st = SymbolType.valueOf((Method) elem, mapping);
 			expression.setReferencedMethodSymbolData(st);
 			expression.setReferencedArgsSymbolData(getTypeArgs());
