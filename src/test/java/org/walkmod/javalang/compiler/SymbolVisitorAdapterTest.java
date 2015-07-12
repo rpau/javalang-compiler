@@ -36,6 +36,7 @@ import org.walkmod.javalang.ast.body.ConstructorDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
+import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.Expression;
@@ -43,7 +44,9 @@ import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
+import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.stmt.TryStmt;
+import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
@@ -1414,37 +1417,81 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testMethodReferencesForTypes() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			run("import java.util.*; import java.util.function.*;import java.util.stream.*; "+
-					"public class A { "+
-					"void foo(Stream<Character> stream) {"+
-					" stream.reduce(new WordCounter(0, true), WordCounter::accumulate, WordCounter::combine);"+
-					" }"
+			run("import java.util.*; import java.util.function.*;import java.util.stream.*; "
+					+ "public class A { "
+					+ "void foo(Stream<Character> stream) {"
+					+ " stream.reduce(new WordCounter(0, true), WordCounter::accumulate, WordCounter::combine);"
+					+ " }"
 					+ "  private static class WordCounter { public WordCounter(int counter, boolean lastSpace) {}  public WordCounter accumulate(Character c) {return null;} public WordCounter combine(WordCounter wordCounter) { return null; } } }");
 			Assert.assertTrue(true);
 		}
 	}
-	
+
 	@Test
-	public void testMethodReferencesAsObjectCreation() throws Exception{
+	public void testMethodReferencesAsObjectCreation() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			run("import java.util.function.Supplier;"+
-				"import java.util.HashMap;"+
-				"import java.util.Map;"+
-					"public class A{ "+
-					" static private interface Product {}"+
-					" static private class Loan implements Product {} "+
-					"final static private Map<String, Supplier<Product>> map = new HashMap<>();"+
-				"    static {map.put(\"loan\", Loan::new);}}");
+			run("import java.util.function.Supplier;"
+					+ "import java.util.HashMap;"
+					+ "import java.util.Map;"
+					+ "public class A{ "
+					+ " static private interface Product {}"
+					+ " static private class Loan implements Product {} "
+					+ "final static private Map<String, Supplier<Product>> map = new HashMap<>();"
+					+ "    static {map.put(\"loan\", Loan::new);}}");
 			Assert.assertTrue(true);
 		}
 	}
-	
+
 	@Test
-	public void testStaticFieldImportedButUnnecessary() throws Exception{
+	public void testStaticFieldImportedButUnnecessary() throws Exception {
 		String code1 = "package foo; public class A { public static String name; }";
 		String code2 = "package foo; import static foo.A.name; public class B { String c = A.name; }";
 		CompilationUnit cu = run(code2, code1);
 		Assert.assertNull(cu.getImports().get(0).getUsages());
+	}
+
+	@Test
+	public void testMultipleVariablesAtDifferentScopes() throws Exception {
+		String code = "public class A { public final int value = 4; public void doIt() { "
+				+ " int value = 6; "
+				+ "Runnable r = new Runnable(){ "
+				+ "public final int value = 5;"
+				+ "public void run(){"
+				+ "int value = 10;"
+				+ "System.out.println(this.value);"
+				+ "}"
+				+ "}; " + " r.run(); }" + "}";
+		CompilationUnit cu = run(code);
+		List<BodyDeclaration> members = cu.getTypes().get(0).getMembers();
+		FieldDeclaration fd = (FieldDeclaration) members.get(0);
+		Assert.assertNull(fd.getUsages());
+
+		MethodDeclaration md = (MethodDeclaration) members.get(1);
+		List<Statement> stmts = md.getBody().getStmts();
+		ExpressionStmt expression = (ExpressionStmt) stmts.get(0);
+
+		VariableDeclarationExpr vdexpr = (VariableDeclarationExpr) expression
+				.getExpression();
+		List<VariableDeclarator> vds = vdexpr.getVars();
+		Assert.assertNull(vds.get(0).getUsages());
+		expression = (ExpressionStmt) stmts.get(1);
+		vdexpr = (VariableDeclarationExpr) expression.getExpression();
+		vds = vdexpr.getVars();
+
+		ObjectCreationExpr typeStmt = (ObjectCreationExpr) vds.get(0).getInit();
+		List<BodyDeclaration> typeMembers = typeStmt.getAnonymousClassBody();
+
+		fd = (FieldDeclaration) typeMembers.get(0);
+		Assert.assertNotNull(fd.getUsages());
+
+		md = (MethodDeclaration) typeMembers.get(1);
+		stmts = md.getBody().getStmts();
+		expression = (ExpressionStmt) stmts.get(0);
+
+		vdexpr = (VariableDeclarationExpr) expression.getExpression();
+		vds = vdexpr.getVars();
+		Assert.assertNull(vds.get(0).getUsages());
+
 	}
 
 }

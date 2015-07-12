@@ -82,7 +82,7 @@ public class SymbolTable {
 			Class<?> clazz = symbolScope.getClazz();
 			Symbol<?> scopeSymbol = null;
 			if (clazz.isAnonymousClass()) {
-				scopeSymbol = indexStructure.get(0).findSymbol(
+				scopeSymbol = findSymbol(
 						symbolScope.getClazz().getName(), ReferenceType.TYPE);
 			} else {
 				scopeSymbol = indexStructure.get(0).findSymbol(
