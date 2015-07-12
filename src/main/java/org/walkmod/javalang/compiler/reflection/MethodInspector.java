@@ -170,9 +170,9 @@ public class MethodInspector {
 			return null;
 		}
 		boolean isAbstract = Modifier.isAbstract(clazz.getModifiers());
-		
+
 		if (!clazz.isInterface() && !isAbstract) {
-			//it is an
+			// it is an
 			return null;
 		}
 
@@ -193,15 +193,90 @@ public class MethodInspector {
 			}
 		}
 		Method result = getLambdaMethod(clazz.getSuperclass(), paramsSize);
-		if(isAbstract){
+		if (isAbstract) {
 			Class<?>[] interfaces = clazz.getInterfaces();
-			for(int i = 0; i < interfaces.length && result == null; i++){
+			for (int i = 0; i < interfaces.length && result == null; i++) {
 				result = getLambdaMethod(interfaces[i], paramsSize);
 			}
 		}
-		
+
 		return result;
 
+	}
+
+	public static Set<Method> getVisibleMethods(Class<?> clazz,
+			Class<?> invocationClass) {
+		Set<Method> result = new HashSet<Method>();
+		HashMap<String, Set<Method>> aux = new HashMap<String, Set<Method>>();
+
+		if (clazz == null || clazz.equals(Object.class)) {
+			return result;
+		}
+		Method[] declMethods = clazz.getDeclaredMethods();
+		for (int i = 0; i < declMethods.length; i++) {
+			boolean isVisible = clazz.getName().equals(
+					invocationClass.getName());
+			int modifiers = declMethods[i].getModifiers();
+			boolean samePackage = clazz.getPackage() == null
+					&& invocationClass.getPackage() == null;
+			samePackage = samePackage
+					|| (clazz.getPackage() != null
+							&& invocationClass.getPackage() != null && clazz
+							.getPackage().getName()
+							.equals(invocationClass.getPackage().getName()));
+			isVisible = isVisible || Modifier.isPublic(modifiers)
+					|| (Modifier.isProtected(modifiers) && samePackage);
+
+			if (isVisible && !Modifier.isAbstract(modifiers)
+					&& !declMethods[i].isBridge()
+					&& !declMethods[i].isSynthetic()) {
+				result.add(declMethods[i]);
+				Set<Method> auxSet = aux.get(declMethods[i].getName());
+				if (auxSet == null) {
+					auxSet = new HashSet<Method>();
+				}
+				auxSet.add(declMethods[i]);
+
+				aux.put(declMethods[i].getName(), auxSet);
+			}
+		}
+
+		Set<Method> superClassMethods = getNonPrivateMethods(clazz
+				.getSuperclass());
+		for (Method superMethod : superClassMethods) {
+			Set<Method> auxSet = aux.get(superMethod.getName());
+			boolean found = false;
+			if (auxSet == null) {
+				auxSet = new HashSet<Method>();
+			} else {
+				Class<?>[] superParams = superMethod.getParameterTypes();
+				Iterator<Method> it = auxSet.iterator();
+
+				while (it.hasNext() && !found) {
+					Method prev = it.next();
+					Class<?>[] prevParams = prev.getParameterTypes();
+					if (prevParams.length == superParams.length) {
+						if (prevParams.length > 0) {
+							boolean compatibleArgs = false;
+							for (int i = 0; i < prevParams.length
+									&& compatibleArgs; i++) {
+								compatibleArgs = superParams[i]
+										.isAssignableFrom(prevParams[i]);
+							}
+							found = compatibleArgs;
+						} else {
+							found = true;
+						}
+					}
+				}
+			}
+			if (!found) {
+				aux.put(superMethod.getName(), auxSet);
+				result.add(superMethod);
+			}
+		}
+
+		return result;
 	}
 
 	public static Set<Method> getNonPrivateMethods(Class<?> clazz) {

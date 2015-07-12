@@ -24,6 +24,7 @@ import java.lang.reflect.TypeVariable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
@@ -49,6 +50,10 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 
 	private SymbolTable symTable;
 
+	private Class<?> thisClass;
+
+	private Method[] methodsArray = null;
+
 	public CompatibleMethodReferencePredicate(MethodReferenceExpr expression,
 			VoidVisitor<A> typeResolver, A ctx,
 			Map<String, SymbolType> mapping, SymbolTable symTable) {
@@ -57,6 +62,7 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 		this.symTable = symTable;
 		this.ctx = ctx;
 		setTypeMapping(mapping);
+		thisClass = symTable.getType("this").getClazz();
 	}
 
 	@Override
@@ -70,8 +76,15 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 
 			if (!expression.getIdentifier().equals("new")) {
 
-				ArrayFilter<Method> filter = new ArrayFilter<Method>(sd
-						.getClazz().getMethods());
+				if (methodsArray == null) {
+					Set<Method> methods = MethodInspector.getVisibleMethods(
+							sd.getClazz(), thisClass);
+					methodsArray = new Method[methods.size()];
+					methods.toArray(methodsArray);
+				}
+
+				ArrayFilter<Method> filter = new ArrayFilter<Method>(
+						methodsArray);
 
 				filter.appendPredicate(new MethodsByNamePredicate(expression
 						.getIdentifier()));
@@ -116,7 +129,8 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 							setTypeArgs(genericArgs);
 							found = super.filter(elem);
 						} else {
-							// the implicit parameter is an argument of the invisible
+							// the implicit parameter is an argument of the
+							// invisible
 							// lambda
 							SymbolType[] staticArgs = new SymbolType[args.length + 1];
 							for (int i = 0; i < args.length; i++) {
@@ -159,7 +173,8 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 
 			}
 		} else {
-			Constructor<?>[] constructors = sd.getClazz().getDeclaredConstructors();
+			Constructor<?>[] constructors = sd.getClazz()
+					.getDeclaredConstructors();
 
 			for (int i = 0; i < constructors.length && !found; i++) {
 

@@ -53,7 +53,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 	@Override
 	public CompilationUnit compile(String... code) throws Exception {
-		return compile( false, code);
+		return compile(false, code);
 	}
 
 	public CompilationUnit compile(boolean useTypeTable, String... code)
@@ -698,6 +698,8 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
 			symTable.pushSymbol("rosterAsArray", ReferenceType.TYPE, st, null);
+			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
+					getClassLoader().loadClass("Person")), null);
 
 			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
 					Expression.class,
@@ -724,8 +726,8 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			String comparator = "public class ComparisonProvider { public int compareByAge(Person p1, Person p2) { return p2.age -p1.age;}}";
 
-			String codeBase = "public class Person{ public ComparisonProvider myComparisonProvider; int age; " + comparator
-					+ " }";
+			String codeBase = "public class Person{ public ComparisonProvider myComparisonProvider; int age; "
+					+ comparator + " }";
 
 			String codeMain = "import java.util.Arrays; " + codeBase;
 			compile(codeMain);
@@ -735,7 +737,8 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
 			symTable.pushSymbol("rosterAsArray", ReferenceType.TYPE, st, null);
-
+			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
+					getClassLoader().loadClass("Person")), null);
 			st = new SymbolType(getClassLoader().loadClass(
 					"Person$ComparisonProvider"));
 			st.setField(clazz.getField("myComparisonProvider"));
@@ -770,6 +773,8 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
 			symTable.pushSymbol("stringArray", ReferenceType.TYPE, st, null);
+			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
+					getClassLoader().loadClass("A")), null);
 			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
 					Expression.class,
 					"Arrays.sort(stringArray, String::compareToIgnoreCase)");
@@ -792,7 +797,9 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 	public void testMethodReferencesToConstructors() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			compile("import java.util.HashSet; public class A{ public static void foo(B b) {} public interface B{ public Object get();}}");
-
+			SymbolTable symTable = getSymbolTable();
+			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
+					getClassLoader().loadClass("A")), null);
 			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
 					Expression.class, "A.foo(HashSet::new)");
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
@@ -835,7 +842,10 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
+			
 			// roster is a Collection<String>
+			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
+					getClassLoader().loadClass("A")), null);
 			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
 
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
@@ -882,6 +892,8 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 			ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
 			symTable.pushScope();
 			// roster is a Collection<String>
+			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
+					getClassLoader().loadClass("A")), null);
 			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
 
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
