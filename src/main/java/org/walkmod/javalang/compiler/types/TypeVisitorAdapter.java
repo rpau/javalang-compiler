@@ -77,6 +77,7 @@ import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.stmt.SwitchEntryStmt;
 import org.walkmod.javalang.ast.stmt.SwitchStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
+import org.walkmod.javalang.ast.type.IntersectionType;
 import org.walkmod.javalang.ast.type.PrimitiveType;
 import org.walkmod.javalang.ast.type.PrimitiveType.Primitive;
 import org.walkmod.javalang.ast.type.Type;
@@ -510,6 +511,24 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			throw new NoSuchExpressionTypeException(e);
 		}
 
+	}
+	
+	@Override
+	public void visit(IntersectionType n, A arg){
+		super.visit(n, arg);
+		List<org.walkmod.javalang.ast.type.ReferenceType> bounds = n.getBounds();
+		SymbolData sd = null;
+		if(bounds != null){
+			List<SymbolType> boundsTypes = new LinkedList<SymbolType>();
+			for(org.walkmod.javalang.ast.type.ReferenceType bound: bounds){
+				SymbolType aux = (SymbolType)bound.getSymbolData();
+				if(aux != null){
+					boundsTypes.add(aux);
+				}
+			}
+			sd = new SymbolType(boundsTypes);
+		}
+		n.setSymbolData(sd);
 	}
 
 	@Override
