@@ -16,7 +16,6 @@
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -84,8 +83,8 @@ public class ConstructorSorter implements Comparator<Constructor> {
 
 	@Override
 	public int compare(Constructor method1, Constructor method2) {
-		Parameter[] params1 = method1.getParameters();
-		Parameter[] params2 = method2.getParameters();
+		Class<?>[] params1 = method1.getParameterTypes();
+		Class<?>[] params2 = method2.getParameterTypes();
 
 		if (params1.length < params2.length) {
 			return -1;
@@ -105,8 +104,8 @@ public class ConstructorSorter implements Comparator<Constructor> {
 						arg = arg.getComponentType();
 					}
 
-					Class<?> clazz2 = params2[i].getType();
-					Class<?> clazz1 = params1[i].getType();
+					Class<?> clazz2 = params2[i];
+					Class<?> clazz1 = params1[i];
 					while (clazz2.isArray() && clazz1.isArray()) {
 						clazz2 = clazz2.getComponentType();
 						clazz1 = clazz1.getComponentType();

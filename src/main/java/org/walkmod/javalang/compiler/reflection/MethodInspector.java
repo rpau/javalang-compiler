@@ -275,7 +275,7 @@ public class MethodInspector {
 					&& !Modifier.isAbstract(modifiers);
 
 			if (!isDefault
-					&& declMethods[i].getParameters().length == paramsSize) {
+					&& declMethods[i].getParameterTypes().length == paramsSize) {
 				return declMethods[i];
 			}
 		}
