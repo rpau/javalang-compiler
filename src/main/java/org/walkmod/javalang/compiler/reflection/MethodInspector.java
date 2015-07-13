@@ -226,8 +226,7 @@ public class MethodInspector {
 			isVisible = isVisible || Modifier.isPublic(modifiers)
 					|| (!Modifier.isPrivate(modifiers) && samePackage);
 
-			if (isVisible 
-					&& !declMethods[i].isBridge()
+			if (isVisible && !declMethods[i].isBridge()
 					&& !declMethods[i].isSynthetic()) {
 				result.add(declMethods[i]);
 				Set<Method> auxSet = aux.get(declMethods[i].getName());
@@ -239,42 +238,49 @@ public class MethodInspector {
 				aux.put(declMethods[i].getName(), auxSet);
 			}
 		}
+		if (clazz.isInterface()) {
+			Class<?>[] interfaces = clazz.getInterfaces();
+			for (int i = 0; i < interfaces.length; i++) {
+				Set<Method> auxSet = getVisibleMethods(interfaces[i],
+						invocationClass);
+				result.addAll(auxSet);
+			}
+		} else {
+			Set<Method> superClassMethods = getVisibleMethods(
+					clazz.getSuperclass(), invocationClass);
+			for (Method superMethod : superClassMethods) {
+				Set<Method> auxSet = aux.get(superMethod.getName());
+				boolean found = false;
+				if (auxSet == null) {
+					auxSet = new HashSet<Method>();
+				} else {
+					Class<?>[] superParams = superMethod.getParameterTypes();
+					Iterator<Method> it = auxSet.iterator();
 
-		Set<Method> superClassMethods = getVisibleMethods(clazz
-				.getSuperclass(), invocationClass);
-		for (Method superMethod : superClassMethods) {
-			Set<Method> auxSet = aux.get(superMethod.getName());
-			boolean found = false;
-			if (auxSet == null) {
-				auxSet = new HashSet<Method>();
-			} else {
-				Class<?>[] superParams = superMethod.getParameterTypes();
-				Iterator<Method> it = auxSet.iterator();
-
-				while (it.hasNext() && !found) {
-					Method prev = it.next();
-					Class<?>[] prevParams = prev.getParameterTypes();
-					if (prevParams.length == superParams.length) {
-						if (prevParams.length > 0) {
-							boolean compatibleArgs = false;
-							for (int i = 0; i < prevParams.length
-									&& compatibleArgs; i++) {
-								compatibleArgs = superParams[i]
-										.isAssignableFrom(prevParams[i]);
+					while (it.hasNext() && !found) {
+						Method prev = it.next();
+						Class<?>[] prevParams = prev.getParameterTypes();
+						if (prevParams.length == superParams.length) {
+							if (prevParams.length > 0) {
+								boolean compatibleArgs = false;
+								for (int i = 0; i < prevParams.length
+										&& compatibleArgs; i++) {
+									compatibleArgs = superParams[i]
+											.isAssignableFrom(prevParams[i]);
+								}
+								found = compatibleArgs;
+							} else {
+								found = true;
 							}
-							found = compatibleArgs;
-						} else {
-							found = true;
 						}
 					}
 				}
-			}
-			if (!found) {
-				aux.put(superMethod.getName(), auxSet);
-				result.add(superMethod);
+				if (!found) {
+					aux.put(superMethod.getName(), auxSet);
+					result.add(superMethod);
+				}
 			}
 		}
-
 		return result;
 	}
 
