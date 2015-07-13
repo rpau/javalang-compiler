@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.walkmod.javalang.ast.body.ModifierSet;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.Predicate;
@@ -225,9 +224,9 @@ public class MethodInspector {
 							.getPackage().getName()
 							.equals(invocationClass.getPackage().getName()));
 			isVisible = isVisible || Modifier.isPublic(modifiers)
-					|| (Modifier.isProtected(modifiers) && samePackage);
+					|| (!Modifier.isPrivate(modifiers) && samePackage);
 
-			if (isVisible && !Modifier.isAbstract(modifiers)
+			if (isVisible 
 					&& !declMethods[i].isBridge()
 					&& !declMethods[i].isSynthetic()) {
 				result.add(declMethods[i]);
@@ -241,8 +240,8 @@ public class MethodInspector {
 			}
 		}
 
-		Set<Method> superClassMethods = getNonPrivateMethods(clazz
-				.getSuperclass());
+		Set<Method> superClassMethods = getVisibleMethods(clazz
+				.getSuperclass(), invocationClass);
 		for (Method superMethod : superClassMethods) {
 			Set<Method> auxSet = aux.get(superMethod.getName());
 			boolean found = false;
@@ -279,7 +278,7 @@ public class MethodInspector {
 		return result;
 	}
 
-	public static Set<Method> getNonPrivateMethods(Class<?> clazz) {
+	public static Set<Method> getInheritedMethods(Class<?> clazz) {
 		Set<Method> result = new HashSet<Method>();
 		HashMap<String, Set<Method>> aux = new HashMap<String, Set<Method>>();
 
@@ -303,7 +302,7 @@ public class MethodInspector {
 			}
 		}
 
-		Set<Method> superClassMethods = getNonPrivateMethods(clazz
+		Set<Method> superClassMethods = getInheritedMethods(clazz
 				.getSuperclass());
 		for (Method superMethod : superClassMethods) {
 			Set<Method> auxSet = aux.get(superMethod.getName());

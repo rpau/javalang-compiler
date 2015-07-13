@@ -307,7 +307,7 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 						} else {
 							Class<?> clazz = s.getType().getClazz();
 							Set<Method> methods = MethodInspector
-									.getNonPrivateMethods(clazz);
+									.getInheritedMethods(clazz);
 							Symbol<?> parent = table.findSymbol("super",
 									ReferenceType.VARIABLE);
 							if (parent == null) {

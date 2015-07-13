@@ -31,11 +31,14 @@ import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.LambdaExpr;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
+import org.walkmod.javalang.compiler.Predicate;
+import org.walkmod.javalang.compiler.PreviousPredicateAware;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
-public abstract class AbstractCompatibleFunctionalPredicate<T> {
+public abstract class AbstractCompatibleFunctionalPredicate<T> implements
+		PreviousPredicateAware {
 
 	private VoidVisitor<T> typeResolver;
 	private List<Expression> args;
@@ -125,9 +128,6 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 				typeMapping, scope, symTable);
 		builder.build(method.getDeclaringClass());
 		typeMapping = builder.getTypeMapping();
-		
-		
-		
 
 		// we want to infer the type mapping of the class that contains the
 		// method that
@@ -156,11 +156,12 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 			}
 		}
 
-	
 		if (inferredArg != null) {
-			//acording the template variables of the representative class, which are the corresponding SymbolTypes?
+			// acording the template variables of the representative class,
+			// which are the corresponding SymbolTypes?
 			Map<String, SymbolType> paramsTypeMapping = new HashMap<String, SymbolType>();
-			SymbolType.valueOf(classToInspect, inferredArg, paramsTypeMapping, null);
+			SymbolType.valueOf(classToInspect, inferredArg, paramsTypeMapping,
+					null);
 
 			// we delete the inferred Object classes
 			Map<String, SymbolType> subset = new HashMap<String, SymbolType>();
@@ -169,16 +170,15 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 				SymbolType st1 = paramsTypeMapping.get(key);
 				Class<?> clazz = st1.getClazz();
 				if (!Object.class.equals(clazz)) {
-					subset.put(key, st1);					
+					subset.put(key, st1);
 				}
 
 			}
-			//we override the values defined by the generics that the scope gives.
+			// we override the values defined by the generics that the scope
+			// gives.
 			update.putAll(subset);
 
 		}
-		
-		
 
 		return update;
 	}
@@ -218,11 +218,16 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 		boolean found = false;
 		Map<String, SymbolType> aux = createMapping(interfaceToInspect,
 				equivalentTypeToInspect, inferredArg, method);
-		aux.putAll(typeMapping);
+		if (typeMapping != null) {
+			aux.putAll(typeMapping);
+		}
 		CompatibleMethodReferencePredicate<T, Method> predArgs = new CompatibleMethodReferencePredicate<T, Method>(
 				methodRef, typeResolver, ctx, aux, symTable);
 
-		Method[] methods = interfaceToInspect.getMethods();
+		Set<Method> methodsSet = MethodInspector.getVisibleMethods(interfaceToInspect, symTable.getType("this").getClazz());
+		Method[] methods = new Method[methodsSet.size()];
+		methodsSet.toArray(methods);
+		
 		ArrayFilter<Method> filter = new ArrayFilter<Method>(methods);
 		filter.appendPredicate(new AbstractMethodsPredicate());
 		filter.appendPredicate(predArgs);
@@ -314,6 +319,12 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> {
 
 	public void setVarArgs(boolean isVarArgs) {
 		this.isVarArgs = isVarArgs;
+	}
+
+	public void setPreviousPredicate(Predicate<?> pred) {
+		if (pred instanceof AbstractCompatibleArgsPredicate) {
+			this.previousPredicate = (AbstractCompatibleArgsPredicate) pred;
+		}
 	}
 
 }

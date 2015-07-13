@@ -29,10 +29,10 @@ import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
-import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
+import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.exceptions.SymbolTableException;
 
 public class SymbolTable {
@@ -72,9 +72,12 @@ public class SymbolTable {
 			ReferenceType... referenceType) {
 		return findSymbol(symbolName, null, null, referenceType);
 	}
-
 	public Symbol<?> findSymbol(String symbolName, SymbolType symbolScope,
 			SymbolType[] args, ReferenceType... referenceType) {
+		return findSymbol(symbolName, symbolScope, args, null, referenceType);
+	}
+	public Symbol<?> findSymbol(String symbolName, SymbolType symbolScope,
+			SymbolType[] args, List<Predicate<?>> predicates, ReferenceType... referenceType) {
 		int j = indexStructure.size() - 1;
 		Symbol<?> result = null;
 		Scope selectedScope = null;
@@ -93,7 +96,7 @@ public class SymbolTable {
 				if (scopeSymbol.getInnerScope() != null) {
 					// it is an inner class
 					return scopeSymbol.getInnerScope().findSymbol(symbolName,
-							symbolScope, args, referenceType);
+							symbolScope, args,predicates, referenceType);
 				} else
 					return null;
 			}
@@ -116,7 +119,7 @@ public class SymbolTable {
 				}
 
 			}
-			result = scope.findSymbol(symbolName, symbolScope, args,
+			result = scope.findSymbol(symbolName, symbolScope, args, predicates,
 					referenceType);
 
 			j--;

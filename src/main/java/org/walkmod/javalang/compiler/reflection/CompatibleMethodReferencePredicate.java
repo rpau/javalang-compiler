@@ -28,6 +28,7 @@ import java.util.Set;
 
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
+import org.walkmod.javalang.ast.expr.SuperExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
@@ -153,13 +154,14 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 						SymbolType stype = (SymbolType) scope.getSymbolData();
 						boolean isField = stype.getField() != null;
 						boolean isVariable = false;
-						if (!isField) {
+						boolean isSuper = scope instanceof SuperExpr;
+						if (!isField && !isSuper) {
 							String name = scope.toString();
 							isVariable = (symTable.findSymbol(name,
 									ReferenceType.VARIABLE) != null);
 						}
 						// it is a variable
-						if ((isField || isVariable)
+						if ((isField || isVariable || isSuper)
 								&& mdParameterCount == elemParameterCount) {
 							setTypeArgs(args);
 							found = super.filter(elem);

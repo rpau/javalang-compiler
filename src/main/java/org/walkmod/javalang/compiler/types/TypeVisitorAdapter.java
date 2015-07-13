@@ -84,6 +84,7 @@ import org.walkmod.javalang.ast.type.VoidType;
 import org.walkmod.javalang.ast.type.WildcardType;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
+import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.CompatibleConstructorArgsPredicate;
@@ -423,9 +424,16 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 				return;
 			}
 
+			List<Predicate<?>> preds = null;
+			if(hasFunctionalExpressions){
+				preds = new LinkedList<Predicate<?>>();
+				preds.add(new CompatibleFunctionalMethodPredicate<A>(
+						scope, this, n.getArgs(), arg, symbolTable, null,
+						symbolTypes));
+			}
 			// for static imports
 			Symbol<?> s = symbolTable.findSymbol(n.getName(), scope,
-					symbolTypes, ReferenceType.METHOD);
+					symbolTypes, preds, ReferenceType.METHOD);
 			boolean lookUpMethodByReflection = (s == null);
 
 			if (s != null) {

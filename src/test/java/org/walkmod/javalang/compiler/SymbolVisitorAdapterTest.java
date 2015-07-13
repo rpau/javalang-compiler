@@ -41,6 +41,7 @@ import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
+import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
@@ -1492,6 +1493,36 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		vds = vdexpr.getVars();
 		Assert.assertNull(vds.get(0).getUsages());
 
+	}
+	
+	@Test
+	public void testMethodReferencesWithSuperAsContext() throws Exception{
+		String codeA ="public class A extends B{ void bar2(C c){} void bar() { bar2(super::foo);} }";
+		String codeB ="public class B{ void foo(){} }";
+		String codeC ="public interface C { void doIt(); }";
+		CompilationUnit cu = run(codeA, codeB, codeC);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		List<Statement> stmts = md.getBody().getStmts();
+		ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
+		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
+		Assert.assertNotNull(call.getSymbolData());
+		MethodReferenceExpr mce = (MethodReferenceExpr)call.getArgs().get(0);
+		Assert.assertNotNull(mce.getSymbolData());
+	}
+	
+	@Test
+	public void testMethodReferencesWithTypeSuperAsContext() throws Exception{
+		String codeA ="public class A extends B{ void bar2(C c){} void bar() { bar2(A.super::foo);} }";
+		String codeB ="public class B{ void foo(){} }";
+		String codeC ="public interface C { void doIt(); }";
+		CompilationUnit cu = run(codeA, codeB, codeC);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		List<Statement> stmts = md.getBody().getStmts();
+		ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
+		MethodCallExpr call = (MethodCallExpr)stmt.getExpression();
+		Assert.assertNotNull(call.getSymbolData());
+		MethodReferenceExpr mce = (MethodReferenceExpr)call.getArgs().get(0);
+		Assert.assertNotNull(mce.getSymbolData());
 	}
 
 }

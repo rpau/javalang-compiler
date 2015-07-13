@@ -31,10 +31,10 @@ import java.util.Set;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.compiler.ArrayFilter;
+import org.walkmod.javalang.compiler.Predicate;
+import org.walkmod.javalang.compiler.PreviousPredicateAware;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
 import org.walkmod.javalang.compiler.reflection.ExecutableSorter;
-import org.walkmod.javalang.compiler.reflection.InvokableMethodsPredicate;
-import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
 
 public class Scope {
 
@@ -222,9 +222,39 @@ public class Scope {
 	public Map<String, SymbolType> getLocalTypeParams() {
 		return typeParams;
 	}
+	
+	private Executable runPredicates(List<Predicate<?>> predicates, Map<Integer, Executable> execs, SymbolType[] args){
+		Executable[] methods = new Executable[execs.size()];
+		List<Executable> sortedMethods = sorter.sort(execs.values()
+				.toArray(methods), SymbolType.toClassArray(args));
+		ArrayFilter<Executable> filter = new ArrayFilter<Executable>(
+				sortedMethods.toArray(methods));
+		CompatibleArgsPredicate<Executable> cap = new CompatibleArgsPredicate<Executable>(
+				args);
+		cap.setTypeMapping(getTypeParams());
+		filter.appendPredicate(cap);
+		if(predicates != null && !predicates.isEmpty()){
+			Predicate<?> first = predicates.get(0);
+			if(first instanceof PreviousPredicateAware){
+				((PreviousPredicateAware) first).setPreviousPredicate(cap);
+			}
+			for(Predicate pred: predicates){
+				filter.appendPredicate(pred);
+			}
+		}
+
+		Executable exec = null;
+		
+		try {
+			exec = filter.filterOne();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		return exec;
+	}
 
 	public Symbol<?> findSymbol(String name, SymbolType scope,
-			SymbolType[] args, ReferenceType... referenceType) {
+			SymbolType[] args, List<Predicate<?>> predicates, ReferenceType... referenceType) {
 		Symbol<?> result = null;
 		if (args == null) {
 			return findSymbol(name, referenceType);
@@ -254,26 +284,13 @@ public class Scope {
 				}
 				if (execs.isEmpty()) {
 					result = null;
-				} else if (execs.size() == 1) {
-					result = values.get(execs.keySet().iterator().next());
-				} else {
-					Executable[] methods = new Executable[execs.size()];
-					List<Executable> sortedMethods = sorter.sort(execs.values()
-							.toArray(methods), SymbolType.toClassArray(args));
-					ArrayFilter<Executable> filter = new ArrayFilter<Executable>(
-							sortedMethods.toArray(methods));
-					CompatibleArgsPredicate<Executable> cap = new CompatibleArgsPredicate<Executable>(
-							args);
-					cap.setTypeMapping(getTypeParams());
-					filter.appendPredicate(cap);
-
-					Executable exec = null;
-					;
-					try {
-						exec = filter.filterOne();
-					} catch (Exception e) {
-						throw new RuntimeException(e);
-					}
+				} else /*if (execs.size() == 1) {
+					MethodSymbol ms = (MethodSymbol)values.get(execs.keySet().iterator().next());
+					if()
+					result = ms;
+				} else */{
+					Executable exec = runPredicates(predicates, execs, args);
+					
 					Set<Integer> keys = execs.keySet();
 					Iterator<Integer> itKeys = keys.iterator();
 					while (itKeys.hasNext() && result == null) {
@@ -289,7 +306,7 @@ public class Scope {
 				if (values != null) {
 					Scope innerScope = values.get(0).getInnerScope();
 					if (innerScope != null) {
-						result = innerScope.findSymbol(name, scope, args,
+						result = innerScope.findSymbol(name, scope, args, predicates,
 								referenceType);
 					}
 				}
