@@ -17,7 +17,9 @@ package org.walkmod.javalang.compiler.actions;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.TypeVariable;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -124,8 +126,10 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 		md.accept(expressionTypeAnalyzer, null);
 		table.popScope(true);
 		MethodSymbolData msd = md.getSymbolData();
-		if(msd == null){
-			throw new RuntimeException("Ops! The following method can't be solved: "+md.toString());
+		if (msd == null) {
+			throw new RuntimeException(
+					"Ops! The following method can't be solved: "
+							+ md.toString());
 		}
 		method.setReferencedMethod(msd.getMethod());
 		table.pushSymbol(method, true);
@@ -221,6 +225,9 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 				table.pushScope(scope);
 				loadExtendsOrImplements(n.getExtends());
 				loadMethods(n.getMembers(), scope);
+				if (!n.isInterface()) {
+					loadExtendsOrImplements(n.getImplements());
+				}
 				table.popScope(true);
 			}
 		}
@@ -244,7 +251,8 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 						}
 					}
 				} catch (Exception e) {
-					throw new RuntimeException("Error loading methods in a given scope", e);
+					throw new RuntimeException(
+							"Error loading methods in a given scope", e);
 				}
 				scope.setHasMethodsLoaded(true);
 			}
@@ -279,6 +287,45 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 		private NameBuilder nameBuilder = new NameBuilder();
 
+		private void loadMethods(Collection<Method> methods,
+				List<SymbolType> params, SymbolType st) {
+			for (Method method : methods) {
+				Map<String, SymbolType> parameterTypes = null;
+				try {
+					java.lang.reflect.Type[] genericParameterTypes = method
+							.getGenericParameterTypes();
+					SymbolType[] methodArgs = new SymbolType[genericParameterTypes.length];
+					if (params != null) {
+						parameterTypes = new HashMap<String, SymbolType>();
+
+						TypeVariable<?>[] typeParams = method
+								.getDeclaringClass().getTypeParameters();
+						for (int i = 0; i < params.size()
+								&& i < typeParams.length; i++) {
+							SymbolType.valueOf(typeParams[i], params.get(i),
+									parameterTypes, null);
+						}
+					}
+
+					for (int i = 0; i < genericParameterTypes.length; i++) {
+						methodArgs[i] = SymbolType.valueOf(
+								genericParameterTypes[i], parameterTypes);
+
+					}
+
+					MethodSymbol methodSymbol = new MethodSymbol(
+							method.getName(), SymbolType.valueOf(method,
+									parameterTypes), null, st, methodArgs,
+							false, method.isVarArgs(), method, null);
+
+					table.pushSymbol(methodSymbol);
+
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}
+		}
+
 		public void loadExtendsOrImplements(
 				List<ClassOrInterfaceType> extendsList) {
 			if (extendsList != null) {
@@ -298,83 +345,116 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 					if (s != null) {
 						Object location = s.getLocation();
+						boolean isInterfaceImplementation = false;
 						if (location != null
 								&& location instanceof TypeDeclaration) {
 
-							TypeDeclaration superClass = ((TypeDeclaration) location);
-							superClass.accept(this, s.getInnerScope());
+							if (s.getType().getClazz().isInterface()) {
+								Node parent = type.getParentNode();
+								if (parent != null) {
+									if (parent instanceof ClassOrInterfaceDeclaration) {
+										ClassOrInterfaceDeclaration decl = (ClassOrInterfaceDeclaration) parent;
+
+										isInterfaceImplementation = !decl
+												.isInterface();
+									}
+								}
+							}
+							if (!isInterfaceImplementation) {
+								TypeDeclaration superClass = ((TypeDeclaration) location);
+								superClass.accept(this, s.getInnerScope());
+							} else {
+								// we need to load in the same scope the
+								// "default" methods
+								SymbolType typeArg = ASTSymbolTypeResolver
+										.getInstance().valueOf(type);
+
+								Node parent = type.getParentNode();
+								if (parent instanceof SymbolDataAware) {
+									SymbolDataAware<?> ctxt = (SymbolDataAware<?>) parent;
+									Set<Method> methods = MethodInspector
+											.getInhertitedDefaultMethods(
+													typeArg.getClazz(), ctxt
+															.getSymbolData()
+															.getClazz());
+									if (!methods.isEmpty()) {
+										Scope aux = new Scope();
+										TypeDeclaration superClass = ((TypeDeclaration) location);
+										superClass.accept(this, aux);
+
+										Iterator<Method> it = methods
+												.iterator();
+
+										while (it.hasNext()) {
+											Method current = it.next();
+											Class<?>[] argClasses = current
+													.getParameterTypes();
+											SymbolType[] args = new SymbolType[argClasses.length];
+											for (int i = 0; i < args.length; i++) {
+												args[i] = new SymbolType(
+														argClasses[i]);
+											}
+											Symbol<?> sym = aux.findSymbol(
+													current.getName(), null,
+													args, null,
+													ReferenceType.METHOD);
+
+											if (sym != null) {
+												sym.getType()
+														.setMethod(current);
+												table.pushSymbol(sym);
+											}
+										}
+
+									}
+								}
+							}
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
-							Set<Method> methods = MethodInspector
-									.getInheritedMethods(clazz);
-							Symbol<?> parent = table.findSymbol("super",
-									ReferenceType.VARIABLE);
-							if (parent == null) {
-								parent = table.pushSymbol("super",
-										ReferenceType.TYPE, new SymbolType(
-												clazz), null);
-							}
-							Scope parentScope = parent.getInnerScope();
-							if (parentScope == null) {
-								parentScope = new Scope(parent);
-								parent.setInnerScope(parentScope);
-							}
+							Set<Method> methods = null;
 
-							SymbolType typeArg = ASTSymbolTypeResolver
-									.getInstance().valueOf(type);
-
-							List<SymbolType> params = typeArg
-									.getParameterizedTypes();
-
-							table.pushScope(parentScope);
-							for (Method method : methods) {
-								Map<String, SymbolType> parameterTypes = null;
-								try {
-									java.lang.reflect.Type[] genericParameterTypes = method
-											.getGenericParameterTypes();
-									SymbolType[] methodArgs = new SymbolType[genericParameterTypes.length];
-									if (params != null) {
-										parameterTypes = new HashMap<String, SymbolType>();
-
-										TypeVariable<?>[] typeParams = method
-												.getDeclaringClass()
-												.getTypeParameters();
-										for (int i = 0; i < params.size()
-												&& i < typeParams.length; i++) {
-											SymbolType.valueOf(typeParams[i],
-													params.get(i),
-													parameterTypes, null);
-										}
-									}
-
-									for (int i = 0; i < genericParameterTypes.length; i++) {
-										methodArgs[i] = SymbolType.valueOf(
-												genericParameterTypes[i],
-												parameterTypes);
-
-									}
-
-									MethodSymbol methodSymbol = new MethodSymbol(
-											method.getName(),
-											SymbolType.valueOf(method,
-													parameterTypes), null,
-											s.getType(), methodArgs, false,
-											method.isVarArgs(), method, null);
-
-									table.pushSymbol(methodSymbol);
-
-								} catch (Exception e) {
-									throw new RuntimeException(e);
+							if (!isInterfaceImplementation) {
+								methods = MethodInspector
+										.getInheritedMethods(clazz);
+								Symbol<?> parent = table.findSymbol("super",
+										ReferenceType.VARIABLE);
+								if (parent == null) {
+									parent = table.pushSymbol("super",
+											ReferenceType.TYPE, new SymbolType(
+													clazz), null);
 								}
+
+								Scope parentScope = parent.getInnerScope();
+								if (parentScope == null) {
+									parentScope = new Scope(parent);
+									parent.setInnerScope(parentScope);
+								}
+
+								SymbolType typeArg = ASTSymbolTypeResolver
+										.getInstance().valueOf(type);
+
+								List<SymbolType> params = typeArg
+										.getParameterizedTypes();
+
+								table.pushScope(parentScope);
+								loadMethods(methods, params, s.getType());
+								table.popScope(true);
+							} else {
+								SymbolType typeArg = ASTSymbolTypeResolver
+										.getInstance().valueOf(type);
+								List<SymbolType> params = typeArg
+										.getParameterizedTypes();
+								methods = MethodInspector
+										.getInhertitedDefaultMethods(
+												typeArg.getClazz(), clazz);
+								loadMethods(methods, params, s.getType());
 							}
-							table.popScope(true);
 
 						}
 					}
 				}
 			}
 		}
-
 	}
 }

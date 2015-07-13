@@ -163,6 +163,94 @@ public class MethodInspector {
 		return result;
 	}
 
+	public static Set<Method> getInhertitedDefaultMethods(Class<?> interf,
+			Class<?> clazz) {
+		Set<Method> result = new HashSet<Method>();
+		if (!clazz.isInterface()) {
+			Method[] declMethods = clazz.getDeclaredMethods();
+
+			Set<Method> methods = getVisibleDefaultMethods(interf, clazz);
+			Iterator<Method> it = methods.iterator();
+			while (it.hasNext()) {
+				Method current = it.next();
+				boolean found = false;
+				Class<?>[] params2 = current.getParameterTypes();
+				for (int j = 0; j < declMethods.length && !found; j++) {
+
+					if (declMethods[j].getName().equals(current.getName())) {
+						Class<?>[] params1 = declMethods[j].getParameterTypes();
+						if (params1.length == params2.length) {
+							boolean compatible = true;
+							for (int k = 0; k < params2.length && compatible; k++) {
+								compatible = params1[k]
+										.isAssignableFrom(params2[k]);
+							}
+							found = compatible;
+						}
+					}
+				}
+				if (!found) {
+					result.add(current);
+				}
+			}
+
+		}
+
+		return result;
+	}
+
+	private static Set<Method> getVisibleDefaultMethods(Class<?> clazz,
+			Class<?> invocationClass) {
+		Set<Method> result = new HashSet<Method>();
+		HashMap<String, Set<Method>> aux = new HashMap<String, Set<Method>>();
+
+		if (clazz == null || clazz.equals(Object.class)) {
+			return result;
+		}
+		Method[] declMethods = clazz.getDeclaredMethods();
+		for (int i = 0; i < declMethods.length; i++) {
+			int modifiers = declMethods[i].getModifiers();
+
+			boolean isDefault = Modifier.isPublic(modifiers)
+					&& !Modifier.isStatic(modifiers)
+					&& !Modifier.isAbstract(modifiers);
+
+			boolean isVisible = clazz.getName().equals(
+					invocationClass.getName());
+
+			boolean samePackage = clazz.getPackage() == null
+					&& invocationClass.getPackage() == null;
+			samePackage = samePackage
+					|| (clazz.getPackage() != null
+							&& invocationClass.getPackage() != null && clazz
+							.getPackage().getName()
+							.equals(invocationClass.getPackage().getName()));
+			isVisible = isVisible || Modifier.isPublic(modifiers)
+					|| (!Modifier.isPrivate(modifiers) && samePackage);
+
+			if (isVisible && isDefault && !declMethods[i].isBridge()
+					&& !declMethods[i].isSynthetic()) {
+				result.add(declMethods[i]);
+				Set<Method> auxSet = aux.get(declMethods[i].getName());
+				if (auxSet == null) {
+					auxSet = new HashSet<Method>();
+				}
+				auxSet.add(declMethods[i]);
+
+				aux.put(declMethods[i].getName(), auxSet);
+			}
+		}
+		if (clazz.isInterface()) {
+			Class<?>[] interfaces = clazz.getInterfaces();
+			for (int i = 0; i < interfaces.length; i++) {
+				Set<Method> auxSet = getVisibleDefaultMethods(interfaces[i],
+						invocationClass);
+				result.addAll(auxSet);
+			}
+		}
+		return result;
+	}
+
 	public static Method getLambdaMethod(Class<?> clazz, int paramsSize) {
 
 		if (clazz == null || clazz.equals(Object.class)) {

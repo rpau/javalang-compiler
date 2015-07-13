@@ -47,7 +47,6 @@ import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.stmt.TryStmt;
-import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
@@ -1497,55 +1496,90 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testMethodReferencesWithSuperAsContext() throws Exception {
-		String codeA = "public class A extends B{ void bar2(C c){} void bar() { bar2(super::foo);} }";
-		String codeB = "public class B{ void foo(){} }";
-		String codeC = "public interface C { void doIt(); }";
-		CompilationUnit cu = run(codeA, codeB, codeC);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(1);
-		List<Statement> stmts = md.getBody().getStmts();
-		ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
-		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
-		Assert.assertNotNull(call.getSymbolData());
-		MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(0);
-		Assert.assertNotNull(mce.getSymbolData());
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String codeA = "public class A extends B{ void bar2(C c){} void bar() { bar2(super::foo);} }";
+			String codeB = "public class B{ void foo(){} }";
+			String codeC = "public interface C { void doIt(); }";
+			CompilationUnit cu = run(codeA, codeB, codeC);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(1);
+			List<Statement> stmts = md.getBody().getStmts();
+			ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
+			MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
+			Assert.assertNotNull(call.getSymbolData());
+			MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(
+					0);
+			Assert.assertNotNull(mce.getSymbolData());
+		}
 	}
 
 	@Test
 	public void testMethodReferencesWithTypeSuperAsContext() throws Exception {
-		String codeA = "public class A extends B{ void bar2(C c){} void bar() { bar2(A.super::foo);} }";
-		String codeB = "public class B{ void foo(){} }";
-		String codeC = "public interface C { void doIt(); }";
-		CompilationUnit cu = run(codeA, codeB, codeC);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(1);
-		List<Statement> stmts = md.getBody().getStmts();
-		ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
-		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
-		Assert.assertNotNull(call.getSymbolData());
-		MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(0);
-		Assert.assertNotNull(mce.getSymbolData());
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String codeA = "public class A extends B{ void bar2(C c){} void bar() { bar2(A.super::foo);} }";
+			String codeB = "public class B{ void foo(){} }";
+			String codeC = "public interface C { void doIt(); }";
+			CompilationUnit cu = run(codeA, codeB, codeC);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(1);
+			List<Statement> stmts = md.getBody().getStmts();
+			ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
+			MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
+			Assert.assertNotNull(call.getSymbolData());
+			MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(
+					0);
+			Assert.assertNotNull(mce.getSymbolData());
+		}
 	}
 
 	@Test
 	public void testIntersectionType() throws Exception {
-		String code = "import java.util.*; public class A { public void foo(Collection c) {} public void bar(LinkedList l) {foo((Collection & java.io.Serializable)l);} }";
-		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr expr = (MethodCallExpr)stmt.getExpression();
-		Assert.assertNotNull(expr.getArgs().get(0).getSymbolData());
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String code = "import java.util.*; public class A { public void foo(Collection c) {} public void bar(LinkedList l) {foo((Collection & java.io.Serializable)l);} }";
+			CompilationUnit cu = run(code);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
+					.get(0);
+			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
+			Assert.assertNotNull(expr.getArgs().get(0).getSymbolData());
+		}
 	}
-	
+
 	@Test
-	public void testSuperExpressionsToReferenceDefaultMethods() throws Exception{
-		String codeInterface ="interface Superinterface { default void foo() { System.out.println(\"Hi\"); } }";
-		String code ="public class Subclass2 implements Superinterface { public void foo() { throw new UnsupportedOperationException(); } void tweak() {  Superinterface.super.foo(); }}";
-		CompilationUnit cu = run(code, codeInterface);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr expr = (MethodCallExpr)stmt.getExpression();
-		Assert.assertNotNull(expr.getSymbolData());
+	public void testSuperExpressionsToReferenceDefaultMethods()
+			throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String codeInterface = "interface Superinterface { default void foo() { System.out.println(\"Hi\"); } }";
+			String code = "public class Subclass2 implements Superinterface { public void foo() { throw new UnsupportedOperationException(); } void tweak() {  Superinterface.super.foo(); }}";
+			CompilationUnit cu = run(code, codeInterface);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+					.getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
+					.get(0);
+			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
+			Assert.assertNotNull(expr.getSymbolData());
+		}
+	}
+
+	@Test
+	public void testDefaultMethodInheritance() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String code = "public class A { interface B{ default void foo() { System.out.println(\"Hi\"); }}  class D implements B{ void bar(){this.foo();}}}";
+			CompilationUnit cu = run(code);
+			ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+					.getTypes().get(0).getMembers().get(1);
+			MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
+					.get(0);
+			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
+			Assert.assertNotNull(expr.getSymbolData());
+			
+			type = (ClassOrInterfaceDeclaration) cu
+					.getTypes().get(0).getMembers().get(0);
+			md = (MethodDeclaration) type.getMembers().get(0);
+			Assert.assertNotNull(md.getUsages());
+		}
 	}
 
 }
