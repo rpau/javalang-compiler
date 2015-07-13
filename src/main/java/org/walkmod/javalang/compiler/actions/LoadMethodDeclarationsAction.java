@@ -378,8 +378,10 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 															.getSymbolData()
 															.getClazz());
 									if (!methods.isEmpty()) {
-										Scope aux = new Scope();
+										Scope aux = s.getInnerScope();
+
 										TypeDeclaration superClass = ((TypeDeclaration) location);
+
 										superClass.accept(this, aux);
 
 										Iterator<Method> it = methods
@@ -387,25 +389,38 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 										while (it.hasNext()) {
 											Method current = it.next();
-											Class<?>[] argClasses = current
-													.getParameterTypes();
-											SymbolType[] args = new SymbolType[argClasses.length];
-											for (int i = 0; i < args.length; i++) {
-												args[i] = new SymbolType(
-														argClasses[i]);
-											}
-											Symbol<?> sym = aux.findSymbol(
-													current.getName(), null,
-													args, null,
-													ReferenceType.METHOD);
+											Symbol<?> sType = table
+													.findSymbol(
+															current.getDeclaringClass()
+																	.getCanonicalName(),
+															ReferenceType.TYPE);
+											if (sType != null) {
+												aux = sType.getInnerScope();
+												if (aux != null) {
+													Class<?>[] argClasses = current
+															.getParameterTypes();
+													SymbolType[] args = new SymbolType[argClasses.length];
+													for (int i = 0; i < args.length; i++) {
+														args[i] = new SymbolType(
+																argClasses[i]);
+													}
+													Symbol<?> sym = aux
+															.findSymbol(
+																	current.getName(),
+																	null,
+																	args,
+																	null,
+																	ReferenceType.METHOD);
 
-											if (sym != null) {
-												sym.getType()
-														.setMethod(current);
-												table.pushSymbol(sym);
+													if (sym != null) {
+														sym.getType()
+																.setMethod(
+																		current);
+														table.pushSymbol(sym);
+													}
+												}
 											}
 										}
-
 									}
 								}
 							}

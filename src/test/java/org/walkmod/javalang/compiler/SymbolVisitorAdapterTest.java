@@ -1582,6 +1582,27 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		}
 	}
 	
+	
+	@Test
+	public void testDefaultMethodInheritance2() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 8) {
+			String code = "public class A { interface Z {default void foo() { System.out.println(\"Hi\"); }} interface B extends Z{ }  class D implements B{ void bar(){this.foo();}}}";
+			CompilationUnit cu = run(code);
+			ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+					.getTypes().get(0).getMembers().get(2);
+			MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
+					.get(0);
+			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
+			Assert.assertNotNull(expr.getSymbolData());
+			
+			type = (ClassOrInterfaceDeclaration) cu
+					.getTypes().get(0).getMembers().get(0);
+			md = (MethodDeclaration) type.getMembers().get(0);
+			Assert.assertNotNull(md.getUsages());
+		}
+	}
+	
 	@Test
 	public void testMethodOrderingWithLongsAndWrappers() throws Exception{
 		String code ="public class A {void foo(long i){} void foo(Integer x){} void bar(){foo(1);}}";
