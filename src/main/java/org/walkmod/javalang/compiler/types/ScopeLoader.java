@@ -92,6 +92,13 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 					superSymbol.setInnerScope(superType.getInnerScope());
 				}
 			}
+			else{
+				//Java 8: it references to itself because is could be referenced to call default methods
+				Symbol<TypeDeclaration> superSymbol = new Symbol<TypeDeclaration>(
+						"super", sym.getType(), null, ReferenceType.VARIABLE, false,
+						null);
+				symbolTable.pushSymbol(superSymbol);
+			}
 		}
 		Symbol<TypeDeclaration> thisSymbol = new Symbol<TypeDeclaration>(
 				"this", sym.getType(), declaration, ReferenceType.VARIABLE, false,

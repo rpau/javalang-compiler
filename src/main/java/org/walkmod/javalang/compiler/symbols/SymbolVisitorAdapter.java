@@ -394,7 +394,47 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 	public void visit(ClassOrInterfaceDeclaration n, A arg) {
 
 		pushScope(n);
-		super.visit(n, arg);
+		if (n.getJavaDoc() != null) {
+			n.getJavaDoc().accept(this, arg);
+		}
+		if (n.getAnnotations() != null) {
+			for (AnnotationExpr a : n.getAnnotations()) {
+				a.accept(this, arg);
+			}
+		}
+		if (n.getTypeParameters() != null) {
+			for (TypeParameter t : n.getTypeParameters()) {
+				t.accept(this, arg);
+			}
+		}
+		if (n.getExtends() != null) {
+			for (ClassOrInterfaceType c : n.getExtends()) {
+				c.accept(this, arg);
+			}
+		}
+		if (n.getImplements() != null) {
+			for (ClassOrInterfaceType c : n.getImplements()) {
+				c.accept(this, arg);
+				SymbolData sd = c.getSymbolData();
+				if(sd != null){
+					//Java 8 super in an interface is itself
+					Symbol<?> s= symbolTable.findSymbol(sd.getName(), ReferenceType.TYPE);
+					if(s != null){
+						Scope scope = s.getInnerScope();
+						if(scope == null){
+							scope = new Scope();
+							scope.addSymbol(new Symbol("super", s.getType(), null ));
+							s.setInnerScope(scope);
+						}
+					}
+				}
+			}
+		}
+		if (n.getMembers() != null) {
+			for (BodyDeclaration member : n.getMembers()) {
+				member.accept(this, arg);
+			}
+		}
 		symbolTable.popScope();
 
 	}

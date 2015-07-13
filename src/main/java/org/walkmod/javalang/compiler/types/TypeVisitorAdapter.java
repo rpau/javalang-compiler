@@ -426,11 +426,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			}
 
 			List<Predicate<?>> preds = null;
-			if(hasFunctionalExpressions){
+			if (hasFunctionalExpressions) {
 				preds = new LinkedList<Predicate<?>>();
-				preds.add(new CompatibleFunctionalMethodPredicate<A>(
-						scope, this, n.getArgs(), arg, symbolTable, null,
-						symbolTypes));
+				preds.add(new CompatibleFunctionalMethodPredicate<A>(scope,
+						this, n.getArgs(), arg, symbolTable, null, symbolTypes));
 			}
 			// for static imports
 			Symbol<?> s = symbolTable.findSymbol(n.getName(), scope,
@@ -512,17 +511,18 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 		}
 
 	}
-	
+
 	@Override
-	public void visit(IntersectionType n, A arg){
+	public void visit(IntersectionType n, A arg) {
 		super.visit(n, arg);
-		List<org.walkmod.javalang.ast.type.ReferenceType> bounds = n.getBounds();
+		List<org.walkmod.javalang.ast.type.ReferenceType> bounds = n
+				.getBounds();
 		SymbolData sd = null;
-		if(bounds != null){
+		if (bounds != null) {
 			List<SymbolType> boundsTypes = new LinkedList<SymbolType>();
-			for(org.walkmod.javalang.ast.type.ReferenceType bound: bounds){
-				SymbolType aux = (SymbolType)bound.getSymbolData();
-				if(aux != null){
+			for (org.walkmod.javalang.ast.type.ReferenceType bound : bounds) {
+				SymbolType aux = (SymbolType) bound.getSymbolData();
+				if (aux != null) {
 					boundsTypes.add(aux);
 				}
 			}
@@ -672,11 +672,24 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 			classExpr.accept(this, arg);
 			SymbolType st = (SymbolType) classExpr.getSymbolData();
 
-			Class<?> superClass = st.getClazz().getSuperclass();
-			if (superClass == null) {
-				superClass = Object.class;
+			Symbol<?> sType = symbolTable.findSymbol(st.getName(),
+					ReferenceType.TYPE);
+			boolean useReflection = true;
+			if (sType != null && sType.getInnerScope() != null) {
+				Scope scope = sType.getInnerScope();
+				sType = scope.findSymbol("super");
+				if (sType != null) {
+					st = sType.getType().clone();
+					useReflection = false;
+				}
 			}
-			st = new SymbolType(superClass);
+			if (useReflection) {
+				Class<?> superClass = st.getClazz().getSuperclass();
+				if (superClass == null) {
+					superClass = Object.class;
+				}
+				st = new SymbolType(superClass);
+			}
 			n.setSymbolData(st);
 		}
 		if (semanticVisitor != null) {

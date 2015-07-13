@@ -1536,5 +1536,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		MethodCallExpr expr = (MethodCallExpr)stmt.getExpression();
 		Assert.assertNotNull(expr.getArgs().get(0).getSymbolData());
 	}
+	
+	@Test
+	public void testSuperExpressionsToReferenceDefaultMethods() throws Exception{
+		String codeInterface ="interface Superinterface { default void foo() { System.out.println(\"Hi\"); } }";
+		String code ="public class Subclass2 implements Superinterface { public void foo() { throw new UnsupportedOperationException(); } void tweak() {  Superinterface.super.foo(); }}";
+		CompilationUnit cu = run(code, codeInterface);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr expr = (MethodCallExpr)stmt.getExpression();
+		Assert.assertNotNull(expr.getSymbolData());
+	}
 
 }
