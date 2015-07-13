@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.symbols;
 
-import java.lang.reflect.Executable;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,6 +34,7 @@ import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.PreviousPredicateAware;
 import org.walkmod.javalang.compiler.reflection.CompatibleArgsPredicate;
+import org.walkmod.javalang.compiler.reflection.ConstructorSorter;
 import org.walkmod.javalang.compiler.reflection.ExecutableSorter;
 
 public class Scope {
@@ -52,7 +53,9 @@ public class Scope {
 
 	private Map<String, SymbolType> typeParams = null;
 
-	private static ExecutableSorter<Executable> sorter = new ExecutableSorter<Executable>();
+	private static ExecutableSorter sorter = new ExecutableSorter();
+
+	private static ConstructorSorter constructorSorter = new ConstructorSorter();
 
 	public Scope() {
 	}
@@ -222,29 +225,65 @@ public class Scope {
 	public Map<String, SymbolType> getLocalTypeParams() {
 		return typeParams;
 	}
-	
-	private Executable runPredicates(List<Predicate<?>> predicates, Map<Integer, Executable> execs, SymbolType[] args){
-		Executable[] methods = new Executable[execs.size()];
-		List<Executable> sortedMethods = sorter.sort(execs.values()
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private Method runPredicatesOnMethodCalls(List<Predicate<?>> predicates,
+			Map<Integer, Object> execs, SymbolType[] args) {
+		Method[] methods = new Method[execs.size()];
+
+		List<Method> sortedMethods = sorter.sort(execs.values()
 				.toArray(methods), SymbolType.toClassArray(args));
-		ArrayFilter<Executable> filter = new ArrayFilter<Executable>(
+		ArrayFilter<Method> filter = new ArrayFilter<Method>(
 				sortedMethods.toArray(methods));
-		CompatibleArgsPredicate<Executable> cap = new CompatibleArgsPredicate<Executable>(
+		CompatibleArgsPredicate<Method> cap = new CompatibleArgsPredicate<Method>(
 				args);
 		cap.setTypeMapping(getTypeParams());
 		filter.appendPredicate(cap);
-		if(predicates != null && !predicates.isEmpty()){
+		if (predicates != null && !predicates.isEmpty()) {
 			Predicate<?> first = predicates.get(0);
-			if(first instanceof PreviousPredicateAware){
+			if (first instanceof PreviousPredicateAware) {
 				((PreviousPredicateAware) first).setPreviousPredicate(cap);
 			}
-			for(Predicate pred: predicates){
+			for (Predicate pred : predicates) {
 				filter.appendPredicate(pred);
 			}
 		}
 
-		Executable exec = null;
-		
+		Method exec = null;
+
+		try {
+			exec = filter.filterOne();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		return exec;
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private Constructor runPredicatesOnConstructors(
+			List<Predicate<?>> predicates, Map<Integer, Object> execs,
+			SymbolType[] args) {
+		Constructor[] methods = new Constructor[execs.size()];
+		List<Constructor> sortedMethods = constructorSorter.sort(execs.values()
+				.toArray(methods), SymbolType.toClassArray(args));
+		ArrayFilter<Constructor> filter = new ArrayFilter<Constructor>(
+				sortedMethods.toArray(methods));
+		CompatibleArgsPredicate<Constructor> cap = new CompatibleArgsPredicate<Constructor>(
+				args);
+		cap.setTypeMapping(getTypeParams());
+		filter.appendPredicate(cap);
+		if (predicates != null && !predicates.isEmpty()) {
+			Predicate<?> first = predicates.get(0);
+			if (first instanceof PreviousPredicateAware) {
+				((PreviousPredicateAware) first).setPreviousPredicate(cap);
+			}
+			for (Predicate pred : predicates) {
+				filter.appendPredicate(pred);
+			}
+		}
+
+		Constructor exec = null;
+
 		try {
 			exec = filter.filterOne();
 		} catch (Exception e) {
@@ -254,7 +293,8 @@ public class Scope {
 	}
 
 	public Symbol<?> findSymbol(String name, SymbolType scope,
-			SymbolType[] args, List<Predicate<?>> predicates, ReferenceType... referenceType) {
+			SymbolType[] args, List<Predicate<?>> predicates,
+			ReferenceType... referenceType) {
 		Symbol<?> result = null;
 		if (args == null) {
 			return findSymbol(name, referenceType);
@@ -264,15 +304,18 @@ public class Scope {
 			if (values != null) {
 				Iterator<Symbol<?>> it = values.iterator();
 
-				Map<Integer, Executable> execs = new HashMap<Integer, Executable>();
+				Map<Integer, Object> execs = new HashMap<Integer, Object>();
+
 				int i = 0;
+				boolean isConstructor = false;
 				while (it.hasNext()) {
 					Symbol<?> symbol = it.next();
 					if (symbol instanceof MethodSymbol) {
 						MethodSymbol aux = (MethodSymbol) symbol;
-						Executable m = aux.getReferencedMethod();
+						Object m = aux.getReferencedMethod();
 						if (m == null) {
 							m = aux.getReferencedConstructor();
+							isConstructor = true;
 						}
 
 						if (m != null) {
@@ -284,13 +327,15 @@ public class Scope {
 				}
 				if (execs.isEmpty()) {
 					result = null;
-				} else /*if (execs.size() == 1) {
-					MethodSymbol ms = (MethodSymbol)values.get(execs.keySet().iterator().next());
-					if()
-					result = ms;
-				} else */{
-					Executable exec = runPredicates(predicates, execs, args);
-					
+				} else {
+					Object exec = null;
+					if (isConstructor) {
+						exec = runPredicatesOnConstructors(predicates, execs,
+								args);
+					} else {
+						exec = runPredicatesOnMethodCalls(predicates, execs,
+								args);
+					}
 					Set<Integer> keys = execs.keySet();
 					Iterator<Integer> itKeys = keys.iterator();
 					while (itKeys.hasNext() && result == null) {
@@ -306,8 +351,8 @@ public class Scope {
 				if (values != null) {
 					Scope innerScope = values.get(0).getInnerScope();
 					if (innerScope != null) {
-						result = innerScope.findSymbol(name, scope, args, predicates,
-								referenceType);
+						result = innerScope.findSymbol(name, scope, args,
+								predicates, referenceType);
 					}
 				}
 			}
@@ -392,7 +437,7 @@ public class Scope {
 					ListIterator<Symbol<?>> it = values.listIterator(values
 							.size());
 
-					ExecutableSorter<Method> cmp = new ExecutableSorter<Method>();
+					ExecutableSorter cmp = new ExecutableSorter();
 					while (it.hasPrevious() && !added) {
 						Symbol<?> aux = it.previous();
 						if (aux instanceof MethodSymbol) {

@@ -100,7 +100,7 @@ public class MethodInspector {
 			ArrayFilter<Method> filter, CompositeBuilder<Method> builder,
 			Map<String, SymbolType> typeMapping, boolean throwException)
 			throws Exception {
-		ExecutableSorter<Method> sorter = new ExecutableSorter<Method>();
+		ExecutableSorter sorter = new ExecutableSorter();
 		List<Method> auxList = sorter.sort(clazz.getDeclaredMethods(), args);
 		Method[] auxArray = new Method[auxList.size()];
 		auxList.toArray(auxArray);

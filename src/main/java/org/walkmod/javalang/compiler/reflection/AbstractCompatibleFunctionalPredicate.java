@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
-import java.lang.reflect.Executable;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.TypeVariable;
@@ -120,13 +120,13 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 
 	public Map<String, SymbolType> createMapping(Class<?> classToInspect,
 			java.lang.reflect.Type interfaceToInspect, SymbolType inferredArg,
-			Executable method) throws Exception {
+			Class<?> declaringClass) throws Exception {
 		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 
 		// infers the type mapping of the scope
 		GenericsBuilderFromClassParameterTypes builder = new GenericsBuilderFromClassParameterTypes(
 				typeMapping, scope, symTable);
-		builder.build(method.getDeclaringClass());
+		builder.build(declaringClass);
 		typeMapping = builder.getTypeMapping();
 
 		// we want to infer the type mapping of the class that contains the
@@ -185,7 +185,7 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 
 	public boolean filter(LambdaExpr lambda, Class<?> interfaceToInspect,
 			java.lang.reflect.Type equivalentTypeToInspect,
-			SymbolType inferredArg, Executable method) throws Exception {
+			SymbolType inferredArg, Class<?>declaringClass) throws Exception {
 
 		boolean found = false;
 
@@ -194,7 +194,7 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 		ArrayFilter<Method> filter = new ArrayFilter<Method>(methods);
 
 		Map<String, SymbolType> typeMapping = createMapping(interfaceToInspect,
-				equivalentTypeToInspect, inferredArg, method);
+				equivalentTypeToInspect, inferredArg, declaringClass);
 		CompatibleLambdaArgsPredicate predArgs = new CompatibleLambdaArgsPredicate(
 				lambda);
 		predArgs.setTypeMapping(typeMapping);
@@ -213,11 +213,11 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 	public boolean filter(MethodReferenceExpr methodRef,
 			Class<?> interfaceToInspect,
 			java.lang.reflect.Type equivalentTypeToInspect,
-			SymbolType inferredArg, Executable method) throws Exception {
+			SymbolType inferredArg, Class<?> declaringClass) throws Exception {
 
 		boolean found = false;
 		Map<String, SymbolType> aux = createMapping(interfaceToInspect,
-				equivalentTypeToInspect, inferredArg, method);
+				equivalentTypeToInspect, inferredArg, declaringClass);
 		if (typeMapping != null) {
 			aux.putAll(typeMapping);
 		}
@@ -236,7 +236,14 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 		return found;
 	}
 
-	public boolean filter(Executable method) throws Exception {
+	public boolean filter(Method method) throws Exception {
+		return filter(method.getGenericParameterTypes(), method.getDeclaringClass());
+	}
+	public boolean filter(Constructor<?> method) throws Exception {
+		return filter(method.getGenericParameterTypes(), method.getDeclaringClass());
+	}
+	
+	public boolean filter(java.lang.reflect.Type[] genericTypes, Class<?> declaringClass) throws Exception {
 
 		boolean found = false;
 		boolean containsLambda = false;
@@ -247,8 +254,6 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 		if (args != null && !args.isEmpty()) {
 			Iterator<Expression> it = args.iterator();
 			int i = 0;
-			java.lang.reflect.Type[] genericTypes = method
-					.getGenericParameterTypes();
 			while (it.hasNext() && !found) {
 				SymbolType argType = null;
 				if (inferredTypes != null) {
@@ -274,7 +279,7 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 						if (current instanceof LambdaExpr) {
 							found = filter((LambdaExpr) current,
 									interfaceToInspect, genericTypes[i],
-									argType, method);
+									argType,declaringClass);
 							if (found) {
 								calculatedTypeArgs[i] = (SymbolType) current
 										.getSymbolData();
@@ -282,7 +287,7 @@ public abstract class AbstractCompatibleFunctionalPredicate<T> implements
 						} else {
 							found = filter((MethodReferenceExpr) current,
 									interfaceToInspect, genericTypes[i],
-									argType, method);
+									argType, declaringClass);
 							if (found) {
 								calculatedTypeArgs[i] = (SymbolType) current
 										.getSymbolData();

@@ -32,7 +32,7 @@ public class ConstructorInspector {
 	public static SymbolType findConstructor(SymbolType scope,
 			SymbolType[] args, ArrayFilter<Constructor<?>> filter)
 			throws Exception {
-		ExecutableSorter<Constructor<?>> sorter = new ExecutableSorter<Constructor<?>>();
+		ConstructorSorter sorter = new ConstructorSorter();
 		Class<?>[] argClasses = null;
 		int size = 0;
 		if (args != null) {
@@ -45,7 +45,8 @@ public class ConstructorInspector {
 			}
 		}
 
-		List<Constructor<?>> auxList = sorter.sort(scope.getClazz()
+		@SuppressWarnings("rawtypes")
+		List<Constructor> auxList = sorter.sort(scope.getClazz()
 				.getDeclaredConstructors(), argClasses);
 		Constructor<?>[] auxArray = new Constructor[auxList.size()];
 		auxList.toArray(auxArray);

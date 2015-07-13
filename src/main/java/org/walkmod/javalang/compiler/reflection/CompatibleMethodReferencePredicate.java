@@ -16,7 +16,6 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -36,8 +35,8 @@ import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.visitors.VoidVisitor;
 
-public class CompatibleMethodReferencePredicate<A, T extends Executable>
-		extends CompatibleArgsPredicate<T> implements Predicate<T> {
+public class CompatibleMethodReferencePredicate<A, T> extends
+		CompatibleArgsPredicate<T> implements Predicate<T> {
 
 	private MethodReferenceExpr expression = null;
 
@@ -67,8 +66,24 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 	}
 
 	@Override
-	public boolean filter(Executable elem) throws Exception {
-		Executable equivalentMethod = null;
+	public boolean filter(T elem) throws Exception {
+		int elemParameterCount = 0;
+		Type[] genericParameterTypes = null;
+		Class<?> declaringClass = null;
+		if (elem instanceof Method) {
+			elemParameterCount = ((Method) elem).getParameterTypes().length;
+			genericParameterTypes = ((Method) elem).getGenericParameterTypes();
+			declaringClass = ((Method) elem).getDeclaringClass();
+		}
+		else if(elem instanceof Constructor){
+			elemParameterCount = ((Constructor<?>) elem).getParameterTypes().length;
+			genericParameterTypes = ((Constructor<?>) elem).getGenericParameterTypes();
+			declaringClass = ((Constructor<?>) elem).getDeclaringClass();
+		}
+		else{
+			return false;
+		}
+		Object equivalentMethod = null;
 
 		sd = (SymbolType) expression.getScope().getSymbolData();
 		if (sd == null) {
@@ -82,9 +97,10 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 							sd.getClazz(), thisClass);
 					methodsArray = new Method[methods.size()];
 					methods.toArray(methodsArray);
-					ExecutableSorter<Method> sorter = new ExecutableSorter<Method>();
-					
-					List<Method> sortedMethods = sorter.sort(methodsArray, null);
+					ExecutableSorter sorter = new ExecutableSorter();
+
+					List<Method> sortedMethods = sorter
+							.sort(methodsArray, null);
 					sortedMethods.toArray(methodsArray);
 				}
 
@@ -105,7 +121,7 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 
 				Method md = it.next();
 				int mdParameterCount = md.getParameterTypes().length;
-				int elemParameterCount = elem.getParameterTypes().length;
+
 				Map<String, SymbolType> typeMapping = getTypeMapping();
 				FunctionalGenericsBuilder<MethodReferenceExpr> builder = new FunctionalGenericsBuilder<MethodReferenceExpr>(
 						md, typeResolver, typeMapping);
@@ -116,8 +132,6 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 					if (mdParameterCount == elemParameterCount - 1) {
 						// may be, just taking into account the type variables,
 						// it matches
-						Type[] genericParameterTypes = elem
-								.getGenericParameterTypes();
 						SymbolType[] genericArgs = new SymbolType[genericParameterTypes.length];
 						boolean allAreGenerics = true;
 						for (int i = 0; i < genericParameterTypes.length
@@ -211,7 +225,7 @@ public class CompatibleMethodReferencePredicate<A, T extends Executable>
 						.getGenericReturnType();
 				resolveTypeMapping(genericReturnType, realResultType, mapping);
 			}
-			realResultType = SymbolType.valueOf(elem.getDeclaringClass(),
+			realResultType = SymbolType.valueOf(declaringClass,
 					mapping);
 			expression.setSymbolData(realResultType);
 

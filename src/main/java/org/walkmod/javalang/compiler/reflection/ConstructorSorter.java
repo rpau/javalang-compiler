@@ -15,7 +15,7 @@
  along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,19 +26,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class ExecutableSorter implements Comparator<Method> {
+@SuppressWarnings("rawtypes")
+public class ConstructorSorter implements Comparator<Constructor> {
 
 	private Class<?>[] args = null;
 
-	
-	public List<Method> sort(Method[] methods, Class<?>[] args) {
-		Map<String, List<Method>> map = new HashMap<String, List<Method>>();
+	public List<Constructor> sort(Constructor<?>[] methods, Class<?>[] args) {
+		Map<String, List<Constructor>> map = new HashMap<String, List<Constructor>>();
 		this.args = args;
-		LinkedList<Method> result = new LinkedList<Method>();
-		for (Method method : methods) {
-			List<Method> aux = map.get(method.getName());
+		LinkedList<Constructor> result = new LinkedList<Constructor>();
+		for (Constructor method : methods) {
+			List<Constructor> aux = map.get(method.getName());
 			if (aux == null) {
-				aux = new LinkedList<Method>();
+				aux = new LinkedList<Constructor>();
 				map.put(method.getName(), aux);
 			}
 			aux.add(method);
@@ -46,13 +46,13 @@ public class ExecutableSorter implements Comparator<Method> {
 
 		Set<String> entries = map.keySet();
 		for (String entry : entries) {
-			List<Method> aux = map.get(entry);
+			List<Constructor> aux = map.get(entry);
 
-			ArrayList<Method> sortedList = new ArrayList<Method>();
-			Iterator<Method> it = aux.iterator();
+			ArrayList<Constructor> sortedList = new ArrayList<Constructor>();
+			Iterator<Constructor> it = aux.iterator();
 			while (it.hasNext()) {
-				Iterator<Method> li = sortedList.iterator();
-				Method method = it.next();
+				Iterator<Constructor> li = sortedList.iterator();
+				Constructor method = it.next();
 				boolean inserted = false;
 				if (sortedList.isEmpty()) {
 					sortedList.add(method);
@@ -60,7 +60,7 @@ public class ExecutableSorter implements Comparator<Method> {
 					int pos = 0;
 
 					while (!inserted && li.hasNext()) {
-						Method previous = li.next();
+						Constructor previous = li.next();
 						if (compare(method, previous) == -1) {
 							// sortedList.add(pos, method);
 							inserted = true;
@@ -81,8 +81,9 @@ public class ExecutableSorter implements Comparator<Method> {
 	}
 	
 
+
 	@Override
-	public int compare(Method method1, Method method2) {
+	public int compare(Constructor method1, Constructor method2) {
 		Parameter[] params1 = method1.getParameters();
 		Parameter[] params2 = method2.getParameters();
 

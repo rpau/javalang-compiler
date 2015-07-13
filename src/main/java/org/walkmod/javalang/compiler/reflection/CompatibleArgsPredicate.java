@@ -15,11 +15,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.reflection;
 
-import java.lang.reflect.Executable;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
-public class CompatibleArgsPredicate<T extends Executable> extends AbstractCompatibleArgsPredicate
+public class CompatibleArgsPredicate<T> extends AbstractCompatibleArgsPredicate
 		implements TypeMappingPredicate<T> {
 
 	public CompatibleArgsPredicate() {
@@ -30,11 +31,22 @@ public class CompatibleArgsPredicate<T extends Executable> extends AbstractCompa
 	}
 
 	@Override
-	public boolean filter(Executable method) throws Exception {
-		setVarAgs(method.isVarArgs());
-		setGenericParameterTypes(method.getGenericParameterTypes());
-		setParameterTypesLenght(method.getParameterTypes().length);
-		return super.filter();
+	public boolean filter(T method) throws Exception {
+		if (method instanceof Method) {
+			Method realMethod = (Method) method;
+			setVarAgs(realMethod.isVarArgs());
+			setGenericParameterTypes(realMethod.getGenericParameterTypes());
+			setParameterTypesLenght(realMethod.getParameterTypes().length);
+			return super.filter();
+		}
+		else if(method instanceof Constructor){
+			Constructor<?> constructor = (Constructor<?>) method;
+			setVarAgs(constructor.isVarArgs());
+			setGenericParameterTypes(constructor.getGenericParameterTypes());
+			setParameterTypesLenght(constructor.getParameterTypes().length);
+			return super.filter();
+		}
+		return false;
 	}
 
 }
