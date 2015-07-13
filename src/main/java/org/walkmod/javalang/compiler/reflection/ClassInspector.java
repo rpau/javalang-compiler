@@ -70,13 +70,15 @@ public class ClassInspector {
 	}
 
 	public static void updateTypeMappingOfInterfaceSubclass(Class<?> subclass,
-			Class<?> interfaceClass, Map<String, SymbolType> mapping) throws InvalidTypeException {
+			Class<?> interfaceClass, Map<String, SymbolType> mapping)
+			throws InvalidTypeException {
 
-		List<Type> types = getInterfaceOrSuperclassImplementations(subclass, interfaceClass);
+		List<Type> types = getInterfaceOrSuperclassImplementations(subclass,
+				interfaceClass);
 		Iterator<Type> it = types.iterator();
-		while(it.hasNext()){
+		while (it.hasNext()) {
 			Type current = it.next();
-			if(current instanceof ParameterizedType){
+			if (current instanceof ParameterizedType) {
 				ParameterizedType ptype = (ParameterizedType) current;
 				Map<String, SymbolType> update = new HashMap<String, SymbolType>();
 				SymbolType.valueOf(ptype, null, update, mapping);
@@ -367,9 +369,21 @@ public class ClassInspector {
 			// if both are primitive or wrapper classes, we check class2 vs
 			// class1 or if the reference and the class2 and reference are not
 			// primitive (ex clazz2 = Object, clazz1 = int, ref = Integer)
-			return (order2 <= order1)
-					|| ((reference == null || !reference.isPrimitive())
-							&& !clazz2.isPrimitive() && clazz1.isPrimitive());
+
+			if ((clazz2.isPrimitive() && clazz1.isPrimitive())
+					|| (!clazz2.isPrimitive() && !clazz1.isPrimitive())
+					|| reference == null) {
+				return (order2 <= order1);
+			}
+			boolean referenceIsPrimitive = reference != null
+					&& reference.isPrimitive();
+
+			boolean clazz2First = (referenceIsPrimitive && clazz2.isPrimitive() && !clazz1
+					.isPrimitive())
+					|| ((!referenceIsPrimitive) && !clazz2.isPrimitive() && clazz1
+							.isPrimitive());
+
+			return clazz2First;
 		}
 		// we check if clazz2 is subtype of clazz1. Notice that Object is supper
 		// type of every interface.

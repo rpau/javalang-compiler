@@ -1581,5 +1581,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 			Assert.assertNotNull(md.getUsages());
 		}
 	}
+	
+	@Test
+	public void testMethodOrderingWithLongsAndWrappers() throws Exception{
+		String code ="public class A {void foo(long i){} void foo(Integer x){} void bar(){foo(1);}}";
+		CompilationUnit cu = run(code);
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
+				.getTypes().get(0);
+		MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
+		Assert.assertNotNull(md.getUsages());
+		
+	}
 
 }
