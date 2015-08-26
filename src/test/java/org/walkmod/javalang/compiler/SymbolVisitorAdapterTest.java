@@ -24,6 +24,7 @@ import java.util.List;
 
 import javax.lang.model.SourceVersion;
 
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -54,6 +55,7 @@ import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.test.SemanticTest;
 import org.walkmod.javalang.util.FileUtils;
+
 
 public class SymbolVisitorAdapterTest extends SemanticTest {
 
@@ -1611,6 +1613,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 				.getTypes().get(0);
 		MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
 		Assert.assertNotNull(md.getUsages());
+		
+	}
+	
+	@Test
+	public void testFieldOverridingUsingThis() throws Exception{
+		String parentCode ="import java.util.Collection; public abstract class Parent<N extends Collection>{ protected N attr;}";
+		String childCode = "import java.util.LinkedList; public class Child extends Parent<LinkedList> { public void foo() { this.attr.remove(0); }}";
+		CompilationUnit cu = run(childCode, parentCode);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		
+		Assert.assertNotNull(stmt.getExpression().getSymbolData());
 		
 	}
 
