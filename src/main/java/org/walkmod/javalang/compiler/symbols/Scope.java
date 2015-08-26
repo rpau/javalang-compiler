@@ -28,6 +28,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.compiler.ArrayFilter;
@@ -405,10 +406,29 @@ public class Scope {
 				Iterator<Symbol<?>> it = values.iterator();
 				while (it.hasNext()) {
 					Symbol<?> value = it.next();
+					
 					if (!value.getReferenceType().equals(ReferenceType.METHOD)
 							&& value.getReferenceType().equals(
 									symbol.getReferenceType())) {
-						it.remove();
+						Object originalLocation = value.getLocation();
+						Object newLocation = symbol.getLocation();
+						
+						if (originalLocation != null && newLocation != null && 
+								(originalLocation instanceof ImportDeclaration) 
+								&& (newLocation instanceof ImportDeclaration)){
+							//there is an import override, the non asterisk has priority
+							ImportDeclaration newImport = (ImportDeclaration) newLocation;
+							ImportDeclaration originalImport = (ImportDeclaration) originalLocation;
+							
+							if (originalImport.isAsterisk() && !newImport.isAsterisk()){
+								it.remove();
+							}else if(!originalImport.isAsterisk() && newImport.isAsterisk()){
+								added = true;
+							}
+							
+						}else{
+							it.remove();
+						}
 					}
 				}
 			}
