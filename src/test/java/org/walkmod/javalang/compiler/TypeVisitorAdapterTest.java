@@ -486,6 +486,28 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(type);
 		Assert.assertEquals("void", type.getName());
 	}
+	
+	
+	//@Test: TODO: https://docs.oracle.com/javase/tutorial/java/generics/genTypeInference.html
+	public void testTargetInference2() throws Exception {
+
+		compile("import java.util.Collections; "
+				+ "import java.util.List; "
+				+ "public class A { public static void processAList(List<A> stringList) {}}");
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
+
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+				Expression.class,
+				"A.processAList(Collections.emptyList());");
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals("void", type.getName());
+	}
 
 	// TODO4: Las declaraciones no tienen su tipo (metodos y campos)
 
