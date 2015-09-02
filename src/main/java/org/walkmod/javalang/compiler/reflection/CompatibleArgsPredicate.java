@@ -18,6 +18,7 @@ package org.walkmod.javalang.compiler.reflection;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 public class CompatibleArgsPredicate<T> extends AbstractCompatibleArgsPredicate
@@ -30,6 +31,22 @@ public class CompatibleArgsPredicate<T> extends AbstractCompatibleArgsPredicate
 		super(typeArgs);
 	}
 
+	public CompatibleArgsPredicate(SymbolData[] typeArgs) {
+		SymbolType[] aux = new SymbolType[typeArgs.length];
+		int i = 0;
+		for (SymbolData sd : typeArgs) {
+			if (sd instanceof SymbolType) {
+				aux[i] = (SymbolType) sd;
+				i++;
+			} else {
+				throw new IllegalArgumentException(
+						"The type args argument must be " + SymbolType.class
+								+ " implementation");
+			}
+		}
+		setTypeArgs(aux);
+	}
+
 	@Override
 	public boolean filter(T method) throws Exception {
 		if (method instanceof Method) {
@@ -38,8 +55,7 @@ public class CompatibleArgsPredicate<T> extends AbstractCompatibleArgsPredicate
 			setGenericParameterTypes(realMethod.getGenericParameterTypes());
 			setParameterTypesLenght(realMethod.getParameterTypes().length);
 			return super.filter();
-		}
-		else if(method instanceof Constructor){
+		} else if (method instanceof Constructor) {
 			Constructor<?> constructor = (Constructor<?>) method;
 			setVarAgs(constructor.isVarArgs());
 			setGenericParameterTypes(constructor.getGenericParameterTypes());

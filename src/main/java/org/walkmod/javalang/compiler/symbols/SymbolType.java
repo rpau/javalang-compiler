@@ -979,7 +979,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return result;
 	}
 
-	public static Class<?>[] toClassArray(SymbolType[] args) {
+	public static <T extends SymbolData> Class<?>[] toClassArray(T[] args) {
 
 		Class<?>[] argClasses = null;
 		int params = 0;

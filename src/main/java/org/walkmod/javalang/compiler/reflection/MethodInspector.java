@@ -27,17 +27,44 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 
 public class MethodInspector {
 
 	private static GenericBuilderFromGenericClasses b1 = new GenericBuilderFromGenericClasses();
 
-	public static SymbolType findMethodType(SymbolType scope,
-			SymbolType[] args, ArrayFilter<Method> filter,
+	
+	public static <T extends SymbolData> Method findMethod(Class<?> scope,
+			T[] args, String name) {
+		Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
+		ArrayFilter<Method> filter = new ArrayFilter<Method>(null);
+		CompatibleArgsPredicate pred = new CompatibleArgsPredicate(
+				args);
+		filter.appendPredicate(
+				new MethodsByNamePredicate(name))
+				.appendPredicate(new InvokableMethodsPredicate())
+				.appendPredicate(pred);
+		
+		try {
+			SymbolType result = MethodInspector.findMethodType(new SymbolType(scope), args, filter, null, typeMapping);
+			if (result != null){
+				return result.getMethod();
+			}
+			
+		} catch (Exception e) {
+			throw new NoSuchExpressionTypeException(e);
+		}
+		return null;
+	}
+	
+	
+	public static <T extends SymbolData> SymbolType findMethodType(SymbolType scope,
+			T[] args, ArrayFilter<Method> filter,
 			CompositeBuilder<Method> builder,
 			Map<String, SymbolType> typeMapping) throws Exception {
 
