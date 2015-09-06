@@ -102,7 +102,7 @@ public class MethodInspector {
 			}
 			result = findMethodType(bound, argClasses, filter, builder,
 					mapping, false);
-			if (scope.getArrayCount() != 0) {
+			if (scope.getArrayCount() != 0 && result != null) {
 				Method method = result.getMethod();
 				if (method != null && method.getName().equals("clone")) {
 					result.setArrayCount(scope.getArrayCount());
