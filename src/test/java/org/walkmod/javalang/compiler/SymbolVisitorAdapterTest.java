@@ -1637,4 +1637,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(imports.get(1).getUsages());
 	}
 
+	@Test
+	public void testVariableDeclarationsWithFieldsWithSameName() throws Exception{
+		String code="import java.util.List; public class A{ List<String> nodes; public void foo() {  String[] nodes = this.nodes.toArray(new String[]{}); }}";
+		CompilationUnit cu = run(code);
+		Assert.assertTrue(true);
+	}
 }

@@ -327,20 +327,19 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends
 						symbolTable.lookUpSymbolForRead(c.getSimpleName(),
 								null, ReferenceType.TYPE);
 						n.setSymbolData(scopeType);
-						
+
 					}
 				} catch (ClassNotFoundException e) {
 
 				}
 			} else {
 				SymbolType fieldType = null;
-				if (n.getScope() instanceof ThisExpr){
-					fieldType = symbolTable.getType(n.getField(),
-							 ReferenceType.VARIABLE);
-				}
-				else{
-					fieldType = FieldInspector.findFieldType(
-						symbolTable, scopeType, n.getField());
+				if (n.getScope() instanceof ThisExpr) {
+					fieldType = symbolTable.findSymbol(n.getField(), scopeType,
+							null, ReferenceType.VARIABLE).getType();
+				} else {
+					fieldType = FieldInspector.findFieldType(symbolTable,
+							scopeType, n.getField());
 				}
 				n.setSymbolData(fieldType);
 
