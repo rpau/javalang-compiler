@@ -146,41 +146,41 @@ public class MethodInspector {
 
 		if (result == null) {
 
-			if (clazz.isMemberClass()) {
-
-				result = findMethodType(clazz.getDeclaringClass(), args,
-						filter, builder, typeMapping, false);
-
-			} else if (clazz.isAnonymousClass()) {
-
-				result = findMethodType(clazz.getEnclosingClass(), args,
-						filter, builder, typeMapping, false);
+			Class<?> superClass = clazz.getSuperclass();
+			if (superClass != null) {
+				result = findMethodType(superClass, args, filter, builder,
+						typeMapping, false);
 			}
+
 			if (result == null) {
-				Class<?> superClass = clazz.getSuperclass();
-				if (superClass != null) {
-					result = findMethodType(superClass, args, filter, builder,
-							typeMapping, false);
-				}
+				Type[] types = clazz.getGenericInterfaces();
+				if (types.length > 0) {
 
-				if (result == null) {
-					Type[] types = clazz.getGenericInterfaces();
-					if (types.length > 0) {
+					for (int i = 0; i < types.length && result == null; i++) {
 
-						for (int i = 0; i < types.length && result == null; i++) {
+						Class<?> type = SymbolType.valueOf(types[i],
+								typeMapping).getClazz();
 
-							Class<?> type = SymbolType.valueOf(types[i],
-									typeMapping).getClazz();
-
-							result = findMethodType(type, args, filter,
-									builder, typeMapping, false);
-						}
-
-					}
-					if (result == null && clazz.isInterface()) {
-						result = findMethodType(Object.class, args, filter,
+						result = findMethodType(type, args, filter,
 								builder, typeMapping, false);
 					}
+
+				}
+				if (result == null && clazz.isInterface()) {
+					result = findMethodType(Object.class, args, filter,
+							builder, typeMapping, false);
+				}
+			}
+			if (result == null) {
+				if (clazz.isMemberClass()) {
+
+					result = findMethodType(clazz.getDeclaringClass(), args,
+							filter, builder, typeMapping, false);
+
+				} else if (clazz.isAnonymousClass()) {
+
+					result = findMethodType(clazz.getEnclosingClass(), args,
+							filter, builder, typeMapping, false);
 				}
 			}
 		}
