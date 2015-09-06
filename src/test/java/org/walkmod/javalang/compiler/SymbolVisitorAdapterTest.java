@@ -24,11 +24,11 @@ import java.util.List;
 
 import javax.lang.model.SourceVersion;
 
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
@@ -1626,6 +1626,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
 		
+	}
+	
+	@Test
+	public void testTryConditionsTypeMark() throws Exception{
+		String code ="import java.io.BufferedReader;import java.io.InputStreamReader;import java.io.InputStream; public class A { public void foo(InputStream in) throws Exception{ try (BufferedReader c = new BufferedReader(new InputStreamReader(in))) { c.readLine(); }}}";
+		CompilationUnit cu = run(code);
+		
+		List<ImportDeclaration> imports = cu.getImports();
+		Assert.assertNotNull(imports.get(1).getUsages());
 	}
 
 }

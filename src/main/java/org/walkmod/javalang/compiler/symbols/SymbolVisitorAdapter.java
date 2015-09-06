@@ -691,6 +691,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 			}
 			symbolTable.pushSymbol(vd.getId().getName(),
 					ReferenceType.VARIABLE, aux, vd, actions);
+			Expression expr = vd.getInit();
+			if(expr != null && !(n.getParentNode() instanceof ExpressionStmt)){ //e.g TryStmt
+				expr.accept(expressionTypeAnalyzer, arg);
+			}
 		}
 	}
 
