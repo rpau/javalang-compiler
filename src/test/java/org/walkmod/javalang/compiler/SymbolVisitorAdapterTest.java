@@ -56,7 +56,6 @@ import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.test.SemanticTest;
 import org.walkmod.javalang.util.FileUtils;
 
-
 public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
@@ -1576,15 +1575,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 					.get(0);
 			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(expr.getSymbolData());
-			
-			type = (ClassOrInterfaceDeclaration) cu
-					.getTypes().get(0).getMembers().get(0);
+
+			type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0)
+					.getMembers().get(0);
 			md = (MethodDeclaration) type.getMembers().get(0);
 			Assert.assertNotNull(md.getUsages());
 		}
 	}
-	
-	
+
 	@Test
 	public void testDefaultMethodInheritance2() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
@@ -1597,49 +1595,53 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 					.get(0);
 			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(expr.getSymbolData());
-			
-			type = (ClassOrInterfaceDeclaration) cu
-					.getTypes().get(0).getMembers().get(0);
+
+			type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0)
+					.getMembers().get(0);
 			md = (MethodDeclaration) type.getMembers().get(0);
 			Assert.assertNotNull(md.getUsages());
 		}
 	}
-	
+
 	@Test
-	public void testMethodOrderingWithLongsAndWrappers() throws Exception{
-		String code ="public class A {void foo(long i){} void foo(Integer x){} void bar(){foo(1);}}";
+	public void testMethodOrderingWithLongsAndWrappers() throws Exception {
+		String code = "public class A {void foo(long i){} void foo(Integer x){} void bar(){foo(1);}}";
 		CompilationUnit cu = run(code);
 		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
 				.getTypes().get(0);
 		MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
 		Assert.assertNotNull(md.getUsages());
-		
-	}
-	
-	@Test
-	public void testFieldOverridingUsingThis() throws Exception{
-		String parentCode ="import java.util.Collection; public abstract class Parent<N extends Collection>{ protected N attr;}";
-		String childCode = "import java.util.LinkedList; public class Child extends Parent<LinkedList> { public void foo() { this.attr.remove(0); }}";
-		CompilationUnit cu = run(childCode, parentCode);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
-		
-		Assert.assertNotNull(stmt.getExpression().getSymbolData());
-		
-	}
-	
-	@Test
-	public void testTryConditionsTypeMark() throws Exception{
-		String code ="import java.io.BufferedReader;import java.io.InputStreamReader;import java.io.InputStream; public class A { public void foo(InputStream in) throws Exception{ try (BufferedReader c = new BufferedReader(new InputStreamReader(in))) { c.readLine(); }}}";
-		CompilationUnit cu = run(code);
-		
-		List<ImportDeclaration> imports = cu.getImports();
-		Assert.assertNotNull(imports.get(1).getUsages());
+
 	}
 
 	@Test
-	public void testVariableDeclarationsWithFieldsWithSameName() throws Exception{
-		String code="import java.util.List; public class A{ List<String> nodes; public void foo() {  String[] nodes = this.nodes.toArray(new String[]{}); }}";
+	public void testFieldOverridingUsingThis() throws Exception {
+		String parentCode = "import java.util.Collection; public abstract class Parent<N extends Collection>{ protected N attr;}";
+		String childCode = "import java.util.LinkedList; public class Child extends Parent<LinkedList> { public void foo() { this.attr.remove(0); }}";
+		CompilationUnit cu = run(childCode, parentCode);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
+				.getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+
+		Assert.assertNotNull(stmt.getExpression().getSymbolData());
+
+	}
+
+	@Test
+	public void testTryConditionsTypeMark() throws Exception {
+		if (SourceVersion.latestSupported().ordinal() >= 7) {
+			String code = "import java.io.BufferedReader;import java.io.InputStreamReader;import java.io.InputStream; public class A { public void foo(InputStream in) throws Exception{ try (BufferedReader c = new BufferedReader(new InputStreamReader(in))) { c.readLine(); }}}";
+			CompilationUnit cu = run(code);
+
+			List<ImportDeclaration> imports = cu.getImports();
+			Assert.assertNotNull(imports.get(1).getUsages());
+		}
+	}
+
+	@Test
+	public void testVariableDeclarationsWithFieldsWithSameName()
+			throws Exception {
+		String code = "import java.util.List; public class A{ List<String> nodes; public void foo() {  String[] nodes = this.nodes.toArray(new String[]{}); }}";
 		CompilationUnit cu = run(code);
 		Assert.assertTrue(true);
 	}
