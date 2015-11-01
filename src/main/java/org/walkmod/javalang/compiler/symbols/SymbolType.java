@@ -42,8 +42,7 @@ import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 
-public class SymbolType implements SymbolData, MethodSymbolData,
-		FieldSymbolData, ConstructorSymbolData {
+public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData, ConstructorSymbolData {
 
 	private String name;
 
@@ -99,8 +98,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		}
 	}
 
-	public SymbolType(String name, List<SymbolType> upperBounds,
-			List<SymbolType> lowerBounds) {
+	public SymbolType(String name, List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
 
 		this.name = name;
 		this.lowerBounds = lowerBounds;
@@ -185,8 +183,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	public List<SymbolType> getParameterizedTypes() {
 		if (parameterizedTypes == null) {
 			if (upperBounds != null && !upperBounds.isEmpty()) {
-				List<SymbolType> params = upperBounds.get(0)
-						.getParameterizedTypes();
+				List<SymbolType> params = upperBounds.get(0).getParameterizedTypes();
 				if (params != null && name != null) {
 					Iterator<SymbolType> it = params.iterator();
 					List<SymbolType> aux = null;
@@ -237,10 +234,10 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		if (o instanceof SymbolType) {
 			SymbolType aux = (SymbolType) o;
 			String auxName = aux.getName();
-			boolean equalName = name !=null && auxName != null && name.equals(auxName);
-			equalName = equalName || (isTemplateVariable() && aux.isTemplateVariable() && templateVariable.equals(aux.templateVariable));
-			return equalName
-					&& arrayCount == aux.getArrayCount();
+			boolean equalName = name != null && auxName != null && name.equals(auxName);
+			equalName = equalName || (isTemplateVariable() && aux.isTemplateVariable()
+					&& templateVariable.equals(aux.templateVariable));
+			return equalName && arrayCount == aux.getArrayCount();
 		}
 		return false;
 	}
@@ -295,27 +292,21 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 			List<SymbolType> otherParams = other.getParameterizedTypes();
 			if (parameterizedTypes != null && otherParams != null) {
-				Set<Type> paramTypes = ClassInspector
-						.getEquivalentParametrizableClasses(other.getClazz());
+				Set<Type> paramTypes = ClassInspector.getEquivalentParametrizableClasses(other.getClazz());
 				Iterator<Type> paramTypesIt = paramTypes.iterator();
 				boolean found = false;
 				try {
-					Map<String, SymbolType> otherMap = other
-							.getTypeMappingVariables();
+					Map<String, SymbolType> otherMap = other.getTypeMappingVariables();
 					while (paramTypesIt.hasNext() && !found) {
 						Type currentType = paramTypesIt.next();
-						SymbolType st = SymbolType.valueOf(currentType,
-								otherMap);
+						SymbolType st = SymbolType.valueOf(currentType, otherMap);
 						found = Types.isCompatible(st.getClazz(), getClazz());
 						if (isCompatible) {
 							otherParams = st.getParameterizedTypes();
-							Iterator<SymbolType> it = parameterizedTypes
-									.iterator();
+							Iterator<SymbolType> it = parameterizedTypes.iterator();
 							if (otherParams != null) {
-								Iterator<SymbolType> otherIt = otherParams
-										.iterator();
-								while (it.hasNext() && found
-										&& otherIt.hasNext()) {
+								Iterator<SymbolType> otherIt = otherParams.iterator();
+								while (it.hasNext() && found && otherIt.hasNext()) {
 									SymbolType thisType = it.next();
 									SymbolType otherType = otherIt.next();
 									found = thisType.isCompatible(otherType);
@@ -345,8 +336,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			try {
 				clazz = TypesLoaderVisitor.getClassLoader().loadClass(this);
 			} catch (ClassNotFoundException e) {
-				throw new TypeNotFoundException("Error resolving the class for "
-						+ name, e.getCause());
+				throw new TypeNotFoundException("Error resolving the class for " + name, e.getCause());
 			}
 
 		}
@@ -450,10 +440,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return result;
 	}
 
-	private static void loadTypeParams(Iterator<SymbolType> it,
-			Type[] typeParams, List<SymbolType> parameterizedTypes,
-			Map<String, SymbolType> typeMapping, Map<String, SymbolType> auxMap)
-			throws InvalidTypeException {
+	private static void loadTypeParams(Iterator<SymbolType> it, Type[] typeParams, List<SymbolType> parameterizedTypes,
+			Map<String, SymbolType> typeMapping, Map<String, SymbolType> auxMap) throws InvalidTypeException {
 
 		if (parameterizedTypes != null) {
 			it = parameterizedTypes.iterator();
@@ -485,8 +473,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 	 * @return the representative symbol type
 	 * @throws InvalidTypeException
 	 */
-	public static SymbolType valueOf(Type type, SymbolType arg,
-			Map<String, SymbolType> updatedTypeMapping,
+	public static SymbolType valueOf(Type type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping,
 			Map<String, SymbolType> typeMapping) throws InvalidTypeException {
 		if (typeMapping == null) {
 			typeMapping = Collections.emptyMap();
@@ -519,14 +506,11 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						it = parameterizedTypes.iterator();
 
 					}
-					List<Type> implementations = ClassInspector
-							.getInterfaceOrSuperclassImplementations(argClass,
-									aux);
+					List<Type> implementations = ClassInspector.getInterfaceOrSuperclassImplementations(argClass, aux);
 
 					Iterator<Type> itTypes = implementations.iterator();
 					Type[] typeParamsAux = typeParams;
-					Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(
-							typeMapping);
+					Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
 					while (itTypes.hasNext()) {
 						Type implementation = itTypes.next();
 						if (implementation instanceof ParameterizedType) {
@@ -544,8 +528,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 									}
 								} else {
 
-									st = SymbolType.valueOf(targuments[i],
-											auxMap);
+									st = SymbolType.valueOf(targuments[i], auxMap);
 								}
 								if (st != null) {
 									implParams.add(st);
@@ -557,10 +540,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 							implParams = new LinkedList<SymbolType>();
 							parameterizedTypes = params;
 						} else if (implementation instanceof Class<?>) {
-							typeParamsAux = ((Class<?>) implementation)
-									.getTypeParameters();
-							loadTypeParams(it, typeParamsAux,
-									parameterizedTypes, typeMapping, auxMap);
+							typeParamsAux = ((Class<?>) implementation).getTypeParameters();
+							loadTypeParams(it, typeParamsAux, parameterizedTypes, typeMapping, auxMap);
 						}
 					}
 
@@ -576,8 +557,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 							ref = it.next();
 						}
 
-						SymbolType tp = valueOf(typeParams[i], ref,
-								updatedTypeMapping, typeMapping);
+						SymbolType tp = valueOf(typeParams[i], ref, updatedTypeMapping, typeMapping);
 						if (tp != null) {
 							params.add(tp);
 						}
@@ -606,8 +586,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					returnType = new SymbolType(arg.getName());
 					returnType.setArrayCount(arg.getArrayCount());
 					returnType.setTemplateVariable(variableName);
-					returnType.setParameterizedTypes(arg
-							.getParameterizedTypes());
+					returnType.setParameterizedTypes(arg.getParameterizedTypes());
 
 				} else {
 					if (bounds.length == 0) {
@@ -616,12 +595,10 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 						List<SymbolType> boundsList = new LinkedList<SymbolType>();
 						returnType = new SymbolType(boundsList);
 						returnType.setTemplateVariable(variableName);
-						Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(
-								typeMapping);
+						Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
 						auxMap.put(variableName, returnType);
 						for (Type bound : bounds) {
-							SymbolType st = valueOf(bound, null,
-									updatedTypeMapping, auxMap);
+							SymbolType st = valueOf(bound, null, updatedTypeMapping, auxMap);
 							if (st != null) {
 								boundsList.add(st);
 							}
@@ -638,11 +615,9 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					updatedTypeMapping.put(variableName, returnType);
 					return returnType;
 				} else {
-					SymbolType previousSymbol = updatedTypeMapping
-							.get(variableName);
-					if (!returnType.getName().equals("java.lang.Object")) {
-						returnType = (SymbolType) previousSymbol
-								.merge(returnType);
+					SymbolType previousSymbol = updatedTypeMapping.get(variableName);
+					if (!"java.lang.Object".equals(returnType.getName())) {
+						returnType = (SymbolType) previousSymbol.merge(returnType);
 						previousSymbol.setClazz(returnType.getClazz());
 						updatedTypeMapping.put(variableName, previousSymbol);
 					}
@@ -654,8 +629,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			}
 
 		} else if (type instanceof ParameterizedType) {
-			Class<?> auxClass = (Class<?>) ((ParameterizedType) type)
-					.getRawType();
+			Class<?> auxClass = (Class<?>) ((ParameterizedType) type).getRawType();
 
 			Type[] types = ((ParameterizedType) type).getActualTypeArguments();
 
@@ -694,8 +668,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 
 						SymbolType st = null;
 						if (validParameterizedType) {
-							st = valueOf(t, argToAnalyze, updatedTypeMapping,
-									typeMapping);
+							st = valueOf(t, argToAnalyze, updatedTypeMapping, typeMapping);
 						}
 						if (st != null) {
 							String name = st.getName();
@@ -730,9 +703,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 					arg = null;
 				}
 			}
-			SymbolType st = valueOf(
-					((GenericArrayType) type).getGenericComponentType(), arg,
-					updatedTypeMapping, typeMapping);
+			SymbolType st = valueOf(((GenericArrayType) type).getGenericComponentType(), arg, updatedTypeMapping,
+					typeMapping);
 
 			returnType = st.clone();
 			returnType.setArrayCount(returnType.getArrayCount() + 1);
@@ -745,8 +717,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			if (types != null && types.length > 0) {
 				upperBounds = new LinkedList<SymbolType>();
 				for (int i = 0; i < types.length; i++) {
-					SymbolType st = valueOf(types[i], arg, updatedTypeMapping,
-							typeMapping);
+					SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
 					if (st != null) {
 						upperBounds.add(st);
 					}
@@ -761,8 +732,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 				lowerBounds = new LinkedList<SymbolType>();
 				for (int i = 0; i < types.length; i++) {
 
-					SymbolType st = valueOf(types[i], arg, updatedTypeMapping,
-							typeMapping);
+					SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
 					if (st != null) {
 						lowerBounds.add(st);
 					}
@@ -779,11 +749,9 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return returnType;
 	}
 
-	public static SymbolType valueOf(Type type,
-			Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+	public static SymbolType valueOf(Type type, Map<String, SymbolType> typeMapping) throws InvalidTypeException {
 
-		return valueOf(type, null, new HashMap<String, SymbolType>(),
-				typeMapping);
+		return valueOf(type, null, new HashMap<String, SymbolType>(), typeMapping);
 
 	}
 
@@ -795,9 +763,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		this.method = method;
 	}
 
-	public static SymbolType valueOf(Method method,
-			Map<String, SymbolType> typeMapping) throws ClassNotFoundException,
-			InvalidTypeException {
+	public static SymbolType valueOf(Method method, Map<String, SymbolType> typeMapping)
+			throws ClassNotFoundException, InvalidTypeException {
 		java.lang.reflect.Type type = null;
 		if (typeMapping == null) {
 			typeMapping = new HashMap<String, SymbolType>();
@@ -821,8 +788,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 							typeMapping.put(tv.getName(), boundsList.get(0));
 
 						} else {
-							typeMapping.put(tv.getName(), new SymbolType(
-									boundsList));
+							typeMapping.put(tv.getName(), new SymbolType(boundsList));
 						}
 					}
 				}
@@ -849,9 +815,8 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 			result = this;
 		} else {
 			if (other.getArrayCount() == getArrayCount()) {
-				List<Class<?>> bounds = ClassInspector
-						.getTheNearestSuperClasses(getBoundClasses(),
-								other.getBoundClasses());
+				List<Class<?>> bounds = ClassInspector.getTheNearestSuperClasses(getBoundClasses(),
+						other.getBoundClasses());
 				if (bounds.isEmpty()) {
 					result = null;
 				} else if (bounds.size() == 1) {
@@ -915,8 +880,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return upperBoundClasses;
 	}
 
-	private SymbolType refactor_rec(String variable, SymbolType st,
-			boolean dynamicVar) {
+	private SymbolType refactor_rec(String variable, SymbolType st, boolean dynamicVar) {
 		if (variable.equals(templateVariable) && dynamicVar) {
 			return st;
 		} else {
@@ -937,8 +901,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		}
 	}
 
-	public SymbolType refactor(String variable, SymbolType st,
-			boolean dynamicVar) {
+	public SymbolType refactor(String variable, SymbolType st, boolean dynamicVar) {
 		if (variable.equals(templateVariable) && dynamicVar) {
 			return st;
 		} else {
@@ -966,8 +929,7 @@ public class SymbolType implements SymbolData, MethodSymbolData,
 		return refactor(mapping, true);
 	}
 
-	public SymbolType refactor(Map<String, SymbolType> mapping,
-			boolean dynamicVar) {
+	public SymbolType refactor(Map<String, SymbolType> mapping, boolean dynamicVar) {
 		SymbolType result = this;
 		if (mapping != null) {
 			Set<String> keys = mapping.keySet();
