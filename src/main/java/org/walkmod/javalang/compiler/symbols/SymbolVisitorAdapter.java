@@ -868,7 +868,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends
 		AccessType atype = (AccessType) arg.get(AccessType.ACCESS_TYPE);
 		if (atype != null) {
 			if (atype.equals(AccessType.WRITE)) {
-				symbolTable.lookUpSymbolForWrite(name, n, scope, null);
+				symbolTable.lookUpSymbolForWrite(name, n, scope, null, referenceType);
 			} else {
 				symbolTable.lookUpSymbolForRead(name, n, scope, null,
 						referenceType);

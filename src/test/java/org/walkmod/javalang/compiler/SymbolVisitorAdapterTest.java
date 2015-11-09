@@ -62,8 +62,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testNoActions() throws Exception {
 
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
-		String[] classpathEntries = System.getProperty("java.class.path")
-				.split(File.pathSeparator);
+		String[] classpathEntries = System.getProperty("java.class.path").split(File.pathSeparator);
 		URL[] classpath = new URL[classpathEntries.length];
 		int i = 0;
 		for (String entry : classpathEntries) {
@@ -85,8 +84,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testReferencesCounterAction() throws Exception {
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 
-		String[] classpathEntries = System.getProperty("java.class.path")
-				.split(File.pathSeparator);
+		String[] classpathEntries = System.getProperty("java.class.path").split(File.pathSeparator);
 		URL[] classpath = new URL[classpathEntries.length];
 		int i = 0;
 		for (String entry : classpathEntries) {
@@ -109,8 +107,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertTrue(counter.getReadsCounter() > 0);
 	}
 
-	private CompilationUnit runRemoveUnusedMembers(String code)
-			throws Exception {
+	private CompilationUnit runRemoveUnusedMembers(String code) throws Exception {
 
 		CompilationUnit cu = compile(code);
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
@@ -147,26 +144,30 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testRemoveUnusedMethods1() throws Exception {
 
-		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(){} private String getName() { return \"name\";}}");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"public class Foo { private void bar(){} private String getName() { return \"name\";}}");
 		Assert.assertTrue(cu.getTypes().get(0).getMembers().isEmpty());
 	}
 
 	@Test
 	public void testRemoveUnusedMethods2() throws Exception {
 
-		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(){} public String getName() { return \"name\";}}");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"public class Foo { private void bar(){} public String getName() { return \"name\";}}");
 		Assert.assertEquals(1, cu.getTypes().get(0).getMembers().size());
 	}
 
 	@Test
 	public void testRemoveUnusedMethods3() throws Exception {
-		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(){} public String getName() { bar(); return \"name\";}}");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"public class Foo { private void bar(){} public String getName() { bar(); return \"name\";}}");
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
 	}
 
 	@Test
 	public void testRemoveUnusedMethods4() throws Exception {
-		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private void bar(String s){} public String getName() { bar(null); return \"name\";}}");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"public class Foo { private void bar(String s){} public String getName() { bar(null); return \"name\";}}");
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
 	}
 
@@ -177,7 +178,8 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	public void testRemoveUnusedFields1() throws Exception {
-		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private String bar; public String getBar(){ return bar; }}");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"public class Foo { private String bar; public String getBar(){ return bar; }}");
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
 	}
 
@@ -190,8 +192,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testRemoveUnusedVariables() throws Exception {
 		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { public void bar(){ int i;} }");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertTrue(md.getBody().getStmts().isEmpty());
 
 	}
@@ -205,26 +206,30 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testDifferentReferenceTypesUnderTheSameName() throws Exception {
 		// the latest one is the unique that can be referenced
-		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private class A{} private String A =\"a\"; public void bar(){ A=\"b\";} }");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"public class Foo { private class A{} private String A =\"a\"; public void bar(){ A=\"b\";} }");
 		Assert.assertEquals(2, cu.getTypes().get(0).getMembers().size());
 	}
 
 	@Test
 	public void testStaticImportsWithWildcard() throws Exception {
-		CompilationUnit cu = runRemoveUnusedMembers("import static java.lang.Math.*; public class HelloWorld { private double compute = PI; private double foo() { return (PI * pow(2.5,2));} }");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"import static java.lang.Math.*; public class HelloWorld { private double compute = PI; private double foo() { return (PI * pow(2.5,2));} }");
 		Assert.assertTrue(cu.getTypes().get(0).getMembers().isEmpty());
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
 
 	@Test
 	public void testStaticImportsWithSpecificMember() throws Exception {
-		CompilationUnit cu = runRemoveUnusedMembers("import static java.lang.Math.PI; public class HelloWorld { private double compute = PI; private double foo() { return (PI * 2);} }");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"import static java.lang.Math.PI; public class HelloWorld { private double compute = PI; private double foo() { return (PI * 2);} }");
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
 
 	@Test
 	public void testImportsOfAnnotations() throws Exception {
-		CompilationUnit cu = runRemoveUnusedMembers("import javax.annotation.Generated; @Generated(value=\"WALKMOD\") public class Foo {}");
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"import javax.annotation.Generated; @Generated(value=\"WALKMOD\") public class Foo {}");
 		Assert.assertTrue(!cu.getImports().isEmpty());
 
 	}
@@ -242,28 +247,22 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 				+ "given list. Only objects present in the list (according to {@link Object#equals}) may be\n"
 				+ "compared. This comparator imposes a \"partial ordering\" over the type {@code T}. Subsequent\n"
 				+ "changes to the {@code valuesInOrder} list will have no effect on the returned comparator. Null\n"
-				+ "values in the list are not supported.\n\n"
-				+ "<p>\n"
+				+ "values in the list are not supported.\n\n" + "<p>\n"
 				+ "The returned comparator throws an {@link ClassCastException} when it receives an input\n"
-				+ "parameter that isn't among the provided values.\n\n"
-				+ "<p>\n*"
-				+ "The generated comparator is serializable if all the provided values are serializable.\n"
-				+
+				+ "parameter that isn't among the provided values.\n\n" + "<p>\n*"
+				+ "The generated comparator is serializable if all the provided values are serializable.\n" +
 
-				" @param valuesInOrder the values that the returned comparator will be able to compare, in the\n"
-				+ "order the comparator should induce\n"
-				+ " @return the comparator described above\n"
+		" @param valuesInOrder the values that the returned comparator will be able to compare, in the\n"
+				+ "order the comparator should induce\n" + " @return the comparator described above\n"
 				+ " @throws NullPointerException if any of the provided values is null\n"
 				+ " @throws IllegalArgumentException if {@code valuesInOrder} contains any duplicate values\n"
 				+ " (according to {@link Object#equals})\n*";
 
-		String code = "public class Foo { /**" + javadoc
-				+ "/ public void foo(){}}";
+		String code = "public class Foo { /**" + javadoc + "/ public void foo(){}}";
 		runRemoveUnusedMembers(code);
 
 		javadoc = "This class provides a skeletal implementation of the {@code Cache} interface to minimize the\n"
-				+ " effort required to implement this interface.\n\n"
-				+ " <p>\n"
+				+ " effort required to implement this interface.\n\n" + " <p>\n"
 				+ " To implement a cache, the programmer needs only to extend this class and provide an\n"
 				+ " implementation for the {@link #get(Object)} and {@link #getIfPresent} methods.\n"
 				+ " {@link #getUnchecked}, {@link #get(Object, Callable)}, and {@link #getAll} are implemented in\n"
@@ -272,26 +271,21 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 				+ " implemented in terms of {@link #invalidate}. The method {@link #cleanUp} is a no-op. All other\n"
 				+ " methods throw an {@link UnsupportedOperationException}.";
 
-		code = "import java.util.concurrent.Callable; public class Foo {/**"
-				+ javadoc + "*/ public void foo(){}}";
+		code = "import java.util.concurrent.Callable; public class Foo {/**" + javadoc + "*/ public void foo(){}}";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
 
 		javadoc = "Returns a comparator that compares two arrays of unsigned {@code int} values lexicographically.\n"
 				+ " That is, it compares, using {@link #compare(int, int)}), the first pair of values that follow\n"
 				+ " any common prefix, or when one array is a prefix of the other, treats the shorter array as the\n"
-				+ " lesser. For example, {@code [] < [1] < [1, 2] < [2] < [1 << 31]}.\n"
-				+
+				+ " lesser. For example, {@code [] < [1] < [1, 2] < [2] < [1 << 31]}.\n" +
 
-				" <p>\n"
-				+ " The returned comparator is inconsistent with {@link Object#equals(Object)} (since arrays\n"
-				+ " support only identity equality), but it is consistent with {@link Arrays#equals(int[], int[])}.\n"
-				+
+		" <p>\n" + " The returned comparator is inconsistent with {@link Object#equals(Object)} (since arrays\n"
+				+ " support only identity equality), but it is consistent with {@link Arrays#equals(int[], int[])}.\n" +
 
-				" @see <a href=\"http://en.wikipedia.org/wiki/Lexicographical_order\"> Lexicographical order\n"
+		" @see <a href=\"http://en.wikipedia.org/wiki/Lexicographical_order\"> Lexicographical order\n"
 				+ "      article at Wikipedia</a>\n";
-		code = "import java.util.Arrays; public class Foo {/**" + javadoc
-				+ "*/ public void foo(){}}";
+		code = "import java.util.Arrays; public class Foo {/**" + javadoc + "*/ public void foo(){}}";
 		cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
@@ -301,8 +295,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String javadoc = "\n*  Weak reference with a {@code finalizeReferent()} method which a background thread invokes after\n"
 				+ " * the garbage collector reclaims the referent. This is a simpler alternative to using a {@link\n"
 				+ " * Arrays}.\n";
-		String code = "import java.util.Arrays; public class Foo {/**"
-				+ javadoc + "*/ public void foo(){}}";
+		String code = "import java.util.Arrays; public class Foo {/**" + javadoc + "*/ public void foo(){}}";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
 	}
@@ -319,8 +312,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String consumerCode = "private interface Consumer{ public void accept(String t); } ";
 		String methodToReferece = "private static void printNames(String name) {System.out.println(name);}";
 		String methodCode = "public void run(){ Consumer consumer = A::printNames; }";
-		String code = "public class A{ " + consumerCode + methodToReferece
-				+ methodCode + "}";
+		String code = "public class A{ " + consumerCode + methodToReferece + methodCode + "}";
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			CompilationUnit cu = runRemoveUnusedMembers(code);
 			Assert.assertEquals(3, cu.getTypes().get(0).getMembers().size());
@@ -338,12 +330,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testReferencesToAnnotationMembers() throws Exception {
-		String code = "import java.lang.annotation.ElementType;\n"
-				+ "import java.lang.annotation.Retention;\n"
-				+ "import java.lang.annotation.RetentionPolicy;\n"
-				+ "import java.lang.annotation.Target;\n"
-				+ "@Retention(RetentionPolicy.RUNTIME)\n"
-				+ "@Target(ElementType.METHOD)\n"
+		String code = "import java.lang.annotation.ElementType;\n" + "import java.lang.annotation.Retention;\n"
+				+ "import java.lang.annotation.RetentionPolicy;\n" + "import java.lang.annotation.Target;\n"
+				+ "@Retention(RetentionPolicy.RUNTIME)\n" + "@Target(ElementType.METHOD)\n"
 				+ "public @interface Foo { public boolean enabled() default true; }";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
 		Assert.assertTrue(!cu.getImports().isEmpty());
@@ -353,16 +342,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testAnnonymousClass() throws Exception {
 		String code = "public class Foo{ public void bar() { Foo o = new Foo() { private String name; public void bar() { System.out.println(\"hello\"); }};}}";
 		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
-		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt
-				.getExpression();
-		ObjectCreationExpr oce = (ObjectCreationExpr) expr.getVars().get(0)
-				.getInit();
+		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt.getExpression();
+		ObjectCreationExpr oce = (ObjectCreationExpr) expr.getVars().get(0).getInit();
 		// The name attribute should be removed
-		FieldDeclaration fd = (FieldDeclaration) oce.getAnonymousClassBody()
-				.get(0);
+		FieldDeclaration fd = (FieldDeclaration) oce.getAnonymousClassBody().get(0);
 
 		Assert.assertNull(fd.getUsages());
 	}
@@ -373,18 +358,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code);
 		BodyDeclaration bd = cu.getTypes().get(0).getMembers().get(1);
 		FieldDeclaration aux = (FieldDeclaration) bd;
-		ObjectCreationExpr expr = (ObjectCreationExpr) aux.getVariables()
-				.get(0).getInit();
-		MethodDeclaration md = (MethodDeclaration) expr.getAnonymousClassBody()
-				.get(1);
+		ObjectCreationExpr expr = (ObjectCreationExpr) aux.getVariables().get(0).getInit();
+		MethodDeclaration md = (MethodDeclaration) expr.getAnonymousClassBody().get(1);
 		Assert.assertNotNull(md.getUsages());
 	}
 
 	@Test
 	public void testAnonymousArrayExpressions() throws Exception {
 		CompilationUnit cu = run("public class A{ Integer v[][] = { new Integer[] {3} }; Integer a[] = v[0]; }");
-		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		SymbolData sd = fd.getType().getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals(Integer.class.getName(), sd.getName());
@@ -400,27 +382,22 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 			CompilationUnit cu = run("import java.io.*; public class A { "
 					+ "void test() throws FileNotFoundException, ClassNotFoundException {} "
 					+ "public void run (){ try{ test(); }catch(FileNotFoundException|ClassNotFoundException e){}}}");
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(1);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 			TryStmt stmt = (TryStmt) md.getBody().getStmts().get(0);
 			SymbolData sd = stmt.getCatchs().get(0).getExcept().getSymbolData();
 			Assert.assertNotNull(sd);
 			List<Class<?>> bounds = sd.getBoundClasses();
-			Assert.assertEquals("java.io.FileNotFoundException", bounds.get(0)
-					.getName());
-			Assert.assertEquals("java.lang.ClassNotFoundException",
-					bounds.get(1).getName());
+			Assert.assertEquals("java.io.FileNotFoundException", bounds.get(0).getName());
+			Assert.assertEquals("java.lang.ClassNotFoundException", bounds.get(1).getName());
 		}
 	}
 
 	@Test
 	public void testGenericClasses() throws Exception {
-		CompilationUnit cu = run("public class Box<T> {" + "private T t;"
-				+ "public T get() {return t;}"
+		CompilationUnit cu = run("public class Box<T> {" + "private T t;" + "public T get() {return t;}"
 				+ "public void set(T t) { this.t = t;}" + "}");
 
-		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		SymbolData sd = fd.getType().getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals(true, sd.isTemplateVariable());
@@ -429,11 +406,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testGenericClassesWithBounds() throws Exception {
-		CompilationUnit cu = run("import java.util.*;import java.io.*; "
-				+ "public class Foo<A extends Map<String, Object>>"
-				+ " extends LinkedList<A> implements Serializable{}");
-		ClassOrInterfaceDeclaration declaration = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0);
+		CompilationUnit cu = run(
+				"import java.util.*;import java.io.*; " + "public class Foo<A extends Map<String, Object>>"
+						+ " extends LinkedList<A> implements Serializable{}");
+		ClassOrInterfaceDeclaration declaration = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
 		List<ClassOrInterfaceType> implementsList = declaration.getImplements();
 		SymbolData serializable = implementsList.get(0).getSymbolData();
 		Assert.assertNotNull(serializable);
@@ -454,8 +430,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testMethodResolution() throws Exception {
 		CompilationUnit cu = run("public class A { public String getName() { return \"hello\"; }}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNotNull(md.getSymbolData().getMethod());
 		Assert.assertEquals("getName", md.getSymbolData().getMethod().getName());
 	}
@@ -463,22 +438,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testConstructorResolution() throws Exception {
 		CompilationUnit cu = run("public class A { private String name; public A(String name){this.name = name;}}");
-		ConstructorDeclaration cd = (ConstructorDeclaration) cu.getTypes()
-				.get(0).getMembers().get(1);
+		ConstructorDeclaration cd = (ConstructorDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		Assert.assertNotNull(cd.getSymbolData().getConstructor());
-		Assert.assertEquals(1, cd.getSymbolData().getConstructor()
-				.getParameterTypes().length);
+		Assert.assertEquals(1, cd.getSymbolData().getConstructor().getParameterTypes().length);
 	}
 
 	@Test
 	public void testFieldResolution() throws Exception {
 		CompilationUnit cu = run("public class A { private String name; }");
-		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNotNull(fd.getFieldsSymbolData());
 		Assert.assertEquals(1, fd.getFieldsSymbolData().size());
-		Assert.assertEquals("name", fd.getFieldsSymbolData().get(0).getField()
-				.getName());
+		Assert.assertEquals("name", fd.getFieldsSymbolData().get(0).getField().getName());
 	}
 
 	@Test
@@ -492,8 +463,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testAnnotationResolution() throws Exception {
 		CompilationUnit cu = run("public class A { @Override public String toString(){ return \"A\"; }}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		AnnotationExpr ann = md.getAnnotations().get(0);
 		Assert.assertNotNull(ann.getSymbolData());
 		Assert.assertEquals("java.lang.Override", ann.getSymbolData().getName());
@@ -501,9 +471,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testGenericMethodResultType() throws Exception {
-		CompilationUnit cu = run("import java.util.List;import java.util.LinkedList; public class A { public List<? extends A> foo(){ return new LinkedList<A>();} public void bar() { foo().get(0); }}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(1);
+		CompilationUnit cu = run(
+				"import java.util.List;import java.util.LinkedList; public class A { public List<? extends A> foo(){ return new LinkedList<A>();} public void bar() { foo().get(0); }}");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
@@ -513,25 +483,24 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testGenericMethodResultType2() throws Exception {
-		CompilationUnit cu = run("import java.util.List;import java.util.LinkedList; public class A { public class B {} public class C {public List<? extends B> foo(){ return new LinkedList<B>();} public void bar() { foo().get(0);} }}");
+		CompilationUnit cu = run(
+				"import java.util.List;import java.util.LinkedList; public class A { public class B {} public class C {public List<? extends B> foo(){ return new LinkedList<B>();} public void bar() { foo().get(0);} }}");
 
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0).getMembers().get(1);
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(1);
 
 		MethodDeclaration md = (MethodDeclaration) type.getMembers().get(1);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
-		Assert.assertEquals("A$B", stmt.getExpression().getSymbolData()
-				.getName());
+		Assert.assertEquals("A$B", stmt.getExpression().getSymbolData().getName());
 
 	}
 
 	@Test
 	public void testInnerClassAttributesReferences() throws Exception {
-		CompilationUnit cu = run("public class A{ public Object foo() { return C.INSTANCE; } private static class C { private static C INSTANCE; }}");
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0).getMembers().get(1);
+		CompilationUnit cu = run(
+				"public class A{ public Object foo() { return C.INSTANCE; } private static class C { private static C INSTANCE; }}");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		Assert.assertNotNull(type.getMembers());
 		Assert.assertTrue(!type.getMembers().isEmpty());
 	}
@@ -544,9 +513,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testScopes() throws Exception {
-		CompilationUnit cu = runRemoveUnusedMembers("public class Foo { private int c; class A { int c; } class B extends A { public int x = c; }}");
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0);
+		CompilationUnit cu = runRemoveUnusedMembers(
+				"public class Foo { private int c; class A { int c; } class B extends A { public int x = c; }}");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
 		Assert.assertEquals(2, type.getMembers().size());
 	}
 
@@ -582,9 +551,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testInheritance() throws Exception {
-		CompilationUnit cu = run("public class A { private int var; private void foo() {} class B extends A { void bar() { foo(); var = 1;}}}");
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0);
+		CompilationUnit cu = run(
+				"public class A { private int var; private void foo() {} class B extends A { void bar() { foo(); var = 1;}}}");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
 		MethodDeclaration md = (MethodDeclaration) type.getMembers().get(1);
 		Assert.assertNotNull(md.getUsages());
 		FieldDeclaration fd = (FieldDeclaration) type.getMembers().get(0);
@@ -623,8 +592,8 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 		String transform = "public static <F, T> Iterable<T> transform(final Iterable<F> fromIterable, final Function<? super F, ? extends T> function) { return null; }";
 
-		run("import java.util.*; public class A { " + mergeSorted + toIterator
-				+ transform + " public class Function<F,T> {} }");
+		run("import java.util.*; public class A { " + mergeSorted + toIterator + transform
+				+ " public class Function<F,T> {} }");
 
 		Assert.assertTrue(true);
 	}
@@ -650,8 +619,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testGenericsIntroducedByAnInnerClass() throws Exception {
 		String innerClass = "class Reference<T> { public T get() { return null;}} ";
-		String mainClass = "public class A { "
-				+ innerClass
+		String mainClass = "public class A { " + innerClass
 				+ " void foo() { Reference<Reference<String>> r = null; r.get().get().length(); }}";
 		run(mainClass);
 		Assert.assertTrue(true);
@@ -661,24 +629,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testGenericsWithRewrittenTypeParams() throws Exception {
 		String class1 = "class B<T> { public T get() { return null; }}";
 		String class2 = "class C<T> extends B<B<T>> {}";
-		String main = "public class A { "
-				+ class1
-				+ " "
-				+ class2
+		String main = "public class A { " + class1 + " " + class2
 				+ " void foo () { C<String> c = null; c.get().get().trim().length(); }}";
 		run(main);
 		Assert.assertTrue(true);
 	}
 
 	@Test
-	public void testGenericsWithRewrittenTypeParamsWithInheritance()
-			throws Exception {
+	public void testGenericsWithRewrittenTypeParamsWithInheritance() throws Exception {
 		String class1 = "class B<T> { public T get() { return null; }}";
 		String class2 = "class C<T extends File> extends B<List<T>> { @Override public List<T> get() {return null;}}";
-		String main = "import java.util.*; import java.io.File; public class A { "
-				+ class1
-				+ " "
-				+ class2
+		String main = "import java.util.*; import java.io.File; public class A { " + class1 + " " + class2
 				+ " void foo () { C<File> c = null; c.get().iterator().next().getAbsolutePath().trim(); }}";
 		run(main);
 		Assert.assertTrue(true);
@@ -699,8 +660,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String class2 = "class C extends HashMap<K, Set<V>> { }";
 		String class3 = "class D extends C { void foo() { get(null).iterator().hasNext();} }";
 
-		String main = "import java.util.*; public class A<K,V> { " + class1
-				+ " " + class2 + " " + class3 + "}";
+		String main = "import java.util.*; public class A<K,V> { " + class1 + " " + class2 + " " + class3 + "}";
 		run(main);
 		Assert.assertTrue(true);
 	}
@@ -708,8 +668,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testGenericsWithRewrittenTypeParams4() throws Exception {
 		String classB = "class B<K, V> { K getKey() { return null; }}";
-		String code = "import java.util.*; public class C<K extends java.io.File, V> { "
-				+ classB
+		String code = "import java.util.*; public class C<K extends java.io.File, V> { " + classB
 				+ " class A extends B<List<K>, V> { void foo(K value){ value.getAbsolutePath().trim();}}}";
 		run(code);
 		Assert.assertTrue(true);
@@ -718,8 +677,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testGenericsWithClassParameters() throws Exception {
 		String class1 = "public static class Range { public static <C extends Collection<?>> List<C> range(C lower, boolean x, C upper, boolean y) { return null;}}";
-		String code = "import java.util.*; public class A { "
-				+ class1
+		String code = "import java.util.*; public class A { " + class1
 				+ " void bar(){ Range.range(new ArrayList(), true, new ArrayList(), true).iterator().next().get(0).toString(); }}";
 		run(code);
 		Assert.assertTrue(true);
@@ -728,8 +686,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testGenericsWithClassParameters2() throws Exception {
 		String class1 = "public static class Range { public static <C extends Collection<?>> C range(C lower, boolean x, C upper, boolean y) { return null;}}";
-		String code = "import java.util.*; public class A { "
-				+ class1
+		String code = "import java.util.*; public class A { " + class1
 				+ " void bar(){ Range.range(new ArrayList(), true, new ArrayList(), true).get(0).toString(); }}";
 		run(code);
 		Assert.assertTrue(true);
@@ -754,8 +711,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testMethodOrdering() throws Exception {
 		String code = "public class A { void foo(long i) {} void foo(int i) {} void bar(){ foo(1); }}";
 		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNull(md.getUsages());
 		md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		Assert.assertNotNull(md.getUsages());
@@ -766,8 +722,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testConstructorOrdering() throws Exception {
 		String code = "public class A { A(long i) {} A(int i) {} void bar(){ A aux = new A(1); }}";
 		CompilationUnit cu = run(code);
-		ConstructorDeclaration md = (ConstructorDeclaration) cu.getTypes()
-				.get(0).getMembers().get(0);
+		ConstructorDeclaration md = (ConstructorDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNull(md.getUsages());
 		md = (ConstructorDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		Assert.assertNotNull(md.getUsages());
@@ -778,8 +733,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testMethodOrdering2() throws Exception {
 		String code = "public class A { void foo(long i) {} void foo(int i) {} void bar(){ foo(1L); }}";
 		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNotNull(md.getUsages());
 		Assert.assertEquals(1, md.getUsages().size());
 	}
@@ -809,13 +763,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testArrayInitExprType() throws Exception {
 		String code = "public class A { void foo() { int[] c = new int[10];}} ";
 		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
-		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt
-				.getExpression();
-		ArrayCreationExpr array = (ArrayCreationExpr) expr.getVars().get(0)
-				.getInit();
+		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt.getExpression();
+		ArrayCreationExpr array = (ArrayCreationExpr) expr.getVars().get(0).getInit();
 		Assert.assertNotNull(array.getDimensions().get(0).getSymbolData());
 	}
 
@@ -823,11 +774,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testArrayInitExprType2() throws Exception {
 		String code = "public class A { private int x = 10; void foo() { int[] c = new int[x];}} ";
 		CompilationUnit cu = runRemoveUnusedMembers(code);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(1);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
-		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt
-				.getExpression();
+		VariableDeclarationExpr expr = (VariableDeclarationExpr) stmt.getExpression();
 		Assert.assertNotNull(expr.getVars().get(0).getInit().getSymbolData());
 	}
 
@@ -887,22 +836,20 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
-	public void testTypeCompatibilityWithGenericsAndBasicTypes()
-			throws Exception {
+	public void testTypeCompatibilityWithGenericsAndBasicTypes() throws Exception {
 		run("import java.util.*; public class A { void foo(List<Number> list) { boolean a = list.add(3) && true;} }");
 		Assert.assertTrue(true);
 	}
 
 	@Test
 	public void testUpperBoundsInAResolvedType() throws Exception {
-		CompilationUnit cu = run("import java.util.*; public class EquivalenceTester<T> { List<? super T> aux; EquivalenceTester(List<? super T> aux){ this.aux = aux;} void foo(){  EquivalenceTester.of(new LinkedList<String>()); } public static <T> EquivalenceTester<T> of(List<? super T> equivalence) {return new EquivalenceTester<T>(equivalence);}}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(2);
+		CompilationUnit cu = run(
+				"import java.util.*; public class EquivalenceTester<T> { List<? super T> aux; EquivalenceTester(List<? super T> aux){ this.aux = aux;} void foo(){  EquivalenceTester.of(new LinkedList<String>()); } public static <T> EquivalenceTester<T> of(List<? super T> equivalence) {return new EquivalenceTester<T>(equivalence);}}");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(2);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		SymbolData sd = stmt.getExpression().getSymbolData();
 		Assert.assertNotNull(sd);
-		Assert.assertEquals(String.class.getName(), sd.getParameterizedTypes()
-				.get(0).getName());
+		Assert.assertEquals(String.class.getName(), sd.getParameterizedTypes().get(0).getName());
 		Assert.assertTrue(true);
 	}
 
@@ -910,8 +857,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testFloats() throws Exception {
 		CompilationUnit cu = run("public class A { void foo() { foo(1.0f); } void foo(float f){} }");
 		Assert.assertTrue(true);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getArgs().get(0).getSymbolData();
@@ -921,14 +867,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void genericsWithBasicTypes() throws Exception {
 		CompilationUnit cu = run("public class A { void foo() { java.util.Arrays.asList(1, 2, 3, null); } }");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
-		Assert.assertEquals(Integer.class.getName(), sd.getParameterizedTypes()
-				.get(0).getName());
+		Assert.assertEquals(Integer.class.getName(), sd.getParameterizedTypes().get(0).getName());
 		Assert.assertTrue(true);
 	}
 
@@ -952,18 +896,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testDynamicArraysInMethodCalls() throws Exception {
-		CompilationUnit cu = run("public class A { private byte[] toByteArray(int... bytes) { return null; }  private void assertWellFormed(int... bytes) { toByteArray(bytes); } } ");
+		CompilationUnit cu = run(
+				"public class A { private byte[] toByteArray(int... bytes) { return null; }  private void assertWellFormed(int... bytes) { toByteArray(bytes); } } ");
 		Assert.assertTrue(true);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNotNull(md.getUsages());
 	}
 
 	@Test
 	public void testInterfaceImplementationsWithGenerics() throws Exception {
-		CompilationUnit cu = run("public class A { interface B<T> { public T get();} class C implements B<String> { public String get (){return null;}} <F> F bar(B<F> b) { return null; } void car() { bar(new C()); }}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(3);
+		CompilationUnit cu = run(
+				"public class A { interface B<T> { public T get();} class C implements B<String> { public String get (){return null;}} <F> F bar(B<F> b) { return null; } void car() { bar(new C()); }}");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(3);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
@@ -973,11 +917,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
-	public void testImplementationWithGenericsRewrittingLetters()
-			throws Exception {
-		CompilationUnit cu = run("public class A { class B <B,K,V> { B get() { return null; }} class C<K,V> extends B<C<K,V>,K, V>{} void foo() { C<String,String> c = new C<String,String>(); c.get(); } }");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(2);
+	public void testImplementationWithGenericsRewrittingLetters() throws Exception {
+		CompilationUnit cu = run(
+				"public class A { class B <B,K,V> { B get() { return null; }} class C<K,V> extends B<C<K,V>,K, V>{} void foo() { C<String,String> c = new C<String,String>(); c.get(); } }");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(2);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
@@ -986,43 +929,39 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
-	public void testImplementationWithGenericsRewrittingLetters2()
-			throws Exception {
-		CompilationUnit cu = run("import java.util.*; public class A { class Z <B> { B get() { return null; }}  class D<K, V> extends C <HashMap<K, V>> {} class C<X> extends Z<X>{} void foo() { D<String, String> c = new D<String, String>(); c.get(); } }");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(3);
+	public void testImplementationWithGenericsRewrittingLetters2() throws Exception {
+		CompilationUnit cu = run(
+				"import java.util.*; public class A { class Z <B> { B get() { return null; }}  class D<K, V> extends C <HashMap<K, V>> {} class C<X> extends Z<X>{} void foo() { D<String, String> c = new D<String, String>(); c.get(); } }");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(3);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("java.util.HashMap", sd.getName());
 		Assert.assertNotNull(sd.getParameterizedTypes());
-		Assert.assertEquals("java.lang.String",
-				sd.getParameterizedTypes().get(0).getName());
-		Assert.assertEquals("java.lang.String",
-				sd.getParameterizedTypes().get(1).getName());
+		Assert.assertEquals("java.lang.String", sd.getParameterizedTypes().get(0).getName());
+		Assert.assertEquals("java.lang.String", sd.getParameterizedTypes().get(1).getName());
 	}
 
 	@Test
 	public void testBug1() throws Exception {
-		CompilationUnit cu = run("import java.util.*; public class A<K,V> { public static <T> T firstNonNull( T first, T second) { return null;} public Map<K, Collection<V>> asMap() {return null;} void foo(K key, Collection<V> value) { A.firstNonNull(asMap().remove(key),value); } }");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(2);
+		CompilationUnit cu = run(
+				"import java.util.*; public class A<K,V> { public static <T> T firstNonNull( T first, T second) { return null;} public Map<K, Collection<V>> asMap() {return null;} void foo(K key, Collection<V> value) { A.firstNonNull(asMap().remove(key),value); } }");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(2);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("java.util.Collection", sd.getName());
 		Assert.assertNotNull(sd.getParameterizedTypes());
-		Assert.assertEquals("java.lang.Object",
-				sd.getParameterizedTypes().get(0).getName());
+		Assert.assertEquals("java.lang.Object", sd.getParameterizedTypes().get(0).getName());
 	}
 
 	@Test
 	public void testSingletonList() throws Exception {
-		CompilationUnit cu = run("import java.util.Collections; public class A { void foo(String[] array) { Collections.singletonList(array); } }");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		CompilationUnit cu = run(
+				"import java.util.Collections; public class A { void foo(String[] array) { Collections.singletonList(array); } }");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
@@ -1031,17 +970,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testTemplateResults() throws Exception {
-		CompilationUnit cu = run("public class A<X> { public static <C extends Comparable<?>> A<C> all(){ return null;} void foo() { A.<Integer>all(); } }");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(1);
+		CompilationUnit cu = run(
+				"public class A<X> { public static <C extends Comparable<?>> A<C> all(){ return null;} void foo() { A.<Integer>all(); } }");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
 		Assert.assertNotNull(sd);
 		Assert.assertEquals("A", sd.getName());
 		Assert.assertNotNull(sd.getParameterizedTypes());
-		Assert.assertEquals("java.lang.Integer", sd.getParameterizedTypes()
-				.get(0).getName());
+		Assert.assertEquals("java.lang.Integer", sd.getParameterizedTypes().get(0).getName());
 
 	}
 
@@ -1053,9 +991,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testPriorityObjectVersusInt() throws Exception {
-		CompilationUnit cu = run("import java.util.*; public class A { void foo(List<Integer> contents, int i) { contents.remove(Integer.valueOf(i)); }}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		CompilationUnit cu = run(
+				"import java.util.*; public class A { void foo(List<Integer> contents, int i) { contents.remove(Integer.valueOf(i)); }}");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
@@ -1065,12 +1003,11 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testMethodsThatReturnsMatrixs() throws Exception {
-		CompilationUnit cu = run("public class A { char[][] bar(){ return new char[0][0]; } void foo(String s) { int i = bar().length; }}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(1);
+		CompilationUnit cu = run(
+				"public class A { char[][] bar(){ return new char[0][0]; } void foo(String s) { int i = bar().length; }}");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
-		VariableDeclarationExpr vexpr = (VariableDeclarationExpr) stmt
-				.getExpression();
+		VariableDeclarationExpr vexpr = (VariableDeclarationExpr) stmt.getExpression();
 		Expression expr = vexpr.getVars().get(0).getInit();
 		SymbolData sd = expr.getSymbolData();
 		Assert.assertNotNull(sd);
@@ -1087,10 +1024,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String m6 = "public static long[] aryEq(final long[] value) {return null;} ";
 		String m7 = "public static short[] aryEq(final short[] value) {return null; }";
 		String m8 = "public static <T> T[] aryEq(final T[] value) {return null; }";
-		CompilationUnit cu = run("public class A { public void foo(byte[] arg){aryEq(arg);} "
-				+ m1 + m2 + m3 + m4 + m5 + m6 + m7 + m8 + "}");
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		CompilationUnit cu = run("public class A { public void foo(byte[] arg){aryEq(arg);} " + m1 + m2 + m3 + m4 + m5
+				+ m6 + m7 + m8 + "}");
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		SymbolData sd = mce.getSymbolData();
@@ -1100,9 +1036,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testGenericsOnInheritedAttributes() throws Exception {
-		CompilationUnit cu = run("public class A { class C<T> { T data; } class D extends C<byte[]> { void foo(byte[] x){} void aux(){foo(data);}} }");
-		TypeDeclaration td = (TypeDeclaration) cu.getTypes().get(0)
-				.getMembers().get(1);
+		CompilationUnit cu = run(
+				"public class A { class C<T> { T data; } class D extends C<byte[]> { void foo(byte[] x){} void aux(){foo(data);}} }");
+		TypeDeclaration td = (TypeDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		MethodDeclaration md = (MethodDeclaration) td.getMembers().get(1);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
@@ -1115,39 +1051,36 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
-	public void testMethodResolutionWithRecursiveGenericsInMethodScope()
-			throws Exception {
+	public void testMethodResolutionWithRecursiveGenericsInMethodScope() throws Exception {
 		run("import java.util.*; class A { public <K extends List<V>, V extends List<K>> void withMutualRecursiveBound(List<Map<K, V>> list) {}}");
 		Assert.assertTrue(true);
 	}
 
 	@Test
-	public void testMethodResolutionWithMultipleBoundsGenericsInMethodScope()
-			throws Exception {
+	public void testMethodResolutionWithMultipleBoundsGenericsInMethodScope() throws Exception {
 		run("import java.util.*; class A { <T extends Number & CharSequence> void withUpperBound(List<T> list) {} }");
 		Assert.assertTrue(true);
 	}
 
 	@Test
 	public void testObjectCreationExprWithScope() throws Exception {
-		CompilationUnit cu = run("class Owner<T>{ class Inner<T> {} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0).getMembers().get(0);
+		CompilationUnit cu = run(
+				"class Owner<T>{ class Inner<T> {} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertNotNull(type.getUsages());
 	}
 
 	@Test
 	public void testObjectCreationExprWithScope2() throws Exception {
-		CompilationUnit cu = run("class A { class Owner<T>{ class Inner<T> {}} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0).getMembers().get(0);
+		CompilationUnit cu = run(
+				"class A { class Owner<T>{ class Inner<T> {}} void foo() { Object o = new Owner<Integer>().new Inner<String>() {}; } }");
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		type = (ClassOrInterfaceDeclaration) type.getMembers().get(0);
 		Assert.assertNotNull(type.getUsages());
 	}
 
 	@Test
-	public void testInheritanceOnNestedClassesFromAnObjectCreation()
-			throws Exception {
+	public void testInheritanceOnNestedClassesFromAnObjectCreation() throws Exception {
 		run("class A { private static class Owner<T>{ void foo() { Object o =new Owner<Integer>().new Inner<String>() {}; } private static abstract class Nested<X> {} private abstract class Inner<Y> extends Nested<Y> {}}  } ");
 		Assert.assertTrue(true);
 	}
@@ -1184,8 +1117,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String mainClass = "public class A { void foo() {new From<Integer>() {}.new To<String>() {};} class From<T>{ class To<T> { }}}";
 
 		CompilationUnit cu = run(mainClass);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		ObjectCreationExpr call = (ObjectCreationExpr) stmt.getExpression();
 		SymbolReference ref = call.getType();
@@ -1195,8 +1127,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void loadMethodsInsideAnonymousClasses() throws Exception {
 		String stmt = "Service service2=new Service() {@Override public final void addListener(Listener listener, Executor executor) {}};";
-		String mainClass = "import java.util.concurrent.Executor; public class A { void foo() {"
-				+ stmt + "}}";
+		String mainClass = "import java.util.concurrent.Executor; public class A { void foo() {" + stmt + "}}";
 		String serviceClass = "import java.util.concurrent.Executor; public class Service{ abstract class Listener {}  public void addListener(Listener listener, Executor executor){} }";
 		String listenerClass = "class Listener {}";
 		run(mainClass, serviceClass, listenerClass);
@@ -1219,17 +1150,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testMethodsOrderAsStaticImport() throws Exception {
 		String importedClass = "package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "
-				+ "public static Iterable<?> assertThat(Iterable target) {return null;}"
-				+ "}";
+				+ "public static Iterable<?> assertThat(Iterable target) {return null;}" + "}";
 		String mainClass = "import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(new LinkedList<String>()); } }";
 		CompilationUnit cu = run(mainClass, importedClass);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
 
-		Assert.assertEquals("java.lang.Iterable", call.getSymbolData()
-				.getMethod().getReturnType().getName());
+		Assert.assertEquals("java.lang.Iterable", call.getSymbolData().getMethod().getReturnType().getName());
 	}
 
 	@Test
@@ -1240,33 +1168,27 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 				+ "public static Collection assertThat(Collection target) {return null;}"
 				+ "public static Boolean assertThat(Boolean target) {return null;}"
 				+ "public static String assertThat(String target) {return null;}"
-				+ "public static Object assertThat(Object target) {return null;}"
-				+ "}";
+				+ "public static Object assertThat(Object target) {return null;}" + "}";
 		String mainClass = "import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
 		CompilationUnit cu = run(mainClass, importedClass);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
 
-		Assert.assertEquals("java.lang.String", call.getSymbolData()
-				.getMethod().getReturnType().getName());
+		Assert.assertEquals("java.lang.String", call.getSymbolData().getMethod().getReturnType().getName());
 	}
 
 	@Test
 	public void testMethodsOrderAsStaticImport3() throws Exception {
 		String importedClass = "package test; public class Test { public static <T extends Comparable<?>> T assertThat(T target) {return null;}\n "
-				+ "public static Iterable<?> assertThat(Object target) {return null;}"
-				+ "}";
+				+ "public static Iterable<?> assertThat(Object target) {return null;}" + "}";
 		String mainClass = "import static test.Test.assertThat; import java.util.*; class A{ void foo() { assertThat(\"hello\"); } }";
 		CompilationUnit cu = run(mainClass, importedClass);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
 
-		Assert.assertEquals("java.lang.Comparable", call.getSymbolData()
-				.getMethod().getReturnType().getName());
+		Assert.assertEquals("java.lang.Comparable", call.getSymbolData().getMethod().getReturnType().getName());
 	}
 
 	@Test
@@ -1281,21 +1203,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testStreams1() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			CompilationUnit cu = run("import java.util.function.*;import java.util.*;import java.util.concurrent.*;import java.util.stream.*;"
-					+ " public class A<T> {"
-					+ " Map<Object, Function<Stream<T>, ?>> forks; "
-					+ " public void foo(){  "
-					+ "List<BlockingQueue<T>> queues = new ArrayList<>(); "
-					+ "forks.entrySet().stream().reduce("
-					+ "new HashMap<Object, Future<?>>(), "
-					+ "(map, e) -> { map.put(e.getKey(), getOperationResult(queues, e.getValue())); return map;},"
-					+ "(m1, m2) -> {return m1;}); "
-					+ "} "
-					+ "private Future<?> getOperationResult(List<BlockingQueue<T>> queues, Function<Stream<T>, ?> f) {return null; }}");
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(1);
-			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
-					.get(1);
+			CompilationUnit cu = run(
+					"import java.util.function.*;import java.util.*;import java.util.concurrent.*;import java.util.stream.*;"
+							+ " public class A<T> {" + " Map<Object, Function<Stream<T>, ?>> forks; "
+							+ " public void foo(){  " + "List<BlockingQueue<T>> queues = new ArrayList<>(); "
+							+ "forks.entrySet().stream().reduce(" + "new HashMap<Object, Future<?>>(), "
+							+ "(map, e) -> { map.put(e.getKey(), getOperationResult(queues, e.getValue())); return map;},"
+							+ "(m1, m2) -> {return m1;}); " + "} "
+							+ "private Future<?> getOperationResult(List<BlockingQueue<T>> queues, Function<Stream<T>, ?> f) {return null; }}");
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
 			SymbolData sd = stmt.getExpression().getSymbolData();
 			Assert.assertNotNull(sd);
 		}
@@ -1335,18 +1252,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testTemplatesWithMethodReferences() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			CompilationUnit cu = run("import java.util.concurrent.CompletableFuture; public class A { public static A parse(String s) { return null; } void foo(CompletableFuture<String> future) { future.thenApply(A::parse); } }");
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(1);
-			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
-					.get(0);
+			CompilationUnit cu = run(
+					"import java.util.concurrent.CompletableFuture; public class A { public static A parse(String s) { return null; } void foo(CompletableFuture<String> future) { future.thenApply(A::parse); } }");
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 			SymbolData sd = stmt.getExpression().getSymbolData();
 			Assert.assertNotNull(sd);
-			Assert.assertEquals("java.util.concurrent.CompletableFuture",
-					sd.getName());
+			Assert.assertEquals("java.util.concurrent.CompletableFuture", sd.getName());
 			Assert.assertNotNull(sd.getParameterizedTypes());
-			Assert.assertEquals("A", sd.getParameterizedTypes().get(0)
-					.getName());
+			Assert.assertEquals("A", sd.getParameterizedTypes().get(0).getName());
 
 		}
 	}
@@ -1364,11 +1278,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testMethodReferenceScopes2() throws Exception {
 
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			CompilationUnit cu = run("import java.util.*; import java.util.stream.*; public class A { void foo(List<String> names) {Stream<String> s = names.stream(); s.forEach(System.out::println); }}");
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(0);
-			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
-					.get(1);
+			CompilationUnit cu = run(
+					"import java.util.*; import java.util.stream.*; public class A { void foo(List<String> names) {Stream<String> s = names.stream(); s.forEach(System.out::println); }}");
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
 			SymbolData sd = stmt.getExpression().getSymbolData();
 			Assert.assertNotNull(sd);
 		}
@@ -1418,11 +1331,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testMethodReferencesForTypes() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			run("import java.util.*; import java.util.function.*;import java.util.stream.*; "
-					+ "public class A { "
+			run("import java.util.*; import java.util.function.*;import java.util.stream.*; " + "public class A { "
 					+ "void foo(Stream<Character> stream) {"
-					+ " stream.reduce(new WordCounter(0, true), WordCounter::accumulate, WordCounter::combine);"
-					+ " }"
+					+ " stream.reduce(new WordCounter(0, true), WordCounter::accumulate, WordCounter::combine);" + " }"
 					+ "  private static class WordCounter { public WordCounter(int counter, boolean lastSpace) {}  public WordCounter accumulate(Character c) {return null;} public WordCounter combine(WordCounter wordCounter) { return null; } } }");
 			Assert.assertTrue(true);
 		}
@@ -1431,11 +1342,8 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testMethodReferencesAsObjectCreation() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
-			run("import java.util.function.Supplier;"
-					+ "import java.util.HashMap;"
-					+ "import java.util.Map;"
-					+ "public class A{ "
-					+ " static private interface Product {}"
+			run("import java.util.function.Supplier;" + "import java.util.HashMap;" + "import java.util.Map;"
+					+ "public class A{ " + " static private interface Product {}"
 					+ " static private class Loan implements Product {} "
 					+ "final static private Map<String, Supplier<Product>> map = new HashMap<>();"
 					+ "    static {map.put(\"loan\", Loan::new);}}");
@@ -1453,15 +1361,9 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testMultipleVariablesAtDifferentScopes() throws Exception {
-		String code = "public class A { public final int value = 4; public void doIt() { "
-				+ " int value = 6; "
-				+ "Runnable r = new Runnable(){ "
-				+ "public final int value = 5;"
-				+ "public void run(){"
-				+ "int value = 10;"
-				+ "System.out.println(this.value);"
-				+ "}"
-				+ "}; " + " r.run(); }" + "}";
+		String code = "public class A { public final int value = 4; public void doIt() { " + " int value = 6; "
+				+ "Runnable r = new Runnable(){ " + "public final int value = 5;" + "public void run(){"
+				+ "int value = 10;" + "System.out.println(this.value);" + "}" + "}; " + " r.run(); }" + "}";
 		CompilationUnit cu = run(code);
 		List<BodyDeclaration> members = cu.getTypes().get(0).getMembers();
 		FieldDeclaration fd = (FieldDeclaration) members.get(0);
@@ -1471,8 +1373,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		List<Statement> stmts = md.getBody().getStmts();
 		ExpressionStmt expression = (ExpressionStmt) stmts.get(0);
 
-		VariableDeclarationExpr vdexpr = (VariableDeclarationExpr) expression
-				.getExpression();
+		VariableDeclarationExpr vdexpr = (VariableDeclarationExpr) expression.getExpression();
 		List<VariableDeclarator> vds = vdexpr.getVars();
 		Assert.assertNull(vds.get(0).getUsages());
 		expression = (ExpressionStmt) stmts.get(1);
@@ -1502,14 +1403,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 			String codeB = "public class B{ void foo(){} }";
 			String codeC = "public interface C { void doIt(); }";
 			CompilationUnit cu = run(codeA, codeB, codeC);
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(1);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 			List<Statement> stmts = md.getBody().getStmts();
 			ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
 			MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(call.getSymbolData());
-			MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(
-					0);
+			MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(0);
 			Assert.assertNotNull(mce.getSymbolData());
 		}
 	}
@@ -1521,14 +1420,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 			String codeB = "public class B{ void foo(){} }";
 			String codeC = "public interface C { void doIt(); }";
 			CompilationUnit cu = run(codeA, codeB, codeC);
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(1);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
 			List<Statement> stmts = md.getBody().getStmts();
 			ExpressionStmt stmt = (ExpressionStmt) stmts.get(0);
 			MethodCallExpr call = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(call.getSymbolData());
-			MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(
-					0);
+			MethodReferenceExpr mce = (MethodReferenceExpr) call.getArgs().get(0);
 			Assert.assertNotNull(mce.getSymbolData());
 		}
 	}
@@ -1538,26 +1435,21 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			String code = "import java.util.*; public class A { public void foo(Collection c) {} public void bar(LinkedList l) {foo((Collection & java.io.Serializable)l);} }";
 			CompilationUnit cu = run(code);
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(1);
-			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
-					.get(0);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(expr.getArgs().get(0).getSymbolData());
 		}
 	}
 
 	@Test
-	public void testSuperExpressionsToReferenceDefaultMethods()
-			throws Exception {
+	public void testSuperExpressionsToReferenceDefaultMethods() throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			String codeInterface = "interface Superinterface { default void foo() { System.out.println(\"Hi\"); } }";
 			String code = "public class Subclass2 implements Superinterface { public void foo() { throw new UnsupportedOperationException(); } void tweak() {  Superinterface.super.foo(); }}";
 			CompilationUnit cu = run(code, codeInterface);
-			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-					.getMembers().get(1);
-			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
-					.get(0);
+			MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(expr.getSymbolData());
 		}
@@ -1568,16 +1460,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			String code = "public class A { interface B{ default void foo() { System.out.println(\"Hi\"); }}  class D implements B{ void bar(){this.foo();}}}";
 			CompilationUnit cu = run(code);
-			ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-					.getTypes().get(0).getMembers().get(1);
+			ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(1);
 			MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
-			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
-					.get(0);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(expr.getSymbolData());
 
-			type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0)
-					.getMembers().get(0);
+			type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(0);
 			md = (MethodDeclaration) type.getMembers().get(0);
 			Assert.assertNotNull(md.getUsages());
 		}
@@ -1588,16 +1477,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 			String code = "public class A { interface Z {default void foo() { System.out.println(\"Hi\"); }} interface B extends Z{ }  class D implements B{ void bar(){this.foo();}}}";
 			CompilationUnit cu = run(code);
-			ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-					.getTypes().get(0).getMembers().get(2);
+			ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(2);
 			MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
-			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts()
-					.get(0);
+			ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 			MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
 			Assert.assertNotNull(expr.getSymbolData());
 
-			type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0)
-					.getMembers().get(0);
+			type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(0);
 			md = (MethodDeclaration) type.getMembers().get(0);
 			Assert.assertNotNull(md.getUsages());
 		}
@@ -1607,8 +1493,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	public void testMethodOrderingWithLongsAndWrappers() throws Exception {
 		String code = "public class A {void foo(long i){} void foo(Integer x){} void bar(){foo(1);}}";
 		CompilationUnit cu = run(code);
-		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu
-				.getTypes().get(0);
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
 		MethodDeclaration md = (MethodDeclaration) type.getMembers().get(0);
 		Assert.assertNotNull(md.getUsages());
 
@@ -1619,8 +1504,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String parentCode = "import java.util.Collection; public abstract class Parent<N extends Collection>{ protected N attr;}";
 		String childCode = "import java.util.LinkedList; public class Child extends Parent<LinkedList> { public void foo() { this.attr.remove(0); }}";
 		CompilationUnit cu = run(childCode, parentCode);
-		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0)
-				.getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
@@ -1639,10 +1523,24 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
-	public void testVariableDeclarationsWithFieldsWithSameName()
-			throws Exception {
+	public void testVariableDeclarationsWithFieldsWithSameName() throws Exception {
 		String code = "import java.util.List; public class A{ List<String> nodes; public void foo() {  String[] nodes = this.nodes.toArray(new String[]{}); }}";
 		CompilationUnit cu = run(code);
 		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testStaticClassWithFieldModification() throws Exception {
+		String code = "package bar; import foo.Bar; public class Test1{ public void test() { Bar.x = 1;} }";
+		String dependentCode = "package foo; public class Bar{ public static int x; }";
+
+		CompilationUnit cu = run(code, dependentCode);
+
+		ImportDeclaration id = cu.getImports().get(0);
+
+		Assert.assertNotNull(id.getUsages());
+
+		Assert.assertEquals(1, id.getUsages().size());
+
 	}
 }

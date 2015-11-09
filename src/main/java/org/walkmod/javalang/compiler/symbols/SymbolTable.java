@@ -224,9 +224,13 @@ public class SymbolTable {
 	}
 
 	public Symbol<?> lookUpSymbolForWrite(String symbolName,
-			SymbolReference reference, SymbolType symbolScope, SymbolType[] args) {
-		Symbol<?> s = findSymbol(symbolName, symbolScope, args,
-				ReferenceType.VARIABLE);
+			SymbolReference reference, SymbolType symbolScope, SymbolType[] args, ReferenceType... referenceType) {
+		
+		if(referenceType == null || referenceType.length == 0){
+			referenceType = new ReferenceType[1];
+			referenceType[0] = ReferenceType.VARIABLE;
+		}
+		Symbol<?> s = findSymbol(symbolName, symbolScope, args, referenceType);
 		try {
 			invokeActions(indexStructure.peek(), s, SymbolEvent.WRITE,
 					reference);
