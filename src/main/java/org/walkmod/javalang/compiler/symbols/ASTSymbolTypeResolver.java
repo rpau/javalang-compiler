@@ -35,9 +35,8 @@ import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.visitors.GenericVisitorAdapter;
 
-public class ASTSymbolTypeResolver extends
-		GenericVisitorAdapter<SymbolType, List<TypeParameter>> implements
-		SymbolTypeResolver<Type> {
+public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, List<TypeParameter>>
+		implements SymbolTypeResolver<Type> {
 
 	private SymbolTable symbolTable = null;
 
@@ -49,8 +48,7 @@ public class ASTSymbolTypeResolver extends
 
 	}
 
-	public ASTSymbolTypeResolver(Map<String, SymbolType> mapping,
-			SymbolTable symbolTable) {
+	public ASTSymbolTypeResolver(Map<String, SymbolType> mapping, SymbolTable symbolTable) {
 		this.mapping = mapping;
 		this.symbolTable = symbolTable;
 	}
@@ -99,8 +97,7 @@ public class ASTSymbolTypeResolver extends
 		ClassOrInterfaceType scope = type.getScope();
 		Node parent = type.getParentNode();
 		boolean isObjectCreationCtxt = (parent != null && parent instanceof ObjectCreationExpr);
-		isObjectCreationCtxt = isObjectCreationCtxt
-				&& ((ObjectCreationExpr) parent).getScope() != null;
+		isObjectCreationCtxt = isObjectCreationCtxt && ((ObjectCreationExpr) parent).getScope() != null;
 		if (scope == null && !isObjectCreationCtxt) {
 
 			if (arg != null) {
@@ -126,25 +123,19 @@ public class ASTSymbolTypeResolver extends
 				// it can be resolved through the symbol table (imports,
 				// generics, sibling/children inner classes, package
 				// classes)
-				result = symbolTable
-						.getType(
-								name,
-								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
+				result = symbolTable.getType(name, org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
+						org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
 				if (result != null) {
 					result = result.clone();
 				} else {
-					SymbolType thisType = symbolTable
-							.getType(
-									"this",
-									org.walkmod.javalang.compiler.symbols.ReferenceType.VARIABLE);
+					SymbolType thisType = symbolTable.getType("this",
+							org.walkmod.javalang.compiler.symbols.ReferenceType.VARIABLE);
 					if (thisType != null) {
 						Class<?> clazz = thisType.getClazz();
 						// we look for a declared class in one of our super
 						// classes
 						Class<?> superClass = clazz.getSuperclass();
-						Class<?> nestedClass = ClassInspector.findClassMember(
-								thisType.getClazz().getPackage(), name,
+						Class<?> nestedClass = ClassInspector.findClassMember(thisType.getClazz().getPackage(), name,
 								superClass);
 
 						// this is an inner class? If so, we look for a nested
@@ -152,20 +143,17 @@ public class ASTSymbolTypeResolver extends
 						// in one of our parent classes
 						while (clazz.isMemberClass() && nestedClass == null) {
 							clazz = clazz.getDeclaringClass();
-							nestedClass = ClassInspector.findClassMember(
-									clazz.getPackage(), name, clazz);
+							nestedClass = ClassInspector.findClassMember(clazz.getPackage(), name, clazz);
 						}
 						// this is an anonymous class? If so, we look for a
 						// nested
 						// class in the enclosing class
 						while (clazz.isAnonymousClass() && nestedClass == null) {
 							clazz = clazz.getEnclosingClass();
-							nestedClass = ClassInspector.findClassMember(
-									clazz.getPackage(), name, clazz);
+							nestedClass = ClassInspector.findClassMember(clazz.getPackage(), name, clazz);
 							while (clazz.isMemberClass() && nestedClass == null) {
 								clazz = clazz.getDeclaringClass();
-								nestedClass = ClassInspector.findClassMember(
-										clazz.getPackage(), name, clazz);
+								nestedClass = ClassInspector.findClassMember(clazz.getPackage(), name, clazz);
 							}
 						}
 						if (nestedClass != null) {
@@ -182,8 +170,7 @@ public class ASTSymbolTypeResolver extends
 			String scopeName = "";
 			String parentName = "";
 			if (isObjectCreationCtxt) {
-				SymbolData sd = ((ObjectCreationExpr) parent).getScope()
-						.getSymbolData();
+				SymbolData sd = ((ObjectCreationExpr) parent).getScope().getSymbolData();
 				Class<?> ctxClass = sd.getClazz();
 				if (ctxClass.isAnonymousClass()) {
 					ctxClass = ctxClass.getSuperclass();
@@ -203,22 +190,15 @@ public class ASTSymbolTypeResolver extends
 
 			String innerClassName = name;
 			if (scopeName.length() > 1) {
-				innerClassName = scopeName.substring(0, scopeName.length() - 1)
-						+ "$" + name;
+				innerClassName = scopeName.substring(0, scopeName.length() - 1) + "$" + name;
 			}
 			String fullName = scopeName + name;
 
-			result = symbolTable
-					.getType(
-							innerClassName,
-							org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-							org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
+			result = symbolTable.getType(innerClassName, org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
+					org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
 			if (result == null) {
-				result = symbolTable
-						.getType(
-								fullName,
-								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
+				result = symbolTable.getType(fullName, org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
+						org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE_PARAM);
 				if (result == null) {
 					// in the code appears B.C
 					SymbolType scopeType = null;
@@ -226,19 +206,14 @@ public class ASTSymbolTypeResolver extends
 						scopeType = type.getScope().accept(this, arg);
 					}
 					if (scopeType != null) {
-						result = symbolTable
-								.getType(
-										scopeType.getClazz().getCanonicalName()
-												+ "." + name,
-										org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
+						result = symbolTable.getType(scopeType.getClazz().getCanonicalName() + "." + name,
+								org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
 						if (result == null) {
 							result = new SymbolType();
 							SymbolType thisType = symbolTable.getType("this");
 							if (thisType != null) {
 								Class<?> resolvedClass = ClassInspector
-										.findClassMember(thisType.getClazz()
-												.getPackage(), name, scopeType
-												.getClazz());
+										.findClassMember(thisType.getClazz().getPackage(), name, scopeType.getClazz());
 								result.setName(resolvedClass.getName());
 								result.setClazz(resolvedClass);
 							} else {
@@ -248,8 +223,7 @@ public class ASTSymbolTypeResolver extends
 					} else {
 
 						try {
-							TypesLoaderVisitor.getClassLoader().loadClass(
-									fullName);
+							TypesLoaderVisitor.getClassLoader().loadClass(fullName);
 						} catch (ClassNotFoundException e) {
 							return null;
 						}
@@ -278,6 +252,10 @@ public class ASTSymbolTypeResolver extends
 			}
 			if (!typeArgs.isEmpty()) {
 				result.setParameterizedTypes(typeArgs);
+			}
+		} else {
+			if (result != null) {
+				result.setParameterizedTypes(null);
 			}
 		}
 		if (mapping != null && result != null) {

@@ -1543,4 +1543,11 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals(1, id.getUsages().size());
 
 	}
+	
+	@Test
+	public void testGenericsWithoutSpecificNestedType() throws Exception{
+		String code = "import java.util.List; class A { List l; public void foo() {foo(l); } public void foo(List<A> l) {} }";
+		CompilationUnit cu = run(code);
+		Assert.assertNotNull(cu);
+	}
 }
