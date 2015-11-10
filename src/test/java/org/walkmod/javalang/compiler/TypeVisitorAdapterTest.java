@@ -23,8 +23,7 @@ import java.util.Map;
 
 import javax.lang.model.SourceVersion;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
 import org.walkmod.javalang.ast.CompilationUnit;
@@ -43,6 +42,7 @@ import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
 import org.walkmod.javalang.test.SemanticTest;
+
 
 public class TypeVisitorAdapterTest extends SemanticTest {
 
