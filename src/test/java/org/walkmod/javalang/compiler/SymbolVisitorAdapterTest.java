@@ -1550,6 +1550,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testGenericsWithoutSpecificNestedType2() throws Exception {
+		String code = "import java.util.List; class A { Object l; public void foo() {foo((List)l); } public void foo(List<A> l) {} }";
+		CompilationUnit cu = run(code);
+		Assert.assertNotNull(cu);
+	}
 
 	@Test
 	public void testDynamicArgsWithDifferentTypes() throws Exception {
