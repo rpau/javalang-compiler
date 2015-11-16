@@ -109,6 +109,13 @@ public class MethodInspector {
 				}
 			}
 		}
+		if(result != null){
+			if("getClass".equals(result.getMethod().getName()) && args.length == 0){
+				List<SymbolType> paramTypes = new LinkedList<SymbolType>();
+				paramTypes.add(scope.clone());
+				result.setParameterizedTypes(paramTypes);
+			}
+		}
 
 		return result;
 	}

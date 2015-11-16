@@ -1575,4 +1575,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		
 		Assert.assertEquals(2, imports.get(0).getUsages().size());
 	}
+	
+	@Test
+	public void testgetClassRedefinition() throws Exception{
+		String code = "public abstract class A<T> implements B<String>{ public void set(Class<? extends B> arg) {  set(getClass()); }}";
+		String bcode = "public interface B<X>{}";
+		
+		CompilationUnit cu = run(code, bcode);
+		Assert.assertNotNull(cu);
+	}
 }
