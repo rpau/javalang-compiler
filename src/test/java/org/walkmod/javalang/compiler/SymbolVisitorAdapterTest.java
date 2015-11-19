@@ -1584,4 +1584,22 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code, bcode);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testRecursiveTemplatesOnTypeChecking() throws Exception{
+		String genericClassCode = "import java.util.List; public class MyClass< S extends MyClass, T extends List>{ public List<MyClass> testMethod() { return null;} }";
+		String code = "import java.util.List; public class A {  public void execute(List<MyClass> aux) { for(MyClass<?,?> elem: aux) { execute(elem.testMethod()); } }}";
+	
+		CompilationUnit cu = run(code, genericClassCode);
+		Assert.assertNotNull(cu);
+	}
+	
+	@Test
+	public void testRecursiveTemplatesOnTypeChecking2() throws Exception{
+		String genericClassCode = "import java.util.List; public class MyClass< S extends MyClass, T extends List>{ public List<MyClass> testMethod() { return null;} }";
+		String code = "import java.util.List; public class A {  public void execute(List<? extends MyClass> aux) { for(MyClass<?,?> elem: aux) { execute(elem.testMethod()); } }}";
+	
+		CompilationUnit cu = run(code, genericClassCode);
+		Assert.assertNotNull(cu);
+	}
 }

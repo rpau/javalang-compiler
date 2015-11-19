@@ -44,10 +44,14 @@ public class ConstructorInspector {
 				argClasses[i] = args[i].getClazz();
 			}
 		}
-
 		@SuppressWarnings("rawtypes")
-		List<Constructor> auxList = sorter.sort(scope.getClazz()
-				.getDeclaredConstructors(), argClasses);
+		List<Constructor> auxList = null;
+		try{
+			auxList = sorter.sort(scope.getClazz()
+					.getDeclaredConstructors(), argClasses);
+		}catch(Throwable e){
+			throw new Exception("Error reading the constructors of "+scope.getName(), e);
+		}
 		Constructor<?>[] auxArray = new Constructor[auxList.size()];
 		auxList.toArray(auxArray);
 		filter.setElements(auxArray);

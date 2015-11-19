@@ -470,6 +470,8 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				if (index != -1) {
 					addType(name.substring(0, index), imported, node, actions);
 				}
+			}catch(NoClassDefFoundError e){
+				throw new RuntimeException("Ops!. Error loading "+name+". Some missing runtime dependencies?", e);
 			}
 
 		}
