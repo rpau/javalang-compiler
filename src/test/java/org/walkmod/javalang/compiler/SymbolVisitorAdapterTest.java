@@ -1602,4 +1602,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code, genericClassCode);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testTemplateVariableRedefinition() throws Exception{
+		String parentClass ="public class ParentClass<D> { public D get() { return null; }}";
+		String childClass = "import java.util.List; import java.util.Collection; public class ChildrenClass<T extends Collection<T>, D extends List<T>> extends ParentClass<D> { public void foo() { get().listIterator();}}";
+		CompilationUnit cu = run(childClass, parentClass);
+		Assert.assertNotNull(cu);
+		
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
+		Assert.assertNotNull(expr.getSymbolData());
+	}
 }

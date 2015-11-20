@@ -389,6 +389,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 	public void visit(ClassOrInterfaceDeclaration n, A arg) {
 
 		pushScope(n);
+		System.out.println(n.getName());
 		if (n.getJavaDoc() != null) {
 			n.getJavaDoc().accept(this, arg);
 		}
