@@ -1625,4 +1625,11 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code, adaptedIteratorCode, otherIteratorCode);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testTypeArgsOnClassGenericsInInnerClasses() throws Exception{
+		String code ="import java.util.List; public class A { public void foo(InnerClass a) { bar(a.annotationType); } public void bar (Class<? extends List> aux) {}  static abstract class InnerClass<T extends List> { public final Class<T> annotationType = null; } }";
+		CompilationUnit cu = run(code);
+		Assert.assertNotNull(cu);
+	}
 }

@@ -22,6 +22,9 @@ import java.util.Map;
 
 import org.walkmod.javalang.compiler.Builder;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.exceptions.InvalidTypeException;
+
+import java.lang.reflect.Type;
 
 /**
  * For a given generic letter (K, M, T,..) resolves if the contained class has a
@@ -30,15 +33,13 @@ import org.walkmod.javalang.compiler.symbols.SymbolType;
  * @author rpau
  *
  */
-public class GenericBuilderFromGenericClasses implements
-		Builder<Map<String, SymbolType>> {
+public class GenericBuilderFromGenericClasses implements Builder<Map<String, SymbolType>> {
 
 	private Class<?> clazz;
 
 	private List<SymbolType> parameterizedTypes;
 
-	public GenericBuilderFromGenericClasses(Class<?> clazz,
-			List<SymbolType> parameterizedTypes) {
+	public GenericBuilderFromGenericClasses(Class<?> clazz, List<SymbolType> parameterizedTypes) {
 		this.clazz = clazz;
 		this.parameterizedTypes = parameterizedTypes;
 	}
@@ -66,24 +67,42 @@ public class GenericBuilderFromGenericClasses implements
 
 			for (int i = 0; i < typeParams.length; i++) {
 				if (parameterizedTypes != null) {
-					if (parameterizedTypes.get(i).getName() == null
-							&& parameterizedTypes.get(i).hasBounds()) {
-						obj.put(typeParams[i].getName(),
-								parameterizedTypes.get(i));
+					if (parameterizedTypes.get(i).getName() == null && parameterizedTypes.get(i).hasBounds()) {
+						obj.put(typeParams[i].getName(), parameterizedTypes.get(i));
 					} else {
-						if (!"java.lang.Object".equals(parameterizedTypes
-								.get(i).getName())) {
-							obj.put(typeParams[i].getName(),
-									parameterizedTypes.get(i));
+						if (!"java.lang.Object".equals(parameterizedTypes.get(i).getName())) {
+							obj.put(typeParams[i].getName(), parameterizedTypes.get(i));
 						} else {
-							obj.put(typeParams[i].getName(), new SymbolType(
-									"java.lang.Object"));
+							obj.put(typeParams[i].getName(), new SymbolType("java.lang.Object"));
 						}
 					}
 
 				} else {
-					obj.put(typeParams[i].getName(), new SymbolType(
-							"java.lang.Object"));
+					Type[] bounds = typeParams[i].getBounds();
+					SymbolType resultType = null;
+					if (bounds.length == 0) {
+						resultType = new SymbolType("java.lang.Object");
+
+					} else {
+						try {
+							SymbolType auxSt = null;
+							for (int j = 0; j < bounds.length; j++) {
+
+								auxSt = SymbolType.valueOf(bounds[j], obj);
+								if (resultType == null) {
+									resultType = auxSt;
+								} else {
+									resultType = (SymbolType) resultType.merge(auxSt);
+								}
+							}
+
+						} catch (InvalidTypeException e) {
+							throw new RuntimeException("Error processing bounds of  type ", e);
+						}
+					}
+					if (resultType != null) {
+						obj.put(typeParams[i].getName(), resultType);
+					}
 				}
 			}
 		}
