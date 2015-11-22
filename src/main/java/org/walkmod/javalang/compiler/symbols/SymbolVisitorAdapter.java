@@ -284,7 +284,11 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 			if (scope != null) {
 				symbolTable.pushScope(scope);
 			}
-			super.visit(n, arg);
+			if (n.getAnonymousClassBody() != null) {
+				for (BodyDeclaration member : n.getAnonymousClassBody()) {
+					member.accept(this, arg);
+				}
+			}
 			if (scope != null) {
 				symbolTable.popScope();
 			}
@@ -389,7 +393,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 	public void visit(ClassOrInterfaceDeclaration n, A arg) {
 
 		pushScope(n);
-		System.out.println(n.getName());
+		//System.out.println(n.getName());
 		if (n.getJavaDoc() != null) {
 			n.getJavaDoc().accept(this, arg);
 		}

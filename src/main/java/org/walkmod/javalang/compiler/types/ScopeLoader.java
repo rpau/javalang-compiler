@@ -46,8 +46,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 	private TypeVisitorAdapter<?> expressionTypeAnalyzer = null;
 	private SymbolActionProvider actionProvider = null;
 
-	public ScopeLoader(TypesLoaderVisitor<?> typeTable,
-			TypeVisitorAdapter<?> expressionTypeAnalyzer,
+	public ScopeLoader(TypesLoaderVisitor<?> typeTable, TypeVisitorAdapter<?> expressionTypeAnalyzer,
 			SymbolActionProvider actionProvider) {
 		this.typeTable = typeTable;
 		this.expressionTypeAnalyzer = expressionTypeAnalyzer;
@@ -55,13 +54,11 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 	}
 
 	private Scope process(TypeDeclaration declaration, SymbolTable symbolTable) {
-		Symbol<?> sym = symbolTable.findSymbol(declaration.getName(),
-				ReferenceType.TYPE);
+		Symbol<?> sym = symbolTable.findSymbol(declaration.getName(), ReferenceType.TYPE);
 		Scope scope = null;
 		if (sym == null) {
 			// it is a type declaration inside a TypeStmt
-			sym = symbolTable.pushSymbol(declaration.getName(),
-					ReferenceType.TYPE,
+			sym = symbolTable.pushSymbol(declaration.getName(), ReferenceType.TYPE,
 					(SymbolType) declaration.getSymbolData(), declaration);
 			declaration.setSymbolData(sym.getType());
 			scope = new Scope(sym);
@@ -76,33 +73,27 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 		actions.add(new LoadTypeDeclarationsAction(typeTable));
 		actions.add(new LoadFieldDeclarationsAction(actionProvider));
 		actions.add(new LoadEnumConstantLiteralsAction());
-		actions.add(new LoadMethodDeclarationsAction(actionProvider,
-				expressionTypeAnalyzer));
+		actions.add(new LoadMethodDeclarationsAction(actionProvider, expressionTypeAnalyzer));
 
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
-				Symbol<?> superSymbol = symbolTable.pushSymbol("super",
-						ReferenceType.VARIABLE, new SymbolType(sym.getType()
-								.getClazz().getSuperclass()), null,
-						(List<SymbolAction>) null);
-				Symbol<?> superType = symbolTable.findSymbol(superSymbol
-						.getType().getClazz().getCanonicalName(),
+				Symbol<?> superSymbol = symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
+						new SymbolType(sym.getType().getClazz().getSuperclass()), null, (List<SymbolAction>) null);
+				Symbol<?> superType = symbolTable.findSymbol(superSymbol.getType().getClazz().getCanonicalName(),
 						ReferenceType.TYPE);
 				if (superType != null) {
 					superSymbol.setInnerScope(superType.getInnerScope());
 				}
-			}
-			else{
-				//Java 8: it references to itself because is could be referenced to call default methods
-				Symbol<TypeDeclaration> superSymbol = new Symbol<TypeDeclaration>(
-						"super", sym.getType(), null, ReferenceType.VARIABLE, false,
-						null);
+			} else {
+				// Java 8: it references to itself because is could be
+				// referenced to call default methods
+				Symbol<TypeDeclaration> superSymbol = new Symbol<TypeDeclaration>("super", sym.getType(), null,
+						ReferenceType.VARIABLE, false, null);
 				symbolTable.pushSymbol(superSymbol);
 			}
 		}
-		Symbol<TypeDeclaration> thisSymbol = new Symbol<TypeDeclaration>(
-				"this", sym.getType(), declaration, ReferenceType.VARIABLE, false,
-				actions);
+		Symbol<TypeDeclaration> thisSymbol = new Symbol<TypeDeclaration>("this", sym.getType(), declaration,
+				ReferenceType.VARIABLE, false, actions);
 		thisSymbol.setInnerScope(sym.getInnerScope());
 		symbolTable.pushSymbol(thisSymbol);
 		List<BodyDeclaration> members = declaration.getMembers();
@@ -139,10 +130,8 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 	public Scope visit(ObjectCreationExpr n, SymbolTable symbolTable) {
 		List<BodyDeclaration> body = n.getAnonymousClassBody();
 		if (body != null) {
-			
-			
-			SymbolType st = ASTSymbolTypeResolver.getInstance().valueOf(
-					n.getType());
+
+			SymbolType st = ASTSymbolTypeResolver.getInstance().valueOf(n.getType());
 
 			Scope scope = new Scope();
 			symbolTable.pushScope(scope);
@@ -150,16 +139,13 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 			boolean anonymousClass = members != null;
 			if (anonymousClass) {
 
-				String className = symbolTable
-						.findSymbol("this", ReferenceType.VARIABLE).getType()
-						.getName();
+				String className = symbolTable.findSymbol("this", ReferenceType.VARIABLE).getType().getName();
 
 				List<SymbolAction> actions = new LinkedList<SymbolAction>();
 				actions.add(new LoadTypeParamsAction());
 				actions.add(new LoadTypeDeclarationsAction(typeTable));
 				actions.add(new LoadFieldDeclarationsAction(actionProvider));
-				actions.add(new LoadMethodDeclarationsAction(actionProvider,
-						expressionTypeAnalyzer));
+				actions.add(new LoadMethodDeclarationsAction(actionProvider, expressionTypeAnalyzer));
 
 				actions.add(new LoadEnumConstantLiteralsAction());
 
@@ -169,28 +155,26 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 				SymbolType type = null;
 				type = new SymbolType(className);
-				Symbol<?> superSymbol = symbolTable.pushSymbol("super",
-						ReferenceType.VARIABLE, st, n,
+				Symbol<?> superSymbol = symbolTable.pushSymbol("super", ReferenceType.VARIABLE, st, n,
 						(List<SymbolAction>) null);
-				
-				if(st == null){
-					throw new RuntimeException("Error resolving "+n.getType().toString()+" in "+n.toString()+", line: "+n.getBeginLine());
+
+				if (st == null) {
+					throw new RuntimeException("Error resolving " + n.getType().toString() + " in " + n.toString()
+							+ ", line: " + n.getBeginLine());
 				}
 				Class<?> superTypeClass = st.getClazz();
-				Symbol<?> superType = symbolTable.findSymbol(superTypeClass
-						.getCanonicalName(), ReferenceType.TYPE);
+				Symbol<?> superType = symbolTable.findSymbol(superTypeClass.getCanonicalName(), ReferenceType.TYPE);
 				if (superType != null) {
 					superSymbol.setInnerScope(superType.getInnerScope());
 				}
 				String name = symbolTable.generateAnonymousClass();
-
+				
 				type = new SymbolType(name);
-				Symbol<?> anonymousType = symbolTable.pushSymbol(name,
-						ReferenceType.TYPE, type, n);
+				Symbol<?> anonymousType = symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n);
 				anonymousType.setInnerScope(scope);
 
-				Symbol<ObjectCreationExpr> thisSymbol = new Symbol<ObjectCreationExpr>(
-						"this", type, n, ReferenceType.VARIABLE, false, actions);
+				Symbol<ObjectCreationExpr> thisSymbol = new Symbol<ObjectCreationExpr>("this", type, n,
+						ReferenceType.VARIABLE, false, actions);
 				scope.setRootSymbol(thisSymbol);
 				thisSymbol.setInnerScope(scope);
 
@@ -203,7 +187,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 			}
 			symbolTable.popScope(true);
-			
+
 			return scope;
 		}
 		return null;
@@ -211,36 +195,31 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 	@Override
 	public Scope visit(EnumConstantDeclaration n, SymbolTable symbolTable) {
-		Symbol<?> s = symbolTable.findSymbol(n.getName(),
-				ReferenceType.ENUM_LITERAL);
+		Symbol<?> s = symbolTable.findSymbol(n.getName(), ReferenceType.ENUM_LITERAL);
 		s.setInnerScope(new Scope(s));
 		symbolTable.pushScope(s.getInnerScope());
 
-		SymbolType parentType = symbolTable.getType("this",
-				ReferenceType.VARIABLE);
+		SymbolType parentType = symbolTable.getType("this", ReferenceType.VARIABLE);
 
-		SymbolType type = symbolTable.getType(n.getName(),
-				ReferenceType.ENUM_LITERAL);
+		SymbolType type = symbolTable.getType(n.getName(), ReferenceType.ENUM_LITERAL);
 
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(new LoadTypeParamsAction());
 		actions.add(new LoadTypeDeclarationsAction(typeTable));
 		actions.add(new LoadFieldDeclarationsAction(actionProvider));
-		actions.add(new LoadMethodDeclarationsAction(actionProvider,
-				expressionTypeAnalyzer));
+		actions.add(new LoadMethodDeclarationsAction(actionProvider, expressionTypeAnalyzer));
 
 		if (actionProvider != null) {
 			actions.addAll(actionProvider.getActions(n));
 		}
-		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, parentType,
-				n.getParentNode(), (List<SymbolAction>) null);
+		symbolTable.pushSymbol("super", ReferenceType.VARIABLE, parentType, n.getParentNode(),
+				(List<SymbolAction>) null);
 
 		String name = symbolTable.generateAnonymousClass();
 		type = new SymbolType(name);
 		symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n, actions);
 
-		symbolTable
-				.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
+		symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
 		n.setSymbolData(type);
 
 		symbolTable.popScope(true);

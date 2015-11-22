@@ -542,13 +542,17 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 						Type implementation = itTypes.next();
 						if (implementation instanceof ParameterizedType) {
 							ParameterizedType ptype = (ParameterizedType) implementation;
-
+							Map<String, SymbolType> typeMappingVars = arg.getTypeMappingVariables();
+							
 							Type[] targuments = ptype.getActualTypeArguments();
 							for (int i = 0; i < targuments.length; i++) {
 
 								SymbolType st = null;
 								if (targuments[i] instanceof TypeVariable) {
-									if (it != null && it.hasNext()) {
+									String name = ((TypeVariable<?>)targuments[i]).getName();
+									if (typeMappingVars != null && typeMappingVars.containsKey(name)) {
+										st = typeMappingVars.get(name);
+									}else if(it != null && it.hasNext()){
 										st = it.next();
 									} else {
 										st = new SymbolType(Object.class);
