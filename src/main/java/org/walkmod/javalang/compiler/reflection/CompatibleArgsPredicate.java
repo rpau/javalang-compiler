@@ -59,7 +59,7 @@ public class CompatibleArgsPredicate<T> extends AbstractCompatibleArgsPredicate
 			Constructor<?> constructor = (Constructor<?>) method;
 			setVarAgs(constructor.isVarArgs());
 			setGenericParameterTypes(constructor.getGenericParameterTypes());
-			setParameterTypesLenght(constructor.getParameterTypes().length);
+			setParameterTypesLenght(constructor.getGenericParameterTypes().length);
 			return super.filter();
 		}
 		return false;

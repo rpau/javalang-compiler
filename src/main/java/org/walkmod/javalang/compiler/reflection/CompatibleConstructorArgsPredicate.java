@@ -32,7 +32,7 @@ public class CompatibleConstructorArgsPredicate extends
 	public boolean filter(Constructor<?> method) throws Exception {
 		setVarAgs(method.isVarArgs());
 		setGenericParameterTypes(method.getGenericParameterTypes());
-		setParameterTypesLenght(method.getParameterTypes().length);
+		setParameterTypesLenght(method.getGenericParameterTypes().length);
 		return super.filter();
 	}
 }
