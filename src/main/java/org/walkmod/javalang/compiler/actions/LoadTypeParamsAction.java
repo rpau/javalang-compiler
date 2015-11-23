@@ -157,15 +157,13 @@ public class LoadTypeParamsAction extends SymbolAction {
 		if (typeParams != null && !typeParams.isEmpty()) {
 
 			List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
-
 			for (TypeParameter tp : typeParams) {
 				List<ClassOrInterfaceType> typeBounds = tp.getTypeBound();
 				List<SymbolType> bounds = new LinkedList<SymbolType>();
 				SymbolType st = null;
 				if (typeBounds != null) {
 					for (ClassOrInterfaceType type : typeBounds) {
-						SymbolType paramType = ASTSymbolTypeResolver
-								.getInstance().valueOf(type);
+						SymbolType paramType = ASTSymbolTypeResolver.getInstance().valueOf(type);
 						if (paramType == null) {
 							paramType = new SymbolType(Object.class);
 						}
@@ -181,6 +179,13 @@ public class LoadTypeParamsAction extends SymbolAction {
 
 				parameterizedTypes.add(st);
 			}
+			Map<String, SymbolType> typeParamsMap = table.getTypeParams();
+			
+			for(String key: typeParamsMap.keySet()){
+				SymbolType st = typeParamsMap.get(key);
+				recursiveTemplateSubstitution(st, typeParamsMap);
+			}
+			
 			if (thisType != null && !parameterizedTypes.isEmpty()) {
 				thisType.setParameterizedTypes(parameterizedTypes);
 			}
@@ -188,4 +193,38 @@ public class LoadTypeParamsAction extends SymbolAction {
 
 	}
 
+	public void recursiveTemplateSubstitution(SymbolType st, Map<String, SymbolType> typeParamsMap){
+		List<SymbolType> bounds = st.getBounds();
+		if(bounds != null){
+			for(SymbolType bound: bounds){
+				recursiveTemplateSubstitution(bound, typeParamsMap);
+			}
+		}
+		else{
+			List<SymbolType> params = st.getParameterizedTypes();
+			if(params != null){
+				List<SymbolType> paramsFinal = new LinkedList<SymbolType>();
+				for(SymbolType param: params){
+					String tv = param.getTemplateVariable();
+					if(tv != null){
+						SymbolType genericTypeDef = typeParamsMap.get(tv);
+						if(genericTypeDef != null){
+							paramsFinal.add(genericTypeDef);
+						}
+						else{
+							recursiveTemplateSubstitution(param, typeParamsMap);
+							paramsFinal.add(param);
+						}
+					}
+					else{
+						recursiveTemplateSubstitution(param, typeParamsMap);
+						paramsFinal.add(param);
+					}
+				}
+				st.setParameterizedTypes(paramsFinal);
+			}
+			
+		}
+		
+	}
 }

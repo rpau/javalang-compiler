@@ -46,12 +46,14 @@ import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
+import org.walkmod.javalang.ast.stmt.ReturnStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.stmt.TryStmt;
 import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.compiler.actions.ReferencesCounterAction;
 import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
+import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.test.SemanticTest;
 import org.walkmod.javalang.util.FileUtils;
@@ -1550,7 +1552,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
 	public void testGenericsWithoutSpecificNestedType2() throws Exception {
 		String code = "import java.util.List; class A { Object l; public void foo() {foo((List)l); } public void foo(List<A> l) {} }";
@@ -1561,75 +1563,100 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testDynamicArgsWithDifferentTypes() throws Exception {
 		String code = "import java.util.List; public class B { public void test(List<Object> l) { A.<List<Object>>pick(l);} }";
-		String aux = "import java.util.ArrayList;"
-				+ " public class A { public static <T> T pick(T a1) { return a1; }}";
+		String aux = "import java.util.ArrayList;" + " public class A { public static <T> T pick(T a1) { return a1; }}";
 
 		CompilationUnit cu = run(code, aux);
 		Assert.assertNotNull(cu);
-		
+
 		List<ImportDeclaration> imports = cu.getImports();
-		
+
 		Assert.assertNotNull(imports);
-		
+
 		Assert.assertNotNull(imports.get(0).getUsages());
-		
+
 		Assert.assertEquals(2, imports.get(0).getUsages().size());
 	}
-	
+
 	@Test
-	public void testgetClassRedefinition() throws Exception{
+	public void testgetClassRedefinition() throws Exception {
 		String code = "public abstract class A<T> implements B<String>{ public void set(Class<? extends B> arg) {  set(getClass()); }}";
 		String bcode = "public interface B<X>{}";
-		
+
 		CompilationUnit cu = run(code, bcode);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testRecursiveTemplatesOnTypeChecking() throws Exception{
+	public void testRecursiveTemplatesOnTypeChecking() throws Exception {
 		String genericClassCode = "import java.util.List; public class MyClass< S extends MyClass, T extends List>{ public List<MyClass> testMethod() { return null;} }";
 		String code = "import java.util.List; public class A {  public void execute(List<MyClass> aux) { for(MyClass<?,?> elem: aux) { execute(elem.testMethod()); } }}";
-	
+
 		CompilationUnit cu = run(code, genericClassCode);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testRecursiveTemplatesOnTypeChecking2() throws Exception{
+	public void testRecursiveTemplatesOnTypeChecking2() throws Exception {
 		String genericClassCode = "import java.util.List; public class MyClass< S extends MyClass, T extends List>{ public List<MyClass> testMethod() { return null;} }";
 		String code = "import java.util.List; public class A {  public void execute(List<? extends MyClass> aux) { for(MyClass<?,?> elem: aux) { execute(elem.testMethod()); } }}";
-	
+
 		CompilationUnit cu = run(code, genericClassCode);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testTemplateVariableRedefinition() throws Exception{
-		String parentClass ="public class ParentClass<D> { public D get() { return null; }}";
+	public void testTemplateVariableRedefinition() throws Exception {
+		String parentClass = "public class ParentClass<D> { public D get() { return null; }}";
 		String childClass = "import java.util.List; import java.util.Collection; public class ChildrenClass<T extends Collection<T>, D extends List<T>> extends ParentClass<D> { public void foo() { get().listIterator();}}";
 		CompilationUnit cu = run(childClass, parentClass);
 		Assert.assertNotNull(cu);
-		
+
 		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr expr = (MethodCallExpr) stmt.getExpression();
 		Assert.assertNotNull(expr.getSymbolData());
 	}
-	
+
 	@Test
-	public void testNestedMultipleAnonymousClasses() throws Exception{
-		String otherIteratorCode = "public interface OtherIterator{ public void expand(); } "; //$1$1
-		String adaptedIteratorCode = "import java.util.Iterator; public abstract class AdaptedIterator<T> implements Iterator<T>{ public AdaptedIterator(OtherIterator aux){} public abstract String adapt(); public T next() { return null; } public boolean hasNext() { return false; } }"; //$1$2
-		String iteratorCode ="public Iterator<String> iterator() { return new AdaptedIterator<String>( new OtherIterator() { public void expand() {} }){ public String adapt() { return null; }}; }";
-		String code = "import java.util.Iterator; public class NestedMultipleAnonymousClasses { public Iterable<String> list() { return new Iterable<String>() { "+iteratorCode+"}; } }";
+	public void testNestedMultipleAnonymousClasses() throws Exception {
+		String otherIteratorCode = "public interface OtherIterator{ public void expand(); } "; // $1$1
+		String adaptedIteratorCode = "import java.util.Iterator; public abstract class AdaptedIterator<T> implements Iterator<T>{ public AdaptedIterator(OtherIterator aux){} public abstract String adapt(); public T next() { return null; } public boolean hasNext() { return false; } }"; // $1$2
+		String iteratorCode = "public Iterator<String> iterator() { return new AdaptedIterator<String>( new OtherIterator() { public void expand() {} }){ public String adapt() { return null; }}; }";
+		String code = "import java.util.Iterator; public class NestedMultipleAnonymousClasses { public Iterable<String> list() { return new Iterable<String>() { "
+				+ iteratorCode + "}; } }";
 		CompilationUnit cu = run(code, adaptedIteratorCode, otherIteratorCode);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testTypeArgsOnClassGenericsInInnerClasses() throws Exception{
-		String code ="import java.util.List; public class A { public void foo(InnerClass a) { bar(a.annotationType); } public void bar (Class<? extends List> aux) {}  static abstract class InnerClass<T extends List> { public final Class<T> annotationType = null; } }";
+	public void testTypeArgsOnClassGenericsInInnerClasses() throws Exception {
+		String code = "import java.util.List; public class A { public void foo(InnerClass a) { bar(a.annotationType); } public void bar (Class<? extends List> aux) {}  static abstract class InnerClass<T extends List> { public final Class<T> annotationType = null; } }";
 		CompilationUnit cu = run(code);
 		Assert.assertNotNull(cu);
 	}
+
+	@Test
+	public void testThisSymbolContruction() throws Exception {
+		String abstractProject = "public class AbstractProject<T, K>{}";
+		String code = "public class AbstractBuild<P extends AbstractProject<P,R>,R extends AbstractBuild<P,R>> { public Object get() { return this; } }";
+		CompilationUnit cu = run(code, abstractProject);
+
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		ReturnStmt returnStmt = (ReturnStmt) md.getBody().getStmts().get(0);
+		SymbolData sd = returnStmt.getExpr().getSymbolData();
+
+		List<SymbolData> params = sd.getParameterizedTypes();
+		Assert.assertNotNull(params);
+		Assert.assertEquals(2, params.size());
+
+		List<SymbolType> params2 =((SymbolType)params.get(0)).getBounds().get(0).getParameterizedTypes();
+		Assert.assertNotNull(params2);
+
+		Assert.assertEquals("AbstractProject", params2.get(0).getClazz().getSimpleName());
+
+		Assert.assertNotNull(sd);
+
+		Assert.assertNotNull(cu);
+	}
+
 }

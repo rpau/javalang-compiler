@@ -204,8 +204,16 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 	}
 
 	public void visit(SingleMemberAnnotationExpr n, A arg) {
-		Symbol<?> s = symbolTable.lookUpSymbolForRead(n.getName().toString(), n, ReferenceType.TYPE);
-		n.setSymbolData(s.getType());
+		String typeName = n.getName().toString();
+		Symbol<?> s = symbolTable.lookUpSymbolForRead(typeName, n, ReferenceType.TYPE);
+		if (s != null){
+			n.setSymbolData(s.getType());
+		}
+		else{
+			SymbolType st = new SymbolType(typeName);
+			n.setSymbolData(st);
+		}
+		
 		super.visit(n, arg);
 	}
 

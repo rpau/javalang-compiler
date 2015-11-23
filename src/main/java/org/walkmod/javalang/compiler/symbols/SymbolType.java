@@ -190,12 +190,12 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					List<SymbolType> aux = null;
 					while (it.hasNext()) {
 						SymbolType st = it.next();
-						if (!name.equals(st.getName())) {
+						//if (!name.equals(st.getName())) {
 							if (aux == null) {
 								aux = new LinkedList<SymbolType>();
 							}
 							aux.add(st);
-						}
+						//}
 					}
 					return aux;
 				}
@@ -256,106 +256,117 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 		return result;
 	}
 
-	public boolean isCompatible(SymbolType other) {
+	private boolean isCompatible(SymbolType other, Set<String> analyzedTemplates) {
 		boolean isCompatible = true;
 
-		if (upperBounds != null) {
-			Iterator<SymbolType> it = upperBounds.iterator();
-
-			while (it.hasNext() && isCompatible) {
-				SymbolType bound = it.next();
-				List<SymbolType> bounds = null;
-
-				if (other != null) {
-					bounds = other.getBounds();
-				}
-				if (bounds == null) {
-					bounds = new LinkedList<SymbolType>();
-					bounds.add(other);
-				}
-				Iterator<SymbolType> otherIt = bounds.iterator();
-				boolean found = false;
-				while (otherIt.hasNext() && !found) {
-					found = bound.isCompatible(otherIt.next());
-				}
-				isCompatible = found;
+		if (templateVariable == null || analyzedTemplates.contains(templateVariable)) {
+			
+			if (templateVariable != null) {
+				analyzedTemplates.add(templateVariable);
 			}
 
-			return isCompatible;
-		}
-		if (isCompatible && lowerBounds != null) {
-			Iterator<SymbolType> it = lowerBounds.iterator();
-			while (it.hasNext() && isCompatible) {
-				isCompatible = other.isCompatible(it.next());
-			}
-		}
-		if (isCompatible) {
+			if (upperBounds != null) {
+				Iterator<SymbolType> it = upperBounds.iterator();
 
-			List<SymbolType> otherParams = other.getParameterizedTypes();
-			if (parameterizedTypes != null && otherParams != null) {
-				Set<Type> paramTypes = ClassInspector.getEquivalentParametrizableClasses(other.getClazz());
-				Iterator<Type> paramTypesIt = paramTypes.iterator();
-				boolean found = false;
-				Set<Integer> recursiveParamDefs = new HashSet<Integer>();
-				try {
-					Map<String, SymbolType> otherMap = other.getTypeMappingVariables();
-					Class<?> clazz = getClazz();
-					TypeVariable<?>[] tvs = clazz.getTypeParameters();
+				while (it.hasNext() && isCompatible) {
+					SymbolType bound = it.next();
+					List<SymbolType> bounds = null;
 
-					for (int i = 0; i < tvs.length; i++) {
-						Type[] bounds = tvs[i].getBounds();
-						if (bounds.length == 1) {
-							Class<?> classToCompare = null;
-							if (bounds[0] instanceof Class<?>) {
-								classToCompare = (Class<?>) bounds[0];
-							}
-							else if(bounds[0] instanceof ParameterizedType){
-								classToCompare = (Class<?>)((ParameterizedType)bounds[0]).getRawType();
-							}
-							if(classToCompare != null){
-								if (name.equals(classToCompare.getName())) {
-									recursiveParamDefs.add(i);
-								}
-							}
-						}
+					if (other != null) {
+						bounds = other.getBounds();
 					}
-					int i = 0;
-					while (paramTypesIt.hasNext() && !found) {
-						Type currentType = paramTypesIt.next();
-						SymbolType st = SymbolType.valueOf(currentType, otherMap);
-						found = Types.isCompatible(st.getClazz(), getClazz());
-						if (isCompatible) {
-							otherParams = st.getParameterizedTypes();
-							Iterator<SymbolType> it = parameterizedTypes.iterator();
-							if (otherParams != null) {
-								Iterator<SymbolType> otherIt = otherParams.iterator();
-								while (it.hasNext() && found && otherIt.hasNext()) {
-									SymbolType thisType = it.next();
-									SymbolType otherType = otherIt.next();
-									if (!recursiveParamDefs.contains(i)) {
-										found = thisType.isCompatible(otherType);
-									}
-									i++;
-								}
-							}
-						}
-
+					if (bounds == null) {
+						bounds = new LinkedList<SymbolType>();
+						bounds.add(other);
 					}
-				} catch (Exception e) {
-					throw new RuntimeException(e);
+					Iterator<SymbolType> otherIt = bounds.iterator();
+					boolean found = false;
+					while (otherIt.hasNext() && !found) {
+						found = bound.isCompatible(otherIt.next());
+					}
+					isCompatible = found;
 				}
-				isCompatible = found;
-			} else {
-				isCompatible = Types.isCompatible(other.getClazz(), getClazz());
+
+				return isCompatible;
+			}
+			if (isCompatible && lowerBounds != null) {
+				Iterator<SymbolType> it = lowerBounds.iterator();
+				while (it.hasNext() && isCompatible) {
+					isCompatible = other.isCompatible(it.next());
+				}
 			}
 			if (isCompatible) {
-				if (!getClazz().equals(Object.class) || getArrayCount() > 0) {
-					isCompatible = getArrayCount() == other.getArrayCount();
-				}
-			}
 
+				List<SymbolType> otherParams = other.getParameterizedTypes();
+				if (parameterizedTypes != null && otherParams != null) {
+					Set<Type> paramTypes = ClassInspector.getEquivalentParametrizableClasses(other.getClazz());
+					Iterator<Type> paramTypesIt = paramTypes.iterator();
+					boolean found = false;
+					Set<Integer> recursiveParamDefs = new HashSet<Integer>();
+					try {
+						Map<String, SymbolType> otherMap = other.getTypeMappingVariables();
+						Class<?> clazz = getClazz();
+						TypeVariable<?>[] tvs = clazz.getTypeParameters();
+
+						for (int i = 0; i < tvs.length; i++) {
+							Type[] bounds = tvs[i].getBounds();
+							if (bounds.length == 1) {
+								Class<?> classToCompare = null;
+								if (bounds[0] instanceof Class<?>) {
+									classToCompare = (Class<?>) bounds[0];
+								} else if (bounds[0] instanceof ParameterizedType) {
+									classToCompare = (Class<?>) ((ParameterizedType) bounds[0]).getRawType();
+								}
+								if (classToCompare != null) {
+									if (name.equals(classToCompare.getName())) {
+										recursiveParamDefs.add(i);
+									}
+								}
+							}
+						}
+						int i = 0;
+						while (paramTypesIt.hasNext() && !found) {
+							Type currentType = paramTypesIt.next();
+							SymbolType st = SymbolType.valueOf(currentType, otherMap);
+							found = Types.isCompatible(st.getClazz(), getClazz());
+							if (isCompatible) {
+								otherParams = st.getParameterizedTypes();
+								Iterator<SymbolType> it = parameterizedTypes.iterator();
+								if (otherParams != null) {
+									Iterator<SymbolType> otherIt = otherParams.iterator();
+									while (it.hasNext() && found && otherIt.hasNext()) {
+										SymbolType thisType = it.next();
+										SymbolType otherType = otherIt.next();
+										if (!recursiveParamDefs.contains(i)) {
+											found = thisType.isCompatible(otherType);
+										}
+										i++;
+									}
+								}
+							}
+
+						}
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
+					isCompatible = found;
+				} else {
+					isCompatible = Types.isCompatible(other.getClazz(), getClazz());
+				}
+				if (isCompatible) {
+					if (!getClazz().equals(Object.class) || getArrayCount() > 0) {
+						isCompatible = getArrayCount() == other.getArrayCount();
+					}
+				}
+
+			}
+			return isCompatible;
 		}
-		return isCompatible;
+		return true;
+	}
+
+	public boolean isCompatible(SymbolType other) {
+		return isCompatible(other, new HashSet<String>());
 	}
 
 	public Class<?> getClazz() {
@@ -543,16 +554,16 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 						if (implementation instanceof ParameterizedType) {
 							ParameterizedType ptype = (ParameterizedType) implementation;
 							Map<String, SymbolType> typeMappingVars = arg.getTypeMappingVariables();
-							
+
 							Type[] targuments = ptype.getActualTypeArguments();
 							for (int i = 0; i < targuments.length; i++) {
 
 								SymbolType st = null;
 								if (targuments[i] instanceof TypeVariable) {
-									String name = ((TypeVariable<?>)targuments[i]).getName();
+									String name = ((TypeVariable<?>) targuments[i]).getName();
 									if (typeMappingVars != null && typeMappingVars.containsKey(name)) {
 										st = typeMappingVars.get(name);
-									}else if(it != null && it.hasNext()){
+									} else if (it != null && it.hasNext()) {
 										st = it.next();
 									} else {
 										st = new SymbolType(Object.class);
@@ -632,13 +643,16 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 				Type[] bounds = ((TypeVariable<?>) type).getBounds();
 
 				if (arg != null) {
-
-					for (Type bound : bounds) {
-						valueOf(bound, arg, updatedTypeMapping, typeMapping);
-					}
 					returnType = new SymbolType(arg.getName());
 					returnType.setArrayCount(arg.getArrayCount());
 					returnType.setTemplateVariable(variableName);
+					Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
+					auxMap.put(variableName, returnType);
+					
+					for (Type bound : bounds) {
+						valueOf(bound, arg, updatedTypeMapping, auxMap);
+					}
+					
 					returnType.setParameterizedTypes(arg.getParameterizedTypes());
 
 				} else {
@@ -671,7 +685,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					SymbolType previousSymbol = updatedTypeMapping.get(variableName);
 					if (!"java.lang.Object".equals(returnType.getName())) {
 						returnType = (SymbolType) previousSymbol.merge(returnType);
-						previousSymbol.setClazz(returnType.getClazz());
+						if(returnType != null){
+							previousSymbol.setClazz(returnType.getClazz());
+						}
 						updatedTypeMapping.put(variableName, previousSymbol);
 					}
 					return updatedTypeMapping.get(variableName);

@@ -115,6 +115,7 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
 							}
 							result = new SymbolType(params);
 						}
+						result.setTemplateVariable(name);
 					}
 				}
 			}
@@ -247,6 +248,7 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
 				SymbolType aux = valueOf(typeArg);
 				if (aux == null) {
 					aux = new SymbolType(Object.class);
+					aux.setTemplateVariable(typeArg.toString());
 				}
 				typeArgs.add(aux);
 			}
