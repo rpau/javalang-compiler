@@ -429,12 +429,22 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 				if (!Modifier.isPrivate(clazz.getModifiers())
 						&& !clazz.isAnonymousClass()) {
 
+					boolean overrideSimpleName = true;
+					
 					SymbolType st = new SymbolType(clazz);
+					
+
+					if(node instanceof ImportDeclaration){
+						ImportDeclaration id = (ImportDeclaration)node;
+						if(id.isAsterisk()){
+							overrideSimpleName = false;
+						}
+					}
 					symbolTable
 							.pushSymbol(
 									getSymbolName(name, imported),
 									org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE,
-									st, node, actions, true);
+									st, node, actions, overrideSimpleName);
 
 					if (clazz.isMemberClass()) {
 						String cname = clazz.getCanonicalName();

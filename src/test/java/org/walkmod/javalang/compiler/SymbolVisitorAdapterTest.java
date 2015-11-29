@@ -1658,5 +1658,19 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testConflictImportsWildCardWithPackage() throws Exception{
+		String staticClass = "package foo; public class List{}";
+		
+		String mainCode ="package foo; import java.util.*; public class Foo{ List aux; }";
+		
+		CompilationUnit cu = run(mainCode, staticClass);
+		Assert.assertNotNull(cu);
+		
+		FieldDeclaration fd = (FieldDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		
+		Assert.assertEquals("foo.List", fd.getType().getSymbolData().getName());
+	}
 
 }

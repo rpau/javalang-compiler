@@ -447,7 +447,7 @@ public class Scope {
 		if (values.isEmpty()) {
 			values.add(symbol);
 		} else {
-			int pos = values.size() - 1;
+			int pos = values.size();
 
 			if (symbol.getReferenceType().equals(ReferenceType.METHOD)) {
 				MethodSymbol ms = (MethodSymbol) symbol;
@@ -465,7 +465,7 @@ public class Scope {
 							Method md = auxMethod.getReferencedMethod();
 							if (md != null) {
 								if (cmp.compare(refMethod, md) == 1) {
-									values.add(pos + 1, ms);
+									values.add(pos, ms);
 									added = true;
 								}
 							}

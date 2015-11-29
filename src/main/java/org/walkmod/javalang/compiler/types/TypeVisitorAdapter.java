@@ -408,9 +408,13 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 				n.getScope().accept(this, arg);
 
 				scope = (SymbolType) n.getScope().getSymbolData();
-
-				LOG.debug("scope: (" + n.getScope().toString() + ")" + scope.getName() + " method " + n.toString());
-
+				
+				if(scope == null){
+					throw new RuntimeException("Ops! Error discovering the type of "+n.getScope().toString());
+				}
+				else{
+					LOG.debug("scope: (" + n.getScope().toString() + ")" + scope.getName() + " method " + n.toString());
+				}
 			}
 			if (scope != null && "sun.misc.Unsafe".equals(scope.getName()) && n.getName().equals("getUnsafe")) {
 				n.setSymbolData(scope);
