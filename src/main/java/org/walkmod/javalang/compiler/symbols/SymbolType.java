@@ -356,7 +356,17 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 				} else {
 					boolean isUndefinedTemplateVar = other.isTemplateVariable()
 							&& other.getName().equals("java.lang.Object");
-					isCompatible = isUndefinedTemplateVar || Types.isCompatible(other.getClazz(), getClazz());
+					isCompatible = isUndefinedTemplateVar;
+					if (!isCompatible) {
+						List<Class<?>> boundClasses = other.getBoundClasses();
+
+						Iterator<Class<?>> itBounds = boundClasses.iterator();
+						while (itBounds.hasNext() && !isCompatible) {
+							isCompatible = Types.isCompatible(itBounds.next(), getClazz());
+						}
+
+					}
+
 				}
 				if (isCompatible) {
 					if (!getClazz().equals(Object.class) || getArrayCount() > 0) {

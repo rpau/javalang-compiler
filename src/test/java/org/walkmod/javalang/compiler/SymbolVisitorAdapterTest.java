@@ -1744,5 +1744,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals("List", method.getScope().getSymbolData().getClazz().getSimpleName());
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
 	}
+	
+	@Test
+	public void testMultipleBounds() throws Exception{
+		String topLevelItem = "public interface TopLevelItem{}";
+		String abstractItem = "public class AbstractItem{}";
+		
+		String code ="public class A { public void foo(TopLevelItem item){} public <I extends AbstractItem & TopLevelItem> void move(I item){ foo(item); }  }";
+	
+		CompilationUnit cu = run(code, abstractItem, topLevelItem);
+		Assert.assertNotNull(cu);
+	}
 
 }
