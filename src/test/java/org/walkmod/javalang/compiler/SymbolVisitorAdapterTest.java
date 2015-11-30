@@ -1698,6 +1698,26 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertEquals(null, md.getSymbolData().getParameterizedTypes());
 	}
 	
+	
+	@Test
+	public void testGenericTypesWithoutParameters3() throws Exception{
+		String codeParent = "public class FooParent { public Class getItemType(){ return null; }}";
+		String code ="public class Foo extends FooParent { public void bar(Class<? extends Foo> arg) {  bar(getItemType()); } }";
+		CompilationUnit cu = run(code, codeParent);
+		Assert.assertNotNull(cu);
+	}
+	
+	@Test
+	public void testGenericTypesWithoutParameters2() throws Exception{
+		String code ="public class Foo { public Class getItemType(){ return null; } public void bar(Class<? extends Foo> arg) { bar(getItemType()); } }";
+		CompilationUnit cu = run(code);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		Assert.assertEquals("java.lang.Class", md.getSymbolData().getName());
+		
+		Assert.assertEquals(null, md.getSymbolData().getParameterizedTypes());
+	}
+	
+	
 	@Test
 	public void testFieldTypeRedefinition() throws Exception{
 		String parentClass ="import java.util.Collection; public class ParentClass<T extends Collection<T>>{ T project; }";

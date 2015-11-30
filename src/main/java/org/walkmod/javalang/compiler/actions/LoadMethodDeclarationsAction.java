@@ -313,9 +313,9 @@ public class LoadMethodDeclarationsAction extends SymbolAction {
 
 					}
 
+					SymbolType returnType = SymbolType.valueOf(method, parameterTypes);
 					MethodSymbol methodSymbol = new MethodSymbol(
-							method.getName(), SymbolType.valueOf(method,
-									parameterTypes), null, st, methodArgs,
+							method.getName(), returnType, null, st, methodArgs,
 							false, method.isVarArgs(), method, null);
 
 					table.pushSymbol(methodSymbol);

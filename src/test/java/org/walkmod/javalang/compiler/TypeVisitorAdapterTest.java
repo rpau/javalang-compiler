@@ -361,8 +361,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.util.List", type.getName());
 		Assert.assertNotNull(type.getParameterizedTypes());
-		Assert.assertEquals("java.lang.Object", type.getParameterizedTypes()
-				.get(0).getName());
+		Assert.assertEquals("java.lang.Object",type.getParameterizedTypes().get(0).getName());
 
 	}
 

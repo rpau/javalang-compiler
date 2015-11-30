@@ -190,12 +190,14 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					List<SymbolType> aux = null;
 					while (it.hasNext()) {
 						SymbolType st = it.next();
-						//if (!name.equals(st.getName())) {
-							if (aux == null) {
-								aux = new LinkedList<SymbolType>();
-							}
-							aux.add(st);
-						//}
+
+						// if (!name.equals(st.getName())) {
+						if (aux == null) {
+							aux = new LinkedList<SymbolType>();
+						}
+						aux.add(st);
+
+						// }
 					}
 					return aux;
 				}
@@ -260,7 +262,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 		boolean isCompatible = true;
 
 		if (templateVariable == null || analyzedTemplates.contains(templateVariable)) {
-			
+
 			if (templateVariable != null) {
 				analyzedTemplates.add(templateVariable);
 			}
@@ -328,6 +330,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 						while (paramTypesIt.hasNext() && !found) {
 							Type currentType = paramTypesIt.next();
 							SymbolType st = SymbolType.valueOf(currentType, otherMap);
+
 							found = Types.isCompatible(st.getClazz(), getClazz());
 							if (isCompatible) {
 								otherParams = st.getParameterizedTypes();
@@ -351,7 +354,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					}
 					isCompatible = found;
 				} else {
-					isCompatible = Types.isCompatible(other.getClazz(), getClazz());
+					boolean isUndefinedTemplateVar = other.isTemplateVariable()
+							&& other.getName().equals("java.lang.Object");
+					isCompatible = isUndefinedTemplateVar || Types.isCompatible(other.getClazz(), getClazz());
 				}
 				if (isCompatible) {
 					if (!getClazz().equals(Object.class) || getArrayCount() > 0) {
@@ -457,8 +462,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					list.add(((SymbolType) type).clone(parent, created));
 				}
 				result.setParameterizedTypes(list);
-			}
-			else{
+			} else {
 				result.setParameterizedTypes(null);
 			}
 			if (upperBounds != null) {
@@ -651,16 +655,17 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					returnType.setTemplateVariable(variableName);
 					Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
 					auxMap.put(variableName, returnType);
-					
+
 					for (Type bound : bounds) {
 						valueOf(bound, arg, updatedTypeMapping, auxMap);
 					}
-					
+
 					returnType.setParameterizedTypes(arg.getParameterizedTypes());
 
 				} else {
 					if (bounds.length == 0) {
 						returnType = new SymbolType("java.lang.Object");
+						returnType.setTemplateVariable(variableName);
 					} else {
 						List<SymbolType> boundsList = new LinkedList<SymbolType>();
 						returnType = new SymbolType(boundsList);
@@ -677,6 +682,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 							returnType = new SymbolType("java.lang.Object");
 						} else if (bounds.length == 1) {
 							returnType = boundsList.get(0);
+							returnType.setTemplateVariable(variableName);
 						}
 					}
 				}
@@ -688,7 +694,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					SymbolType previousSymbol = updatedTypeMapping.get(variableName);
 					if (!"java.lang.Object".equals(returnType.getName())) {
 						returnType = (SymbolType) previousSymbol.merge(returnType);
-						if(returnType != null){
+						if (returnType != null) {
 							previousSymbol.setClazz(returnType.getClazz());
 						}
 						updatedTypeMapping.put(variableName, previousSymbol);
@@ -878,6 +884,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 		}
 		SymbolType st = SymbolType.valueOf(type, typeMapping);
 		st.method = method;
+
 		return st;
 	}
 

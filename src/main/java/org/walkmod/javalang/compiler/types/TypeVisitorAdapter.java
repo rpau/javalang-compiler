@@ -408,11 +408,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 				n.getScope().accept(this, arg);
 
 				scope = (SymbolType) n.getScope().getSymbolData();
-				
-				if(scope == null){
-					throw new RuntimeException("Ops! Error discovering the type of "+n.getScope().toString());
-				}
-				else{
+
+				if (scope == null) {
+					throw new RuntimeException("Ops! Error discovering the type of " + n.getScope().toString());
+				} else {
 					LOG.debug("scope: (" + n.getScope().toString() + ")" + scope.getName() + " method " + n.toString());
 				}
 			}
@@ -442,21 +441,25 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 																// inside the CU
 					if (MethodInspector.isGeneric(m)) {
 						// it is may return a parameterized type
-						if(scope == null){
+						if (scope == null) {
 							SymbolType st = symbolTable.getType("this", ReferenceType.VARIABLE);
-							if(!methodScope.isCompatible(st)){
-								//it is an parent method call from an inner class
+							if (!methodScope.isCompatible(st)) {
+								// it is an parent method call from an inner
+								// class
 								scope = methodScope;
 							}
 						}
-						
+
 						Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 						GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
 								typeMapping, n.getArgs(), scope, symbolTypes, n.getTypeArgs(), symbolTable);
 
 						builder.build(m);
+
 						SymbolType aux = SymbolType.valueOf(m, typeMapping);
+
 						n.setSymbolData(aux);
+
 					} else {
 						SymbolType result = s.getType().clone();
 						result.setMethod(m);
@@ -1107,8 +1110,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 		try {
 			SymbolType st = MethodInspector.findMethodType(symbolTable.getType("this", ReferenceType.VARIABLE),
 					typeArgs, filter, null, typeMapping);
-			
-			SymbolType typeData = (SymbolType)n.getType().getSymbolData();
+
+			SymbolType typeData = (SymbolType) n.getType().getSymbolData();
 			SymbolType methodType = typeData.clone();
 			methodType.setMethod(st.getMethod());
 			n.setSymbolData(methodType);
