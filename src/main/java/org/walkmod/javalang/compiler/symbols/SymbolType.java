@@ -458,6 +458,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 				}
 				result.setParameterizedTypes(list);
 			}
+			else{
+				result.setParameterizedTypes(null);
+			}
 			if (upperBounds != null) {
 				List<SymbolType> list = new LinkedList<SymbolType>();
 				for (SymbolData type : upperBounds) {

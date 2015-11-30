@@ -28,6 +28,7 @@ import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
+import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.EnumConstantDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
@@ -68,67 +69,68 @@ public class SymbolTable {
 		return null;
 	}
 
-	public Symbol<?> findSymbol(String symbolName,
-			ReferenceType... referenceType) {
+	public Symbol<?> findSymbol(String symbolName, ReferenceType... referenceType) {
 		return findSymbol(symbolName, null, null, referenceType);
 	}
-	public Symbol<?> findSymbol(String symbolName, SymbolType symbolScope,
-			SymbolType[] args, ReferenceType... referenceType) {
+
+	public Symbol<?> findSymbol(String symbolName, SymbolType symbolScope, SymbolType[] args,
+			ReferenceType... referenceType) {
 		return findSymbol(symbolName, symbolScope, args, null, referenceType);
 	}
-	public Symbol<?> findSymbol(String symbolName, SymbolType symbolScope,
-			SymbolType[] args, List<Predicate<?>> predicates, ReferenceType... referenceType) {
+
+	public Symbol<?> findSymbol(String symbolName, SymbolType symbolScope, SymbolType[] args,
+			List<Predicate<?>> predicates, ReferenceType... referenceType) {
 		int j = indexStructure.size() - 1;
 		Symbol<?> result = null;
-		Scope selectedScope = null;
 		if (symbolScope != null) {
 			Class<?> clazz = symbolScope.getClazz();
 			Symbol<?> scopeSymbol = null;
 			if (clazz.isAnonymousClass()) {
-				scopeSymbol = findSymbol(
-						symbolScope.getClazz().getName(), ReferenceType.TYPE);
+				scopeSymbol = findSymbol(symbolScope.getClazz().getName(), ReferenceType.TYPE);
 			} else {
-				scopeSymbol = indexStructure.get(0).findSymbol(
-						symbolScope.getClazz().getCanonicalName(),
+				scopeSymbol = indexStructure.get(0).findSymbol(symbolScope.getClazz().getCanonicalName(),
 						ReferenceType.TYPE);
 			}
 			if (scopeSymbol != null) {
 				if (scopeSymbol.getInnerScope() != null) {
 					// it is an inner class
-					return scopeSymbol.getInnerScope().findSymbol(symbolName,
-							symbolScope, args,predicates, referenceType);
+					return scopeSymbol.getInnerScope().findSymbol(symbolName, symbolScope, args, predicates,
+							referenceType);
 				} else
 					return null;
 			}
 
 		}
-		if (selectedScope == null) {
 
-			j = indexStructure.size() - 1;
-		}
+		Scope currentTypeScope = null;
 
 		while (j >= 0 && result == null) {
 			Scope scope = indexStructure.get(j);
 			Symbol<?> rootSymbol = scope.getRootSymbol();
 
-			if (selectedScope != null && rootSymbol != null) {
+			if (rootSymbol != null) {
 				SymbolDefinition sd = rootSymbol.getLocation();
 				if (sd instanceof SymbolDataAware<?>) {
-					symbolScope = (SymbolType) ((SymbolDataAware<?>) sd)
-							.getSymbolData();
+					symbolScope = (SymbolType) ((SymbolDataAware<?>) sd).getSymbolData();
+					if (currentTypeScope == null && !(rootSymbol instanceof MethodSymbol)) {
+						currentTypeScope = scope;
+					}
 				}
 
 			}
-			result = scope.findSymbol(symbolName, symbolScope, args, predicates,
-					referenceType);
+			result = scope.findSymbol(symbolName, true, symbolScope, args, predicates, referenceType);
 
 			j--;
 		}
+
+		if (currentTypeScope != null && result == null) {
+			result = currentTypeScope.findSymbol(symbolName, false, symbolScope, args, predicates, referenceType);
+		}
+
 		return result;
 	}
 
-	public List<Symbol<?>> findSymbolsByType(String typeName,
-			ReferenceType referenceType) {
+	public List<Symbol<?>> findSymbolsByType(String typeName, ReferenceType referenceType) {
 		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
 		int i = indexStructure.size() - 1;
 		while (i >= 0) {
@@ -139,8 +141,7 @@ public class SymbolTable {
 		return result;
 	}
 
-	public ArrayList<Symbol<?>> findSymbolsByType(
-			ReferenceType... referenceType) {
+	public ArrayList<Symbol<?>> findSymbolsByType(ReferenceType... referenceType) {
 		ArrayList<Symbol<?>> result = new ArrayList<Symbol<?>>();
 		int i = indexStructure.size() - 1;
 		while (i >= 0) {
@@ -162,8 +163,8 @@ public class SymbolTable {
 		return result;
 	}
 
-	private void invokeActions(Scope scope, Symbol<?> s, SymbolEvent event,
-			SymbolReference reference) throws Exception {
+	private void invokeActions(Scope scope, Symbol<?> s, SymbolEvent event, SymbolReference reference)
+			throws Exception {
 		if (s != null) {
 			if (actions != null) {
 				for (SymbolAction action : actions) {
@@ -183,20 +184,16 @@ public class SymbolTable {
 		}
 	}
 
-	public Symbol<?> lookUpSymbolForRead(String symbolName,
-			SymbolReference reference, ReferenceType... referenceType) {
-		return lookUpSymbolForRead(symbolName, reference, null, null,
-				referenceType);
+	public Symbol<?> lookUpSymbolForRead(String symbolName, SymbolReference reference, ReferenceType... referenceType) {
+		return lookUpSymbolForRead(symbolName, reference, null, null, referenceType);
 	}
 
-	public Symbol<?> lookUpSymbolForRead(String symbolName,
-			SymbolReference reference, SymbolType symbolScope,
+	public Symbol<?> lookUpSymbolForRead(String symbolName, SymbolReference reference, SymbolType symbolScope,
 			SymbolType[] args, ReferenceType... referenceType) {
 		Symbol<?> s = findSymbol(symbolName, symbolScope, args, referenceType);
 		if (s != null) {
 			try {
-				invokeActions(indexStructure.peek(), s, SymbolEvent.READ,
-						reference);
+				invokeActions(indexStructure.peek(), s, SymbolEvent.READ, reference);
 			} catch (Exception e) {
 				throw new SymbolTableException(e);
 			}
@@ -204,8 +201,7 @@ public class SymbolTable {
 		return s;
 	}
 
-	public Symbol<?> lookUpSymbolForWrite(String symbolName,
-			SymbolReference reference) {
+	public Symbol<?> lookUpSymbolForWrite(String symbolName, SymbolReference reference) {
 		return lookUpSymbolForWrite(symbolName, reference, null, null);
 	}
 
@@ -223,17 +219,16 @@ public class SymbolTable {
 		return result;
 	}
 
-	public Symbol<?> lookUpSymbolForWrite(String symbolName,
-			SymbolReference reference, SymbolType symbolScope, SymbolType[] args, ReferenceType... referenceType) {
-		
-		if(referenceType == null || referenceType.length == 0){
+	public Symbol<?> lookUpSymbolForWrite(String symbolName, SymbolReference reference, SymbolType symbolScope,
+			SymbolType[] args, ReferenceType... referenceType) {
+
+		if (referenceType == null || referenceType.length == 0) {
 			referenceType = new ReferenceType[1];
 			referenceType[0] = ReferenceType.VARIABLE;
 		}
 		Symbol<?> s = findSymbol(symbolName, symbolScope, args, referenceType);
 		try {
-			invokeActions(indexStructure.peek(), s, SymbolEvent.WRITE,
-					reference);
+			invokeActions(indexStructure.peek(), s, SymbolEvent.WRITE, reference);
 		} catch (Exception e) {
 			throw new SymbolTableException(e);
 		}
@@ -271,29 +266,24 @@ public class SymbolTable {
 			Symbol<?> rootSymbol = sc.getRootSymbol();
 			if (rootSymbol != null) {
 				SymbolDefinition sd = rootSymbol.getLocation();
-				if (sd instanceof ObjectCreationExpr
-						|| sd instanceof TypeDeclaration
-						|| sd instanceof TypeDeclarationStmt
-						|| sd instanceof EnumConstantDeclaration) {
+				if (sd instanceof ObjectCreationExpr || sd instanceof TypeDeclaration
+						|| sd instanceof TypeDeclarationStmt || sd instanceof EnumConstantDeclaration) {
 
 					int num = 1;
-					String preffix = ((SymbolDataAware<?>) sd).getSymbolData()
-							.getName();
+					String preffix = ((SymbolDataAware<?>) sd).getSymbolData().getName();
 					if (name == null) {
 						sc.incrInnerAnonymousClassCounter();
 						num = sc.getInnerAnonymousClassCounter();
 					} else {
 						num = 1;
 
-						Symbol<?> aux = indexStructure.get(0).findSymbol(
-								preffix + "$" + num + name, ReferenceType.TYPE);
+						Symbol<?> aux = indexStructure.get(0).findSymbol(preffix + "$" + num + name,
+								ReferenceType.TYPE);
 
 						while (aux != null) {
 							num++;
-							aux = indexStructure.get(0).findSymbol(
-									preffix + "$" + num + name,
-									ReferenceType.TYPE);
-							
+							aux = indexStructure.get(0).findSymbol(preffix + "$" + num + name, ReferenceType.TYPE);
+
 						}
 
 					}
@@ -328,57 +318,48 @@ public class SymbolTable {
 
 	}
 
-	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolType, Node location) {
-		return pushSymbol(symbolName, referenceType, symbolType, location,
-				false);
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType, SymbolType symbolType, Node location) {
+		return pushSymbol(symbolName, referenceType, symbolType, location, false);
 	}
 
-	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolType, Node location, boolean override) {
-		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
-				symbolType, location);
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType, SymbolType symbolType, Node location,
+			boolean override) {
+		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType, symbolType, location);
 		if (pushSymbol(symbol, override)) {
 			return symbol;
 		}
 		return null;
 	}
 
-	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolType, Node location, SymbolAction action) {
-		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
-				symbolType, location, action);
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType, SymbolType symbolType, Node location,
+			SymbolAction action) {
+		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType, symbolType, location, action);
 		if (pushSymbol(symbol, false)) {
 			return symbol;
 		}
 		return null;
 	}
 
-	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolType, Node location, List<SymbolAction> actions) {
-		return pushSymbol(symbolName, referenceType, symbolType, location,
-				actions, false);
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType, SymbolType symbolType, Node location,
+			List<SymbolAction> actions) {
+		return pushSymbol(symbolName, referenceType, symbolType, location, actions, false);
 	}
 
-	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType,
-			SymbolType symbolType, Node location, List<SymbolAction> actions,
-			boolean override) {
-		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType,
-				symbolType, location, actions);
+	public Symbol<?> pushSymbol(String symbolName, ReferenceType referenceType, SymbolType symbolType, Node location,
+			List<SymbolAction> actions, boolean override) {
+		Symbol<?> symbol = symbolFactory.create(symbolName, referenceType, symbolType, location, actions);
 		if (pushSymbol(symbol, override)) {
 			return symbol;
 		}
 		return null;
 	}
 
-	public List<Symbol<?>> pushSymbols(Set<String> names,
-			ReferenceType referenceType, SymbolType symbolType, Node location,
-			List<SymbolAction> actions) {
+	public List<Symbol<?>> pushSymbols(Set<String> names, ReferenceType referenceType, SymbolType symbolType,
+			Node location, List<SymbolAction> actions) {
 		List<Symbol<?>> pushedSymbols = new LinkedList<Symbol<?>>();
 
 		for (String name : names) {
-			Symbol<?> s = pushSymbol(name, referenceType, symbolType, location,
-					actions);
+			Symbol<?> s = pushSymbol(name, referenceType, symbolType, location, actions);
 			if (s != null) {
 				pushedSymbols.add(s);
 			}

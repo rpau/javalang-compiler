@@ -77,12 +77,13 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
-				Symbol<?> superSymbol = symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
+				Symbol superSymbol = symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
 						new SymbolType(sym.getType().getClazz().getSuperclass()), null, (List<SymbolAction>) null);
 				Symbol<?> superType = symbolTable.findSymbol(superSymbol.getType().getClazz().getCanonicalName(),
 						ReferenceType.TYPE);
 				if (superType != null) {
 					superSymbol.setInnerScope(superType.getInnerScope());
+					superSymbol.setLocation(superType.getLocation());
 				}
 			} else {
 				// Java 8: it references to itself because is could be

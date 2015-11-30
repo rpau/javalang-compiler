@@ -450,7 +450,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 						SymbolType aux = SymbolType.valueOf(m, typeMapping);
 						n.setSymbolData(aux);
 					} else {
-						n.setSymbolData(s.getType());
+						SymbolType result = s.getType().clone();
+						result.setMethod(m);
+						n.setSymbolData(result);
 					}
 				} else {
 					lookUpMethodByReflection = true;
@@ -1097,7 +1099,11 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 		try {
 			SymbolType st = MethodInspector.findMethodType(symbolTable.getType("this", ReferenceType.VARIABLE),
 					typeArgs, filter, null, typeMapping);
-			n.setSymbolData(st);
+			
+			SymbolType typeData = (SymbolType)n.getType().getSymbolData();
+			SymbolType methodType = typeData.clone();
+			methodType.setMethod(st.getMethod());
+			n.setSymbolData(methodType);
 		} catch (Exception e) {
 			throw new NoSuchExpressionTypeException(e);
 		}

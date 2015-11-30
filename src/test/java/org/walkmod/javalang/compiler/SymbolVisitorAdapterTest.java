@@ -1649,7 +1649,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(params);
 		Assert.assertEquals(2, params.size());
 
-		List<SymbolType> params2 =((SymbolType)params.get(0)).getBounds().get(0).getParameterizedTypes();
+		List<SymbolType> params2 = ((SymbolType) params.get(0)).getBounds().get(0).getParameterizedTypes();
 		Assert.assertNotNull(params2);
 
 		Assert.assertEquals("AbstractProject", params2.get(0).getClazz().getSimpleName());
@@ -1658,19 +1658,44 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testConflictImportsWildCardWithPackage() throws Exception{
+	public void testConflictImportsWildCardWithPackage() throws Exception {
 		String staticClass = "package foo; public class List{}";
-		
-		String mainCode ="package foo; import java.util.*; public class Foo{ List aux; }";
-		
+
+		String mainCode = "package foo; import java.util.*; public class Foo{ List aux; }";
+
 		CompilationUnit cu = run(mainCode, staticClass);
 		Assert.assertNotNull(cu);
-		
-		FieldDeclaration fd = (FieldDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		
+
+		FieldDeclaration fd = (FieldDeclaration) cu.getTypes().get(0).getMembers().get(0);
+
 		Assert.assertEquals("foo.List", fd.getType().getSymbolData().getName());
+	}
+
+	@Test
+	public void testMethodResolutionConflictBetweenInnerClassHierachyAndContainerClass() throws Exception {
+		String code = "public class Container { void hello() {} class Foo extends Bar { void something() { hello(); }}}";
+		String otherClass = "public class Bar { void hello() {} }";
+		CompilationUnit cu = run(code, otherClass);
+		Assert.assertNotNull(cu);
+		
+		ClassOrInterfaceDeclaration barType = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(1);
+		MethodDeclaration md = (MethodDeclaration) barType.getMembers().get(0);
+		ExpressionStmt exprStmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr)exprStmt.getExpression();
+		Assert.assertEquals("Container", mce.getSymbolData().getMethod().getDeclaringClass().getName());
+
+	}
+	
+	@Test
+	public void testGenericTypesWithoutParameters() throws Exception{
+		String code ="public class Foo { public Class getItemType(){ return null; } public void bar() { getItemType(); } }";
+		CompilationUnit cu = run(code);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		Assert.assertEquals("java.lang.Class", md.getSymbolData().getName());
+		
+		Assert.assertEquals(null, md.getSymbolData().getParameterizedTypes());
 	}
 
 }

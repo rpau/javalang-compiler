@@ -31,6 +31,7 @@ import java.util.Set;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
+import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.PreviousPredicateAware;
@@ -101,10 +102,14 @@ public class Scope {
 	}
 
 	public Symbol<?> findSymbol(String name) {
-		return findSymbol(name, null, ReferenceType.VARIABLE);
+		return findSymbol(name, false, null, ReferenceType.VARIABLE);
 	}
 
 	public Symbol<?> findSymbol(String name, ReferenceType... referenceType) {
+		return findSymbol(name, false, referenceType);
+	}
+
+	public Symbol<?> findSymbol(String name, boolean local, ReferenceType... referenceType) {
 		Symbol<?> result = null;
 		List<Symbol<?>> list = symbols.get(name);
 		if (list != null) {
@@ -127,11 +132,16 @@ public class Scope {
 		if (result == null) {
 			list = symbols.get("super");
 			if (list != null) {
-				Scope scope = list.get(0).getInnerScope();
+				Symbol<?> superSymbol = list.get(0);
+				Scope scope = superSymbol.getInnerScope();
 				if (scope != null) {
-					result = scope.findSymbol(name, referenceType);
+					if (!local || superSymbol.getLocation() instanceof ClassOrInterfaceDeclaration) {
+						result = scope.findSymbol(name, local, referenceType);
+					}
+
 				}
 			}
+
 		}
 		return result;
 	}
@@ -156,8 +166,7 @@ public class Scope {
 		return result;
 	}
 
-	public List<Symbol<?>> getSymbolsByType(String typeName,
-			ReferenceType referenceType) {
+	public List<Symbol<?>> getSymbolsByType(String typeName, ReferenceType referenceType) {
 		List<Symbol<?>> result = new LinkedList<Symbol<?>>();
 		Collection<ArrayList<Symbol<?>>> values = symbols.values();
 		Iterator<ArrayList<Symbol<?>>> it = values.iterator();
@@ -228,16 +237,13 @@ public class Scope {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private Method runPredicatesOnMethodCalls(List<Predicate<?>> predicates,
-			Map<Integer, Object> execs, SymbolType[] args) {
+	private Method runPredicatesOnMethodCalls(List<Predicate<?>> predicates, Map<Integer, Object> execs,
+			SymbolType[] args) {
 		Method[] methods = new Method[execs.size()];
 
-		List<Method> sortedMethods = sorter.sort(execs.values()
-				.toArray(methods), SymbolType.toClassArray(args));
-		ArrayFilter<Method> filter = new ArrayFilter<Method>(
-				sortedMethods.toArray(methods));
-		CompatibleArgsPredicate<Method> cap = new CompatibleArgsPredicate<Method>(
-				args);
+		List<Method> sortedMethods = sorter.sort(execs.values().toArray(methods), SymbolType.toClassArray(args));
+		ArrayFilter<Method> filter = new ArrayFilter<Method>(sortedMethods.toArray(methods));
+		CompatibleArgsPredicate<Method> cap = new CompatibleArgsPredicate<Method>(args);
 		cap.setTypeMapping(getTypeParams());
 		filter.appendPredicate(cap);
 		if (predicates != null && !predicates.isEmpty()) {
@@ -261,16 +267,13 @@ public class Scope {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private Constructor runPredicatesOnConstructors(
-			List<Predicate<?>> predicates, Map<Integer, Object> execs,
+	private Constructor runPredicatesOnConstructors(List<Predicate<?>> predicates, Map<Integer, Object> execs,
 			SymbolType[] args) {
 		Constructor[] methods = new Constructor[execs.size()];
-		List<Constructor> sortedMethods = constructorSorter.sort(execs.values()
-				.toArray(methods), SymbolType.toClassArray(args));
-		ArrayFilter<Constructor> filter = new ArrayFilter<Constructor>(
-				sortedMethods.toArray(methods));
-		CompatibleArgsPredicate<Constructor> cap = new CompatibleArgsPredicate<Constructor>(
-				args);
+		List<Constructor> sortedMethods = constructorSorter.sort(execs.values().toArray(methods),
+				SymbolType.toClassArray(args));
+		ArrayFilter<Constructor> filter = new ArrayFilter<Constructor>(sortedMethods.toArray(methods));
+		CompatibleArgsPredicate<Constructor> cap = new CompatibleArgsPredicate<Constructor>(args);
 		cap.setTypeMapping(getTypeParams());
 		filter.appendPredicate(cap);
 		if (predicates != null && !predicates.isEmpty()) {
@@ -293,12 +296,19 @@ public class Scope {
 		return exec;
 	}
 
-	public Symbol<?> findSymbol(String name, SymbolType scope,
-			SymbolType[] args, List<Predicate<?>> predicates,
+	public Symbol<?> findSymbol(String name, SymbolType scope, SymbolType[] args, List<Predicate<?>> predicates,
 			ReferenceType... referenceType) {
+		return findSymbol(name, false, scope, args, predicates, referenceType);
+	}
+
+	public Symbol<?> findSymbol(String name, boolean local, SymbolType scope, SymbolType[] args,
+			List<Predicate<?>> predicates, ReferenceType... referenceType) {
+
 		Symbol<?> result = null;
 		if (args == null) {
-			return findSymbol(name, referenceType);
+
+			return findSymbol(name, local, referenceType);
+
 		} else {
 
 			List<Symbol<?>> values = symbols.get(name);
@@ -320,7 +330,14 @@ public class Scope {
 						}
 
 						if (m != null) {
-							execs.put(i, m);
+							if (local && rootSymbol != null) {
+								Node location = aux.getLocation();
+								if (location != null && location.getParentNode() == rootSymbol.getLocation()) {
+									execs.put(i, m);
+								}
+							} else {
+								execs.put(i, m);
+							}
 						}
 
 					}
@@ -331,11 +348,9 @@ public class Scope {
 				} else {
 					Object exec = null;
 					if (isConstructor) {
-						exec = runPredicatesOnConstructors(predicates, execs,
-								args);
+						exec = runPredicatesOnConstructors(predicates, execs, args);
 					} else {
-						exec = runPredicatesOnMethodCalls(predicates, execs,
-								args);
+						exec = runPredicatesOnMethodCalls(predicates, execs, args);
 					}
 					Set<Integer> keys = execs.keySet();
 					Iterator<Integer> itKeys = keys.iterator();
@@ -350,10 +365,14 @@ public class Scope {
 			if (result == null) {
 				values = symbols.get("super");
 				if (values != null) {
-					Scope innerScope = values.get(0).getInnerScope();
+					Symbol<?> superSymbol = values.get(0);
+
+					Scope innerScope = superSymbol.getInnerScope();
 					if (innerScope != null) {
-						result = innerScope.findSymbol(name, scope, args,
-								predicates, referenceType);
+						if (!local || superSymbol.getLocation() instanceof ClassOrInterfaceDeclaration) {
+							result = innerScope.findSymbol(name, local, scope, args, predicates, referenceType);
+						}
+
 					}
 				}
 			}
@@ -378,8 +397,7 @@ public class Scope {
 		}
 	}
 
-	public <T extends Node & SymbolDefinition> Symbol<T> addSymbol(
-			String symbolName, SymbolType type, T location) {
+	public <T extends Node & SymbolDefinition> Symbol<T> addSymbol(String symbolName, SymbolType type, T location) {
 
 		Symbol<T> s = new Symbol<T>(symbolName, type, location);
 		if (addSymbol(s)) {
@@ -388,13 +406,11 @@ public class Scope {
 		return null;
 	}
 
-	public <T extends Node & SymbolDefinition> boolean addSymbol(
-			Symbol<T> symbol) {
+	public <T extends Node & SymbolDefinition> boolean addSymbol(Symbol<T> symbol) {
 		return addSymbol(symbol, false);
 	}
 
-	public <T extends Node & SymbolDefinition> boolean addSymbol(
-			Symbol<T> symbol, boolean override) {
+	public <T extends Node & SymbolDefinition> boolean addSymbol(Symbol<T> symbol, boolean override) {
 		String name = symbol.getName();
 		ArrayList<Symbol<?>> values = symbols.get(name);
 		boolean added = false;
@@ -406,27 +422,27 @@ public class Scope {
 				Iterator<Symbol<?>> it = values.iterator();
 				while (it.hasNext()) {
 					Symbol<?> value = it.next();
-					
+
 					if (!value.getReferenceType().equals(ReferenceType.METHOD)
-							&& value.getReferenceType().equals(
-									symbol.getReferenceType())) {
+							&& value.getReferenceType().equals(symbol.getReferenceType())) {
 						Object originalLocation = value.getLocation();
 						Object newLocation = symbol.getLocation();
-						
-						if (originalLocation != null && newLocation != null && 
-								(originalLocation instanceof ImportDeclaration) 
-								&& (newLocation instanceof ImportDeclaration)){
-							//there is an import override, the non asterisk has priority
+
+						if (originalLocation != null && newLocation != null
+								&& (originalLocation instanceof ImportDeclaration)
+								&& (newLocation instanceof ImportDeclaration)) {
+							// there is an import override, the non asterisk has
+							// priority
 							ImportDeclaration newImport = (ImportDeclaration) newLocation;
 							ImportDeclaration originalImport = (ImportDeclaration) originalLocation;
-							
-							if (originalImport.isAsterisk() && !newImport.isAsterisk()){
+
+							if (originalImport.isAsterisk() && !newImport.isAsterisk()) {
 								it.remove();
-							}else if(!originalImport.isAsterisk() && newImport.isAsterisk()){
+							} else if (!originalImport.isAsterisk() && newImport.isAsterisk()) {
 								added = true;
 							}
-							
-						}else{
+
+						} else {
 							it.remove();
 						}
 					}
@@ -454,8 +470,7 @@ public class Scope {
 				Method refMethod = ms.getReferencedMethod();
 
 				if (refMethod != null) {
-					ListIterator<Symbol<?>> it = values.listIterator(values
-							.size());
+					ListIterator<Symbol<?>> it = values.listIterator(values.size());
 
 					ExecutableSorter cmp = new ExecutableSorter();
 					while (it.hasPrevious() && !added) {
