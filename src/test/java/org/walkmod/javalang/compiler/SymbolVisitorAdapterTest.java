@@ -1697,5 +1697,32 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		
 		Assert.assertEquals(null, md.getSymbolData().getParameterizedTypes());
 	}
+	
+	@Test
+	public void testFieldTypeRedefinition() throws Exception{
+		String parentClass ="import java.util.Collection; public class ParentClass<T extends Collection<T>>{ T project; }";
+		String childClass = "import java.util.List; public class ChildClass<P extends List<P>> extends ParentClass<P> { public void foo() { project.listIterator(); } }";
+		CompilationUnit cu = run(childClass, parentClass);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		Assert.assertNotNull(stmt.getExpression().getSymbolData());
+	}
+	
+	
+	@Test
+	public void testFieldTypeRedefinition2() throws Exception{
+		String grandParentClass ="public class GrandParentClass<R>{ R project; }";
+		String parentClass ="import java.util.Collection; public class ParentClass<T extends Collection<T>> extends GrandParentClass<T>{ }";
+		String childClass = "import java.util.List; public class ChildClass<P extends List<P>> extends ParentClass<P> { public void foo() { project.listIterator(); } }";
+		CompilationUnit cu = run(childClass, parentClass, grandParentClass);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr method = (MethodCallExpr)stmt.getExpression();
+		Assert.assertNotNull(method.getScope().getSymbolData());
+		Assert.assertEquals("List", method.getScope().getSymbolData().getClazz().getSimpleName());
+		Assert.assertNotNull(stmt.getExpression().getSymbolData());
+	}
 
 }

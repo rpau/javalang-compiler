@@ -16,6 +16,7 @@ along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler.actions;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import org.walkmod.javalang.ast.type.ClassOrInterfaceType;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
 import org.walkmod.javalang.compiler.reflection.FieldInspector;
+import org.walkmod.javalang.compiler.reflection.GenericBuilderFromGenericClasses;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Scope;
@@ -59,11 +61,9 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 
 		if (symbol.getName().equals("this")) {
 			Node node = symbol.getLocation();
-			if (node instanceof TypeDeclaration
-					|| node instanceof ObjectCreationExpr
+			if (node instanceof TypeDeclaration || node instanceof ObjectCreationExpr
 					|| node instanceof EnumConstantDeclaration) {
-				node.accept(new FieldsPopulator(table), table.getScopes()
-						.peek());
+				node.accept(new FieldsPopulator(table), table.getScopes().peek());
 			}
 
 		}
@@ -130,8 +130,7 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 			}
 		}
 
-		public void loadExtendsOrImplements(
-				List<ClassOrInterfaceType> extendsList) {
+		public void loadExtendsOrImplements(List<ClassOrInterfaceType> extendsList) {
 			if (extendsList != null) {
 				Symbol<?> superSym = table.findSymbol("super");
 				Map<String, SymbolType> typeParams = null;
@@ -155,25 +154,19 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 					if (s != null) {
 						Scope inner = s.getInnerScope();
 						Object location = s.getLocation();
-						if (location != null
-								&& location instanceof TypeDeclaration) {
+						if (location != null && location instanceof TypeDeclaration) {
 							((TypeDeclaration) location).accept(this, inner);
-							List<SymbolType> parameters = s.getType()
-									.getParameterizedTypes();
+							List<SymbolType> parameters = s.getType().getParameterizedTypes();
 							if (parameters != null && typeParams != null) {
-								List<Symbol<?>> symbols = inner
-										.getSymbolsByType(ReferenceType.VARIABLE);
+								List<Symbol<?>> symbols = inner.getSymbolsByType(ReferenceType.VARIABLE);
 								table.pushScope(superScope);
 								for (Symbol<?> sym : symbols) {
 									String symName = sym.getName();
-									if (!"this".equals(symName)
-											&& !"super".equals(symName)) {
-										SymbolType refactorized = sym.getType()
-												.refactor(typeParams);
+									if (!"this".equals(symName) && !"super".equals(symName)) {
+										SymbolType refactorized = sym.getType().refactor(typeParams);
 
-										table.pushSymbol(symName,
-												ReferenceType.VARIABLE,
-												refactorized, sym.getLocation());
+										table.pushSymbol(symName, ReferenceType.VARIABLE, refactorized,
+												sym.getLocation());
 									}
 								}
 								table.popScope(true);
@@ -181,17 +174,21 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
-							Set<Field> fields = FieldInspector
-									.getNonPrivateFields(clazz);
-
+							Set<Field> fields = FieldInspector.getNonPrivateFields(clazz);
+							List<SymbolType> params = table.getType("this").getParameterizedTypes();
 
 							for (Field field : fields) {
 								try {
-									table.pushSymbol(field.getName(),
-											ReferenceType.VARIABLE, SymbolType
-													.valueOf(field
-															.getGenericType(),
-															typeParams), null,
+									Map<String, SymbolType> typeMapping = null;
+									if (typeParams != null) {
+										typeMapping = new HashMap<String, SymbolType>(typeParams);
+
+										GenericBuilderFromGenericClasses builder = new GenericBuilderFromGenericClasses(
+												field.getDeclaringClass(), params);
+										builder.build(typeMapping);
+									}
+									table.pushSymbol(field.getName(), ReferenceType.VARIABLE,
+											SymbolType.valueOf(field.getGenericType(), typeMapping), null,
 
 											true);
 								} catch (InvalidTypeException e) {
@@ -215,22 +212,19 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 							Type type = fd.getType();
 							List<SymbolAction> actions = null;
 
-							Symbol<?> root = table.getScopes().peek()
-									.getRootSymbol();
+							Symbol<?> root = table.getScopes().peek().getRootSymbol();
 							if (root != null) {
 								Node location = root.getLocation();
 								if (location != null) {
 									if (location == member.getParentNode()) {
 										if (actionProvider != null) {
-											actions = actionProvider
-													.getActions(fd);
+											actions = actionProvider.getActions(fd);
 										}
 									}
 								}
 							}
 
-							SymbolType resolvedType = ASTSymbolTypeResolver
-									.getInstance().valueOf(type);
+							SymbolType resolvedType = ASTSymbolTypeResolver.getInstance().valueOf(type);
 
 							if (resolvedType == null) {
 								resolvedType = new SymbolType(Object.class);
@@ -240,13 +234,11 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 							for (VariableDeclarator var : fd.getVariables()) {
 								SymbolType symType = resolvedType.clone();
 								if (symType.getArrayCount() == 0) {
-									symType.setArrayCount(var.getId()
-											.getArrayCount());
+									symType.setArrayCount(var.getId().getArrayCount());
 								}
 
-								table.pushSymbol(var.getId().getName(),
-										ReferenceType.VARIABLE, symType, var,
-										actions, true);
+								table.pushSymbol(var.getId().getName(), ReferenceType.VARIABLE, symType, var, actions,
+										true);
 
 							}
 
