@@ -442,6 +442,14 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 																// inside the CU
 					if (MethodInspector.isGeneric(m)) {
 						// it is may return a parameterized type
+						if(scope == null){
+							SymbolType st = symbolTable.getType("this", ReferenceType.VARIABLE);
+							if(!methodScope.isCompatible(st)){
+								//it is an parent method call from an inner class
+								scope = methodScope;
+							}
+						}
+						
 						Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 						GenericsBuilderFromMethodParameterTypes builder = new GenericsBuilderFromMethodParameterTypes(
 								typeMapping, n.getArgs(), scope, symbolTypes, n.getTypeArgs(), symbolTable);
