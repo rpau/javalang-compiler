@@ -51,11 +51,9 @@ public class LoadStaticImportsAction extends SymbolAction {
 					int index = nameExpr.lastIndexOf(".");
 
 					while (index != -1 && clazz == null) {
-						nameExpr = nameExpr.substring(0, index) + "$"
-								+ nameExpr.substring(index + 1);
+						nameExpr = nameExpr.substring(0, index) + "$" + nameExpr.substring(index + 1);
 						try {
-							clazz = TypesLoaderVisitor.getClassLoader()
-									.loadClass(nameExpr);
+							clazz = TypesLoaderVisitor.getClassLoader().loadClass(nameExpr);
 						} catch (ClassNotFoundException e2) {
 
 						}
@@ -64,8 +62,7 @@ public class LoadStaticImportsAction extends SymbolAction {
 					}
 					if (clazz == null) {
 						throw e;
-					}
-					else{
+					} else {
 						symbol.getType().setName(nameExpr);
 						symbol.getType().getClazz();
 					}
@@ -90,22 +87,35 @@ public class LoadStaticImportsAction extends SymbolAction {
 				Class<?>[] declaredClasses = clazz.getDeclaredClasses();
 
 				for (int i = 0; i < declaredClasses.length; i++) {
-					if (!id.isAsterisk()
-							&& id.getName().getName()
-									.equals(declaredClasses[i].getSimpleName())) {
+					if (!id.isAsterisk() && id.getName().getName().equals(declaredClasses[i].getSimpleName())) {
 						int modifiers = declaredClasses[i].getModifiers();
 
 						if (Modifier.isStatic(modifiers)) {
 							boolean isVisible = Modifier.isPublic(modifiers)
-									|| (!Modifier.isPrivate(modifiers) && importPkgName
-											.equals(pkgName));
+									|| (!Modifier.isPrivate(modifiers) && importPkgName.equals(pkgName));
 							if (isVisible) {
 
-								SymbolType st = new SymbolType(
-										declaredClasses[i]);
-								table.pushSymbol(
-										declaredClasses[i].getSimpleName(),
-										ReferenceType.TYPE, st, n);
+								SymbolType st = new SymbolType(declaredClasses[i]);
+								table.pushSymbol(declaredClasses[i].getSimpleName(), ReferenceType.TYPE, st, n);
+							}
+						}
+					}
+				}
+
+				Class<?>[] interfaces = clazz.getInterfaces();
+				for (int i = 0; i < interfaces.length; i++) {
+					Class<?>[] nestedClasses = interfaces[i].getDeclaredClasses();
+					for (int j = 0; j < nestedClasses.length; j++) {
+						if (id.isAsterisk() || id.getName().getName().equals(nestedClasses[j].getSimpleName())) {
+							int modifiers = nestedClasses[j].getModifiers();
+							if (Modifier.isStatic(modifiers)) {
+								boolean isVisible = Modifier.isPublic(modifiers)
+										|| (!Modifier.isPrivate(modifiers) && importPkgName.equals(pkgName));
+								if (isVisible) {
+
+									SymbolType st = new SymbolType(nestedClasses[j]);
+									table.pushSymbol(nestedClasses[j].getSimpleName(), ReferenceType.TYPE, st, n);
+								}
 							}
 						}
 					}
@@ -114,14 +124,12 @@ public class LoadStaticImportsAction extends SymbolAction {
 				Method[] methods = clazz.getDeclaredMethods();
 
 				for (Method m : methods) {
-					if (id.isAsterisk()
-							|| id.getName().getName().equals(m.getName())) {
+					if (id.isAsterisk() || id.getName().getName().equals(m.getName())) {
 						int modifiers = m.getModifiers();
 						if (Modifier.isStatic(modifiers)) {
 
 							boolean isVisible = Modifier.isPublic(modifiers)
-									|| (!Modifier.isPrivate(modifiers) && importPkgName
-											.equals(pkgName));
+									|| (!Modifier.isPrivate(modifiers) && importPkgName.equals(pkgName));
 
 							if (isVisible) {
 								Class<?>[] params = m.getParameterTypes();
@@ -130,17 +138,14 @@ public class LoadStaticImportsAction extends SymbolAction {
 									args = new SymbolType[params.length];
 									int i = 0;
 									for (Class<?> param : params) {
-										args[i] = SymbolType.valueOf(param,
-												null);
+										args[i] = SymbolType.valueOf(param, null);
 										i++;
 									}
 								}
 
 								SymbolType st = SymbolType.valueOf(m, null);
-								MethodSymbol method = new MethodSymbol(
-										m.getName(), st, n, symbol.getType(),
-										args, true, m.isVarArgs(), m,
-										(List<SymbolAction>) null);
+								MethodSymbol method = new MethodSymbol(m.getName(), st, n, symbol.getType(), args, true,
+										m.isVarArgs(), m, (List<SymbolAction>) null);
 								table.pushSymbol(method);
 							}
 						}
@@ -148,15 +153,13 @@ public class LoadStaticImportsAction extends SymbolAction {
 				}
 				Field[] fields = clazz.getDeclaredFields();
 				for (Field field : fields) {
-					if (id.isAsterisk()
-							|| id.getName().getName().equals(field.getName())) {
+					if (id.isAsterisk() || id.getName().getName().equals(field.getName())) {
 
 						int modifiers = field.getModifiers();
 						if (Modifier.isStatic(modifiers)) {
 
 							boolean isVisible = Modifier.isPublic(modifiers)
-									|| (!Modifier.isPrivate(modifiers) && importPkgName
-											.equals(pkgName));
+									|| (!Modifier.isPrivate(modifiers) && importPkgName.equals(pkgName));
 							if (isVisible) {
 								Class<?> type = field.getType();
 								SymbolType st = new SymbolType(type);

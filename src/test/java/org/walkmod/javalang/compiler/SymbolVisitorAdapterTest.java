@@ -1755,5 +1755,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code, abstractItem, topLevelItem);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testStaticImportsWithInheritedInnerClassesFromInterfaces() throws Exception{
+		String importedType = "package foo; public class ExternalClass implements SomeInterface{}";
+		String interfaceType = "package foo; public interface SomeInterface{ public class InnerClass{} }";
+		String code ="package bar; import static foo.ExternalClass.*; public class MainClass{ public void something(){ InnerClass c = new InnerClass(); }}";
+	
+		CompilationUnit cu = run(code, importedType, interfaceType);
+		Assert.assertNotNull(cu);
+	}
 
 }
