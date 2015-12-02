@@ -732,6 +732,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					paramTypes = arg.getParameterizedTypes();
 				}
 				int i = 0;
+				TypeVariable<?>[] tvs = auxClass.getTypeParameters();
 				for (Type t : types) {
 
 					String label = t.toString();
@@ -760,7 +761,24 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
 						SymbolType st = null;
 						if (validParameterizedType) {
+							
 							st = valueOf(t, argToAnalyze, updatedTypeMapping, typeMapping);
+							if(st != null){
+								if(st.isTemplateVariable() && st.getTemplateVariable().equals("?")){
+									List<SymbolType> bounds = st.getBounds();
+									if(bounds != null && bounds.size() == 1){
+										if("java.lang.Object".equals(bounds.get(0).getName())){
+											if(tvs.length > i){
+												SymbolType templateVarType = valueOf(tvs[i],null, updatedTypeMapping, typeMapping);
+												bounds = new LinkedList<SymbolType>();
+												bounds.add(templateVarType);
+												st = new SymbolType(bounds);
+												st.setTemplateVariable("?");
+											}
+										}
+									}
+								}
+							}
 						}
 						if (st != null) {
 							String name = st.getName();
@@ -841,6 +859,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 			}
 			if (upperBounds != null || lowerBounds != null) {
 				returnType = new SymbolType(upperBounds, lowerBounds);
+				returnType.setTemplateVariable(wt.toString());
 			}
 		}
 		return returnType;

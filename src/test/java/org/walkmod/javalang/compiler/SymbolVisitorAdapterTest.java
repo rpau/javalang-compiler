@@ -1794,5 +1794,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(mce.getSymbolData());
 		
 	}
+	
+	@Test
+	public void testGenericsWithWildcardAndUpperBoundTypes() throws Exception{
+		String scmClass ="public class SCMClass{ SCMDescriptor<?> getDescriptor(){return null;} }";
+		String scmDescriptor = "import java.util.List; public class SCMDescriptor<T extends List>{}";
+		String mainClass = "import java.util.Set; import java.util.HashSet; public class Foo{ public void bar(SCMClass scm) { Set<SCMDescriptor<?>> descriptors = new HashSet<SCMDescriptor<?>>(); descriptors.add(scm.getDescriptor()); } }";
+		CompilationUnit cu = run(mainClass, scmDescriptor, scmClass);
+		Assert.assertNotNull(cu);
+	}
 
 }
