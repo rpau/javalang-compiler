@@ -325,6 +325,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 				} catch (ClassNotFoundException e) {
 
 				}
+				catch (NoClassDefFoundError e) {
+
+				}
 			} else {
 				SymbolType fieldType = null;
 				if (n.getScope() instanceof ThisExpr) {

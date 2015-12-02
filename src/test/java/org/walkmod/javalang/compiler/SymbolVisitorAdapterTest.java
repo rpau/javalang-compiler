@@ -1803,5 +1803,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(mainClass, scmDescriptor, scmClass);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testFieldTypeOverriding() throws Exception{
+		String jobClass = "import java.util.Collection; public abstract class Trigger<J extends Collection>{ J job; }";
+		String code = "import java.util.List; public class TimerTrigger extends Trigger<List> { public void foo() { job.listIterator(); } }";
+		CompilationUnit cu = run(code,  jobClass);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		Assert.assertNotNull(mce.getSymbolData());
+		
+	}
 
 }

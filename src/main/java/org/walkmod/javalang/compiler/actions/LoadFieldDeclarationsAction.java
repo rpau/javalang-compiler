@@ -203,11 +203,12 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 				try {
 					Map<String, SymbolType> typeMapping = null;
 					if (typeParams != null) {
-						typeMapping = new HashMap<String, SymbolType>(typeParams);
+						typeMapping = new HashMap<String, SymbolType>();
 
 						GenericBuilderFromGenericClasses builder = new GenericBuilderFromGenericClasses(
 								field.getDeclaringClass(), params);
 						builder.build(typeMapping);
+						typeMapping.putAll(typeParams);
 					}
 					table.pushSymbol(field.getName(), ReferenceType.VARIABLE,
 							SymbolType.valueOf(field.getGenericType(), typeMapping), null,
