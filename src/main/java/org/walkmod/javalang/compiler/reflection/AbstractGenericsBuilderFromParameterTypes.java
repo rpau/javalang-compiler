@@ -21,7 +21,6 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -30,6 +29,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.expr.ClassExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
@@ -53,17 +53,15 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 
 	private SymbolTable symTable;
 
-	public AbstractGenericsBuilderFromParameterTypes(
-			Map<String, SymbolType> typeMapping, List<Expression> args,
+	public AbstractGenericsBuilderFromParameterTypes(Map<String, SymbolType> typeMapping, List<Expression> args,
 			SymbolType[] typeArgs, SymbolTable symTable) {
 		this.typeMapping = typeMapping;
 		this.args = args;
 		this.typeArgs = typeArgs;
 		this.symTable = symTable;
 	}
-	
-	public AbstractGenericsBuilderFromParameterTypes(
-			Map<String, SymbolType> typeMapping, SymbolTable symTable) {
+
+	public AbstractGenericsBuilderFromParameterTypes(Map<String, SymbolType> typeMapping, SymbolTable symTable) {
 		this.typeMapping = typeMapping;
 		this.symTable = symTable;
 	}
@@ -121,8 +119,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 				for (String typeName : parameterizedTypeNames) {
 					SymbolType st = typeMapping.get(typeName).clone();
 					st.setTemplateVariable(typeName);
-					typeParamsSymbolTable.pushSymbol(typeName,
-							ReferenceType.TYPE, st, null);
+					typeParamsSymbolTable.pushSymbol(typeName, ReferenceType.TYPE, st, null);
 				}
 			}
 		}
@@ -135,8 +132,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 
 	}
 
-	public void loadTypeMappingFromTypeArgs(SymbolTable symbolTable)
-			throws Exception {
+	public void loadTypeMappingFromTypeArgs(SymbolTable symbolTable) throws Exception {
 		symbolTable.pushScope();
 		java.lang.reflect.Type[] types = getTypes();
 
@@ -147,8 +143,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 				Type aux = ((ParameterizedType) type).getRawType();
 				if (aux instanceof Class) {
 					if (((Class<?>) aux).getName().equals("java.lang.Class")) {
-						Type[] targs = ((ParameterizedType) type)
-								.getActualTypeArguments();
+						Type[] targs = ((ParameterizedType) type).getActualTypeArguments();
 						for (Type targ : targs) {
 							String letter = targ.toString();
 							if (!"?".equals(letter)) {
@@ -159,14 +154,18 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 
 										SymbolType eType = getType(((ClassExpr) e));
 
-										symbolTable.pushSymbol(letter,
-												ReferenceType.TYPE, eType, e);
+										symbolTable.pushSymbol(letter, ReferenceType.TYPE, eType, e);
 
+									} else {
+										List<SymbolData> params = e.getSymbolData().getParameterizedTypes();
+										if (params != null && !params.isEmpty()) {
+											SymbolType eType = (SymbolType) params.get(0);
+											symbolTable.pushSymbol(letter, ReferenceType.TYPE, eType, e);
+										}
 									}
 								} else {
-									symbolTable.pushSymbol(letter,
-											ReferenceType.TYPE, new SymbolType(
-													Object.class), null);
+									symbolTable.pushSymbol(letter, ReferenceType.TYPE, new SymbolType(Object.class),
+											null);
 								}
 							}
 						}
@@ -192,8 +191,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 	}
 
 	public void closeTypeMapping() {
-		ArrayList<Symbol<?>> symbols = typeParamsSymbolTable
-				.findSymbolsByType();
+		ArrayList<Symbol<?>> symbols = typeParamsSymbolTable.findSymbolsByType();
 		ListIterator<Symbol<?>> it = symbols.listIterator(symbols.size());
 		while (it.hasPrevious()) {
 			Symbol<?> s = it.previous();
@@ -201,24 +199,19 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 		}
 	}
 
-	private void typeMappingUpdate(Type type, SymbolType typeArg)
-			throws InvalidTypeException {
+	private void typeMappingUpdate(Type type, SymbolType typeArg) throws InvalidTypeException {
 		if (type instanceof TypeVariable) {
 			String name = ((TypeVariable<?>) type).getName();
-			Symbol<?> s = typeParamsSymbolTable.findSymbol(name,
-					ReferenceType.TYPE, ReferenceType.TYPE_PARAM);
+			Symbol<?> s = typeParamsSymbolTable.findSymbol(name, ReferenceType.TYPE, ReferenceType.TYPE_PARAM);
 
 			SymbolType st = null;
 			if (s != null) {
 				st = s.getType();
 			}
 			if ((s == null || st == null)
-					|| (st.isTemplateVariable() && s.getReferenceType().equals(
-							ReferenceType.TYPE_PARAM))
-					|| (Object.class.equals(st.getClazz()) && !s
-							.getReferenceType().equals(ReferenceType.TYPE))) {
-				typeParamsSymbolTable.pushSymbol(name, ReferenceType.TYPE,
-						typeArg, null);
+					|| (st.isTemplateVariable() && s.getReferenceType().equals(ReferenceType.TYPE_PARAM))
+					|| (Object.class.equals(st.getClazz()) && !s.getReferenceType().equals(ReferenceType.TYPE))) {
+				typeParamsSymbolTable.pushSymbol(name, ReferenceType.TYPE, typeArg, null);
 			} else {
 				if (s.getReferenceType().equals(ReferenceType.TYPE)) {
 					SymbolType aux = (SymbolType) st.merge(typeArg);
@@ -226,8 +219,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 				} else {
 					// it is a type param, so it is not part of the implicit
 					// object
-					typeParamsSymbolTable.pushSymbol(name, ReferenceType.TYPE,
-							typeArg, null);
+					typeParamsSymbolTable.pushSymbol(name, ReferenceType.TYPE, typeArg, null);
 				}
 			}
 
@@ -241,15 +233,13 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 
 				// class A<T> implements B<String,T>, if type is B<K,M>, we need
 				// to know that K is String and M whatever has the typeArg
-				SymbolType rewrittenType = SymbolType.valueOf(
-						paramType.getRawType(), typeArg, updateMapping, null);
+				SymbolType rewrittenType = SymbolType.valueOf(paramType.getRawType(), typeArg, updateMapping, null);
 
 				List<SymbolType> callParams = typeArg.getParameterizedTypes();
 				String name = rewrittenType.getName();
 				if (name == null || !"java.lang.Class".equals(name)) {
 
-					List<SymbolType> rewrittenParams = rewrittenType
-							.getParameterizedTypes();
+					List<SymbolType> rewrittenParams = rewrittenType.getParameterizedTypes();
 					if (rewrittenParams != null) {
 						Iterator<SymbolType> itP = rewrittenParams.iterator();
 						Iterator<SymbolType> auxIt = null;
@@ -260,8 +250,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 						int i = 0;
 						while (itP.hasNext() && i < args.length) {
 							SymbolType st = itP.next();
-							if ((st.getName() == null || Object.class.equals(st
-									.getClazz()))) {
+							if ((st.getName() == null || Object.class.equals(st.getClazz()))) {
 								if (auxIt != null && auxIt.hasNext()) {
 									// it is defined by the parameters of the
 									// implicit object.Eg: (List<String> a =
@@ -328,11 +317,9 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 
 				// class A<T> implements B<String,T>, if type is B<K,M>, we need
 				// to know that K is String and M whatever has the typeArg
-				SymbolType rewrittenType = SymbolType.valueOf(clazz, typeArg,
-						updateMapping, null);
+				SymbolType rewrittenType = SymbolType.valueOf(clazz, typeArg, updateMapping, null);
 				TypeVariable[] tvs = clazz.getTypeParameters();
-				List<SymbolType> paramTypes = rewrittenType
-						.getParameterizedTypes();
+				List<SymbolType> paramTypes = rewrittenType.getParameterizedTypes();
 				if (paramTypes != null) {
 					Iterator<SymbolType> it = paramTypes.iterator();
 					for (int i = 0; i < tvs.length && it.hasNext(); i++) {

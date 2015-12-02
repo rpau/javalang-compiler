@@ -1781,5 +1781,18 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code, externalCode);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testGenericsResolutionForClassParameters() throws Exception{
+		String externalCode ="package test; import java.util.Collection; public class Foo{ public <T extends Collection> T getProperty(Class<T> clazz) { return null;}}";
+		String code ="import test.Foo; import java.util.List; public class Bar{ public void foo(Foo x){ Class<? extends List> pt = null; x.getProperty(pt).listIterator();} }";
+		CompilationUnit cu = run(code, externalCode);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(1);
+		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		Assert.assertNotNull(mce.getSymbolData());
+		
+	}
 
 }
