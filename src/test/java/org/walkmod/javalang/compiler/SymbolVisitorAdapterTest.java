@@ -1765,5 +1765,21 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		CompilationUnit cu = run(code, importedType, interfaceType);
 		Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testThrowExceptionsWithFullClassName() throws Exception{
+		String codeException = "package foo; public class Bar{ public class BarException extends Exception{} } ";
+		String code ="public class Foo { public void hello() throws foo.Bar.BarException{} }";
+		CompilationUnit cu = run(code, codeException);
+		Assert.assertNotNull(cu);
+	}
+	
+	@Test
+	public void testInheritedFieldByAnonymousClass() throws Exception{
+		String externalCode = "package bar; import java.util.List; public class A{ public List DEFAULT = null; }";
+		String code ="public class Foo{  public void foo() { bar.A x = new bar.A(){  void hello() { Object aux = DEFAULT.get(0); }};}}";
+		CompilationUnit cu = run(code, externalCode);
+		Assert.assertNotNull(cu);
+	}
 
 }

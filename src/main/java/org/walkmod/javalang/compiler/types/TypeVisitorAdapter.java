@@ -845,6 +845,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 						try {
 							clazz = TypesLoaderVisitor.getClassLoader().loadClass(typeName);
 						} catch (ClassNotFoundException e) {
+						} catch (NoClassDefFoundError e2) {
+
 						}
 					}
 					if (clazz == null && data != null) {

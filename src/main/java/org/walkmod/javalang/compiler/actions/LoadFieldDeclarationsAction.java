@@ -44,6 +44,7 @@ import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
@@ -174,29 +175,46 @@ public class LoadFieldDeclarationsAction extends SymbolAction {
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
-							Set<Field> fields = FieldInspector.getNonPrivateFields(clazz);
-							List<SymbolType> params = table.getType("this").getParameterizedTypes();
-
-							for (Field field : fields) {
-								try {
-									Map<String, SymbolType> typeMapping = null;
-									if (typeParams != null) {
-										typeMapping = new HashMap<String, SymbolType>(typeParams);
-
-										GenericBuilderFromGenericClasses builder = new GenericBuilderFromGenericClasses(
-												field.getDeclaringClass(), params);
-										builder.build(typeMapping);
-									}
-									table.pushSymbol(field.getName(), ReferenceType.VARIABLE,
-											SymbolType.valueOf(field.getGenericType(), typeMapping), null,
-
-											true);
-								} catch (InvalidTypeException e) {
-									throw new RuntimeException(e);
-								}
-							}
+							loadFieldsFromClass(clazz, typeParams);
 						}
+					} else {
+						Class<?> clazz = null;
+						
+						
+						if (type.getParentNode() instanceof ObjectCreationExpr) {
+							ObjectCreationExpr parent = (ObjectCreationExpr) type.getParentNode();
+							clazz = parent.getSymbolData().getClazz().getSuperclass();
+						} else {
+							SymbolType stype = ASTSymbolTypeResolver.getInstance().valueOf(type);
+							clazz = stype.getClazz();
+							
+						}
+						loadFieldsFromClass(clazz, typeParams);
 					}
+				}
+			}
+		}
+
+		private void loadFieldsFromClass(Class<?> clazz, Map<String, SymbolType> typeParams) {
+			Set<Field> fields = FieldInspector.getNonPrivateFields(clazz);
+			List<SymbolType> params = table.getType("this").getParameterizedTypes();
+
+			for (Field field : fields) {
+				try {
+					Map<String, SymbolType> typeMapping = null;
+					if (typeParams != null) {
+						typeMapping = new HashMap<String, SymbolType>(typeParams);
+
+						GenericBuilderFromGenericClasses builder = new GenericBuilderFromGenericClasses(
+								field.getDeclaringClass(), params);
+						builder.build(typeMapping);
+					}
+					table.pushSymbol(field.getName(), ReferenceType.VARIABLE,
+							SymbolType.valueOf(field.getGenericType(), typeMapping), null,
+
+							true);
+				} catch (InvalidTypeException e) {
+					throw new RuntimeException(e);
 				}
 			}
 		}
