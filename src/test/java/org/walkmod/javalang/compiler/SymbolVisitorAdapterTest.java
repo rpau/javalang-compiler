@@ -1816,5 +1816,19 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(mce.getSymbolData());
 		
 	}
+	
+	@Test
+	public void testMethodScopeResolution() throws Exception{
+		String externalClass="package foo; public class ExternalClass{ public String foo(String s) { return null; }}";
+		String code = "package bar; import foo.ExternalClass; public class Foo{ void bar(ExternalClass a) { a.foo(\"hello\"); } void foo(String s){}}";
+		CompilationUnit cu = run(code, externalClass);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		Assert.assertNotNull(mce.getSymbolData());
+		Assert.assertEquals("java.lang.String", mce.getSymbolData().getName());
+		
+	}
 
 }

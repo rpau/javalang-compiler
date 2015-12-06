@@ -103,28 +103,46 @@ public class SymbolTable {
 		}
 
 		Scope currentTypeScope = null;
+		SymbolType auxScope = null;
 
 		while (j >= 0 && result == null) {
 			Scope scope = indexStructure.get(j);
 			Symbol<?> rootSymbol = scope.getRootSymbol();
 
-			if (rootSymbol != null) {
+			if (symbolScope == null && rootSymbol != null) {
 				SymbolDefinition sd = rootSymbol.getLocation();
 				if (sd instanceof SymbolDataAware<?>) {
-					symbolScope = (SymbolType) ((SymbolDataAware<?>) sd).getSymbolData();
+					auxScope = (SymbolType) ((SymbolDataAware<?>) sd).getSymbolData();
 					if (currentTypeScope == null && !(rootSymbol instanceof MethodSymbol)) {
 						currentTypeScope = scope;
 					}
 				}
 
 			}
-			result = scope.findSymbol(symbolName, true, symbolScope, args, predicates, referenceType);
+			if (auxScope == null) {
+				auxScope = symbolScope;
+			}
+			
+			SymbolType typeRootSymbol = null;
+			if(rootSymbol != null && !(rootSymbol instanceof MethodSymbol) ){
+				typeRootSymbol = rootSymbol.getType();
+			}
+			if (typeRootSymbol != null && symbolScope != null ) {
+				
+				if (typeRootSymbol.isCompatible(symbolScope)) {
+					result = scope.findSymbol(symbolName, true, auxScope, args, predicates, referenceType);
+				}
+			} else {
+				result = scope.findSymbol(symbolName, true, auxScope, args, predicates, referenceType);
+			}
 
 			j--;
 		}
 
 		if (currentTypeScope != null && result == null) {
-			result = currentTypeScope.findSymbol(symbolName, false, symbolScope, args, predicates, referenceType);
+			if (symbolScope == null || auxScope.getName().equals(symbolScope.getName())) {
+				result = currentTypeScope.findSymbol(symbolName, false, symbolScope, args, predicates, referenceType);
+			}
 		}
 
 		return result;

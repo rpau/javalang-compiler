@@ -41,6 +41,7 @@ public class SymbolTypesClassLoader extends ClassLoader {
 		super(parent);
 	}
 
+
 	public Class<?> loadClass(Type t) throws ClassNotFoundException {
 
 		return ASTSymbolTypeResolver.getInstance().valueOf(t).getClazz();
