@@ -40,6 +40,7 @@ import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
+import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
@@ -1828,6 +1829,21 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
 		Assert.assertNotNull(mce.getSymbolData());
 		Assert.assertEquals("java.lang.String", mce.getSymbolData().getName());
+		
+	}
+	
+	@Test
+	public void testGenericsWithFieldAccessResolution() throws Exception{
+		String externalClass = "package hudson.model; public class Job<T, K>{ public transient String runIdMigrator; }";
+		String code = "import hudson.model.Job;import java.util.Map;public abstract class LazyBuildMixIn<JobT extends Job<String, String>, RunT extends Map<JobT, String>> { protected abstract JobT asJob(); public void foo() { String aux = asJob().runIdMigrator; } }";
+		CompilationUnit cu = run(code, externalClass);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		VariableDeclarationExpr ae = (VariableDeclarationExpr) stmt.getExpression();
+		SymbolData sd = ae.getVars().get(0).getInit().getSymbolData();
+		
+		Assert.assertNotNull(sd);
 		
 	}
 

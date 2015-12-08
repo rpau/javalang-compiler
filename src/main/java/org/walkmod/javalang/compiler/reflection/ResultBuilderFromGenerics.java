@@ -235,12 +235,13 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 						.getParameterizedTypes();
 				if (paramTypes != null) {
 					Iterator<SymbolType> it = paramTypes.iterator();
+					HashSet<String> processed = new HashSet<String>();
 					for (int i = 0; i < tparams.length && it.hasNext(); i++) {
 						SymbolType st = it.next();
 						if (st != null) {
 							st.setTemplateVariable(tparams[i].getName());
 							updateTypeMapping(tparams[i], genericsSymbolTable,
-									st, true, new HashSet<String>());
+									st, true, processed);
 						}
 					}
 				}

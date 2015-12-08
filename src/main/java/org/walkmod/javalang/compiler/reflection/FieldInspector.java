@@ -86,7 +86,7 @@ public class FieldInspector {
 
 							}
 						}
-						if (result == null) {
+						if (result == null && field != null) {
 							Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 
 							GenericBuilderFromGenericClasses builder = new GenericBuilderFromGenericClasses(
@@ -104,7 +104,9 @@ public class FieldInspector {
 				}
 			}
 		}
-
+		if(result == null){
+			throw new RuntimeException("The field "+fieldName+" is not found");
+		}
 		return result;
 	}
 

@@ -660,7 +660,12 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 				Type[] bounds = ((TypeVariable<?>) type).getBounds();
 
 				if (arg != null) {
-					returnType = new SymbolType(arg.getName());
+					//it is done in order to ensure that returnType.getClass() is not null
+					if (arg.isTemplateVariable() && arg.getName() == null) {
+						returnType = new SymbolType(arg.getBounds(), arg.getLowerBounds());
+					} else {
+						returnType = new SymbolType(arg.getName());
+					}
 					returnType.setArrayCount(arg.getArrayCount());
 					returnType.setTemplateVariable(variableName);
 					Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
@@ -678,10 +683,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 						returnType.setTemplateVariable(variableName);
 					} else {
 						List<SymbolType> boundsList = new LinkedList<SymbolType>();
-						returnType = new SymbolType(boundsList);
-						returnType.setTemplateVariable(variableName);
+						SymbolType initReturnType = new SymbolType(boundsList);
+						initReturnType.setTemplateVariable(variableName);
 						Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
-						auxMap.put(variableName, returnType);
+						auxMap.put(variableName, initReturnType);
 						for (Type bound : bounds) {
 							SymbolType st = valueOf(bound, null, updatedTypeMapping, auxMap);
 							if (st != null) {
@@ -693,7 +698,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 						} else if (bounds.length == 1) {
 							returnType = boundsList.get(0);
 							returnType.setTemplateVariable(variableName);
+						} else {
+							returnType = new SymbolType(boundsList);
 						}
+						returnType.setTemplateVariable(variableName);
 					}
 				}
 				if (!updatedTypeMapping.containsKey(variableName)) {
@@ -702,7 +710,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					return returnType;
 				} else {
 					SymbolType previousSymbol = updatedTypeMapping.get(variableName);
-					if (!"java.lang.Object".equals(returnType.getName())) {
+					String returnTypeName = returnType.getName();
+					if (!"java.lang.Object".equals(returnTypeName)) {
 						returnType = (SymbolType) previousSymbol.merge(returnType);
 						if (returnType != null) {
 							previousSymbol.setClazz(returnType.getClazz());
@@ -761,15 +770,16 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
 						SymbolType st = null;
 						if (validParameterizedType) {
-							
+
 							st = valueOf(t, argToAnalyze, updatedTypeMapping, typeMapping);
-							if(st != null){
-								if(st.isTemplateVariable() && st.getTemplateVariable().equals("?")){
+							if (st != null) {
+								if (st.isTemplateVariable() && st.getTemplateVariable().equals("?")) {
 									List<SymbolType> bounds = st.getBounds();
-									if(bounds != null && bounds.size() == 1){
-										if("java.lang.Object".equals(bounds.get(0).getName())){
-											if(tvs.length > i){
-												SymbolType templateVarType = valueOf(tvs[i],null, updatedTypeMapping, typeMapping);
+									if (bounds != null && bounds.size() == 1) {
+										if ("java.lang.Object".equals(bounds.get(0).getName())) {
+											if (tvs.length > i) {
+												SymbolType templateVarType = valueOf(tvs[i], null, updatedTypeMapping,
+														typeMapping);
 												bounds = new LinkedList<SymbolType>();
 												bounds.add(templateVarType);
 												st = new SymbolType(bounds);
@@ -929,10 +939,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 	@Override
 	public SymbolData merge(SymbolData other) {
 		SymbolType result = null;
-		if (other == null) {
+		if (other == null || equals(other)) {
 			result = this;
 		} else {
 			if (other.getArrayCount() == getArrayCount()) {
+
 				List<Class<?>> bounds = ClassInspector.getTheNearestSuperClasses(getBoundClasses(),
 						other.getBoundClasses());
 				if (bounds.isEmpty()) {
