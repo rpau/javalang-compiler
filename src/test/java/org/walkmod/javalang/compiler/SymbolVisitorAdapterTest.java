@@ -40,7 +40,6 @@ import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.expr.AnnotationExpr;
 import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
-import org.walkmod.javalang.ast.expr.AssignExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
@@ -1863,6 +1862,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String code = "import java.util.List; public class Foo extends Generic<List> { void execute(Foo var) { Helper.doStmt(var.job); } }";
 		CompilationUnit cu = run(code, generics, helper);
 		Assert.assertNotNull(cu);
+	}
+	
+	@Test
+	public void testUsagesFromArrayCreation() throws Exception{
+		String other = "import java.net.URL; public class Bar { public static void help(URL[] url) {} } ";
+		String code ="import java.net.URL; public class Foo { public void execute() { Bar.help(new URL[0]); } }";
+		CompilationUnit cu = run(code, other);
+		Assert.assertNotNull(cu);
+		
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+		Assert.assertEquals(1, cu.getImports().get(0).getUsages().size());
 	}
 
 }

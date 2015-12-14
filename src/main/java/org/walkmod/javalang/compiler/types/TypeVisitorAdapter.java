@@ -158,6 +158,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 				dimension.accept(this, arg);
 			}
 		}
+		
+		if (semanticVisitor != null) {
+			n.accept(semanticVisitor, arg);
+		}
 	}
 
 	@Override
