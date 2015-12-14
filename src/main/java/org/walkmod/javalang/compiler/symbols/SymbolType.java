@@ -23,6 +23,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -354,8 +355,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					}
 					isCompatible = found;
 				} else {
+					String otherName = other.getName();
 					boolean isUndefinedTemplateVar = other.isTemplateVariable()
-							&& other.getName().equals("java.lang.Object");
+							&& (otherName == null || otherName.equals("java.lang.Object"));
 					isCompatible = isUndefinedTemplateVar;
 					if (!isCompatible) {
 						List<Class<?>> boundClasses = other.getBoundClasses();
@@ -513,6 +515,46 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
 	}
 
+	private SymbolType getParameterizedType(String variableName, Set<SymbolType> visited) {
+		if(method != null){
+			return null;
+		}
+		if (variableName.equals(templateVariable)) {
+			return this;
+		} else {
+
+			if (parameterizedTypes != null) {
+
+				Iterator<SymbolType> itV = visited.iterator();
+				boolean found = false;
+				while (itV.hasNext()) {
+					found = itV.next() == this;
+				}
+				if (!found) {
+					visited.add(this);
+
+					Iterator<SymbolType> it = parameterizedTypes.iterator();
+
+					SymbolType result = null;
+					while (it.hasNext() && result == null) {
+						SymbolType next = it.next();
+						if (next != this) {
+
+							SymbolType elem = next.getParameterizedType(variableName, visited);
+							if (elem != null) {
+								result = elem;
+							}
+
+						}
+					}
+					return result;
+				}
+				return null;
+			}
+			return null;
+		}
+	}
+
 	/**
 	 * Builds a symbol type from a Java type.
 	 * 
@@ -660,12 +702,16 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 				Type[] bounds = ((TypeVariable<?>) type).getBounds();
 
 				if (arg != null) {
-					//it is done in order to ensure that returnType.getClass() is not null
-					if (arg.isTemplateVariable() && arg.getName() == null) {
-						returnType = new SymbolType(arg.getBounds(), arg.getLowerBounds());
-					} else {
-						returnType = new SymbolType(arg.getName());
+					
+					returnType = arg.getParameterizedType(variableName, new HashSet<SymbolType>());
+					
+					Class<?> argClazz = arg.getClazz();
+					
+					if (returnType != null && argClazz != null && argClazz.getName().equals(returnType.getClazz().getName())) {
+						
+						arg = returnType;
 					}
+					returnType = new SymbolType(arg.getName(), arg.getBounds(), arg.getLowerBounds());
 					returnType.setArrayCount(arg.getArrayCount());
 					returnType.setTemplateVariable(variableName);
 					Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);

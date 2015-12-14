@@ -399,7 +399,12 @@ public class Scope {
 
 	public <T extends Node & SymbolDefinition> Symbol<T> addSymbol(String symbolName, SymbolType type, T location) {
 
-		Symbol<T> s = new Symbol<T>(symbolName, type, location);
+		return addSymbol(symbolName, type,  ReferenceType.VARIABLE, location);
+	}
+	
+	public <T extends Node & SymbolDefinition> Symbol<T> addSymbol(String symbolName, SymbolType type, ReferenceType referenceType, T location) {
+
+		Symbol<T> s = new Symbol<T>(symbolName, type, location, referenceType);
 		if (addSymbol(s)) {
 			return s;
 		}

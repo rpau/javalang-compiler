@@ -17,6 +17,7 @@ package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -50,8 +51,7 @@ public class FieldInspector {
 		return result;
 	}
 
-	public static SymbolType findFieldType(SymbolTable symTable,
-			SymbolType scope, String fieldName) {
+	public static SymbolType findFieldType(SymbolTable symTable, SymbolType scope, String fieldName) {
 
 		SymbolType result = null;
 		if (scope != null) {
@@ -71,15 +71,13 @@ public class FieldInspector {
 
 						} catch (NoSuchFieldException fe) {
 
-							field = getField0(clazz.getPackage(), clazz,
-									fieldName);
+							field = getField0(clazz.getPackage(), clazz, fieldName);
 							if (field == null) {
 								// check a field with no visibility
 								SymbolType st = symTable.getType("this");
 
-								Class<?> internal = ClassInspector
-										.findClassMember(st.getClazz()
-												.getPackage(), fieldName, clazz);
+								Class<?> internal = ClassInspector.findClassMember(st.getClazz().getPackage(),
+										fieldName, clazz);
 								if (internal != null) {
 									result = new SymbolType(internal);
 								}
@@ -89,12 +87,36 @@ public class FieldInspector {
 						if (result == null && field != null) {
 							Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
 
-							GenericBuilderFromGenericClasses builder = new GenericBuilderFromGenericClasses(
-									clazz, scope.getParameterizedTypes());
+							Class<?> container = field.getDeclaringClass();
+
+							if (!container.getName().equals(clazz.getName())) {
+								Set<java.lang.reflect.Type> equivalentTypeImplementations = ClassInspector
+										.getEquivalentParametrizableClasses(clazz);
+								if (equivalentTypeImplementations != null) {
+									Iterator<java.lang.reflect.Type> itTypes = equivalentTypeImplementations.iterator();
+									while (itTypes.hasNext()) {
+										java.lang.reflect.Type current = itTypes.next();
+										if (current instanceof ParameterizedType) {
+											ParameterizedType paramType = (ParameterizedType) current;
+											java.lang.reflect.Type rawType = paramType.getRawType();
+											if (rawType instanceof Class) {
+												String raw = ((Class<?>) paramType.getRawType()).getName();
+												if (raw.equals(container.getName())) {
+
+													scope = SymbolType.valueOf(current, typeMapping);
+												}
+											}
+										}
+									}
+								}
+							}
+
+							GenericBuilderFromGenericClasses builder = new GenericBuilderFromGenericClasses(container,
+									scope.getParameterizedTypes());
+
 							builder.build(typeMapping);
 
-							result = SymbolType.valueOf(field.getGenericType(),
-									typeMapping);
+							result = SymbolType.valueOf(field.getGenericType(), typeMapping);
 							result.setField(field);
 						}
 					}
@@ -104,8 +126,8 @@ public class FieldInspector {
 				}
 			}
 		}
-		if(result == null){
-			throw new RuntimeException("The field "+fieldName+" is not found");
+		if (result == null) {
+			throw new RuntimeException("The field " + fieldName + " is not found");
 		}
 		return result;
 	}
@@ -125,8 +147,7 @@ public class FieldInspector {
 				return res;
 			} else if (Modifier.isProtected(modifiers)) {
 				return res;
-			} else if (!Modifier.isPrivate(modifiers)
-					&& res.getDeclaringClass().getPackage().equals(pkg)) {
+			} else if (!Modifier.isPrivate(modifiers) && res.getDeclaringClass().getPackage().equals(pkg)) {
 				return res;
 			}
 		}

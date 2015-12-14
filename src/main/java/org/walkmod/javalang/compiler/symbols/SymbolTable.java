@@ -236,6 +236,20 @@ public class SymbolTable {
 		}
 		return result;
 	}
+	
+	public Map<String, SymbolType> flat(){
+		Map<String, SymbolType> result = new LinkedHashMap<String, SymbolType>();
+
+		Iterator<Scope> it = indexStructure.iterator();
+		while (it.hasNext()) {
+			Scope scope = it.next();
+			List<Symbol<?>> symbols = scope.getSymbols();
+			for(Symbol<?> s: symbols){
+				result.put(s.getName(), s.getType());
+			}
+		}
+		return result;
+	}
 
 	public Symbol<?> lookUpSymbolForWrite(String symbolName, SymbolReference reference, SymbolType symbolScope,
 			SymbolType[] args, ReferenceType... referenceType) {

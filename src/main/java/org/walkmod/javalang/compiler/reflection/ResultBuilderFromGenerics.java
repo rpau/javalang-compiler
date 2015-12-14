@@ -51,34 +51,30 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 		this.method = method;
 	}
 
-	public ResultBuilderFromGenerics(SymbolType scope, Method method,
-			SymbolTable symbolTable) {
+	public ResultBuilderFromGenerics(SymbolType scope, Method method, SymbolTable symbolTable) {
 		this.scope = scope;
 		this.symbolTable = symbolTable;
 		this.method = method;
-		if(method != null){
+		if (method != null) {
 			clazz = method.getDeclaringClass();
 		}
 	}
-	
-	public ResultBuilderFromGenerics(SymbolType scope, Class<?> clazz,
-			SymbolTable symbolTable){
+
+	public ResultBuilderFromGenerics(SymbolType scope, Class<?> clazz, SymbolTable symbolTable) {
 		this.scope = scope;
 		this.symbolTable = symbolTable;
 		this.clazz = clazz;
 	}
-	
+
 	@Override
 	public SymbolTable build(SymbolTable genericsSymbolTable) throws Exception {
 
 		if (generics != null) {
-			SymbolType[] syms = ASTSymbolTypeResolver.getInstance().valueOf(
-					generics);
+			SymbolType[] syms = ASTSymbolTypeResolver.getInstance().valueOf(generics);
 			SymbolType scope = new SymbolType();
 			scope.setParameterizedTypes(Arrays.asList(syms));
 			genericsSymbolTable.pushScope();
-			updateTypeMapping(method.getGenericReturnType(),
-					genericsSymbolTable, scope, true, new HashSet<String>());
+			updateTypeMapping(method.getGenericReturnType(), genericsSymbolTable, scope, true, new HashSet<String>());
 		} else if (scope != null) {
 			String symbolName = scope.getClazz().getName();
 			if (scope.getClazz().isMemberClass()) {
@@ -101,24 +97,21 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 				}
 			}
 
-			updateTypeMapping(clazz, genericsSymbolTable,
-					scope, false, new HashSet<String>());
+			updateTypeMapping(clazz, genericsSymbolTable, scope, false, new HashSet<String>());
 
 			Scope newScope = new Scope();
 			genericsSymbolTable.pushScope(newScope);
-		
-			if(method != null){
-				
+
+			if (method != null) {
+
 				TypeVariable<?>[] typeParams = method.getTypeParameters();
 				for (int i = 0; i < typeParams.length; i++) {
 					SymbolType aux = SymbolType.valueOf(typeParams[i], null);
 					aux.setTemplateVariable(typeParams[i].getName());
-					genericsSymbolTable.pushSymbol(typeParams[i].getName(),
-							ReferenceType.TYPE_PARAM, aux, null);
+					genericsSymbolTable.pushSymbol(typeParams[i].getName(), ReferenceType.TYPE_PARAM, aux, null);
 				}
 			}
-			
-			
+
 		} else {
 			Scope newScope = new Scope();
 			genericsSymbolTable.pushScope(newScope);
@@ -127,10 +120,9 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 		return genericsSymbolTable;
 	}
 
-	private void updateTypeMapping(java.lang.reflect.Type type,
-			SymbolTable genericsSymbolTable, SymbolType parameterizedType,
-			boolean genericArgs, Set<String> processedTypeVariables)
-			throws InvalidTypeException {
+	private void updateTypeMapping(java.lang.reflect.Type type, SymbolTable genericsSymbolTable,
+			SymbolType parameterizedType, boolean genericArgs, Set<String> processedTypeVariables)
+					throws InvalidTypeException {
 		if (parameterizedType != null) {
 			if (type instanceof TypeVariable) {
 				TypeVariable<?> tv = (TypeVariable<?>) type;
@@ -139,12 +131,10 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 					processedTypeVariables.add(vname);
 					Symbol<?> s = genericsSymbolTable.findSymbol(vname);
 					if (s != null) {
-						boolean isInTheTopScope = genericsSymbolTable
-								.getScopes().peek().findSymbol(vname) != null;
+						boolean isInTheTopScope = genericsSymbolTable.getScopes().peek().findSymbol(vname) != null;
 						SymbolType st = s.getType();
 						if (st != null) {
-							SymbolType refactor = s.getType().refactor(vname,
-									parameterizedType,
+							SymbolType refactor = s.getType().refactor(vname, parameterizedType,
 									genericArgs || isInTheTopScope);
 							refactor.setTemplateVariable(vname);
 							s.setType(refactor);
@@ -153,23 +143,18 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 						}
 
 					} else {
-						genericsSymbolTable.pushSymbol(vname,
-								ReferenceType.TYPE, parameterizedType, null);
+						genericsSymbolTable.pushSymbol(vname, ReferenceType.TYPE, parameterizedType, null);
 
 					}
 
 					java.lang.reflect.Type[] bounds = tv.getBounds();
-					List<SymbolType> paramBounds = parameterizedType
-							.getBounds();
+					List<SymbolType> paramBounds = parameterizedType.getBounds();
 					if (paramBounds != null) {
-						for (int i = 0; i < bounds.length; i++) {
-							// to avoid recursive type declarations Enum<E>
-							//if (!parameterizedType.equals(paramBounds.get(i))) {
-								updateTypeMapping(bounds[i],
-										genericsSymbolTable,
-										paramBounds.get(i), genericArgs,
-										processedTypeVariables);
-							//}
+						for (int i = 0; i < paramBounds.size() && i < bounds.length; i++) {
+
+							updateTypeMapping(bounds[i], genericsSymbolTable, paramBounds.get(i), genericArgs,
+									processedTypeVariables);
+
 						}
 					}
 				}
@@ -180,8 +165,7 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 				List<SymbolType> paramBounds = parameterizedType.getBounds();
 				if (paramBounds != null) {
 					for (int i = 0; i < bounds.length; i++) {
-						updateTypeMapping(bounds[i], genericsSymbolTable,
-								paramBounds.get(i), genericArgs,
+						updateTypeMapping(bounds[i], genericsSymbolTable, paramBounds.get(i), genericArgs,
 								processedTypeVariables);
 					}
 				}
@@ -189,18 +173,15 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 				paramBounds = parameterizedType.getLowerBounds();
 				if (paramBounds != null) {
 					for (int i = 0; i < bounds.length; i++) {
-						updateTypeMapping(bounds[i], genericsSymbolTable,
-								paramBounds.get(i), genericArgs,
+						updateTypeMapping(bounds[i], genericsSymbolTable, paramBounds.get(i), genericArgs,
 								processedTypeVariables);
 					}
 				}
 
 			} else if (type instanceof ParameterizedType) {
 				ParameterizedType paramType = (ParameterizedType) type;
-				java.lang.reflect.Type[] typeArgs = paramType
-						.getActualTypeArguments();
-				List<SymbolType> paramTypeParams = parameterizedType
-						.getParameterizedTypes();
+				java.lang.reflect.Type[] typeArgs = paramType.getActualTypeArguments();
+				List<SymbolType> paramTypeParams = parameterizedType.getParameterizedTypes();
 				if (paramTypeParams != null) {
 
 					for (int i = 0; i < typeArgs.length; i++) {
@@ -208,8 +189,7 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 						if (i < paramTypeParams.size()) {
 							st = paramTypeParams.get(i);
 						}
-						updateTypeMapping(typeArgs[i], genericsSymbolTable, st,
-								genericArgs, processedTypeVariables);
+						updateTypeMapping(typeArgs[i], genericsSymbolTable, st, genericArgs, processedTypeVariables);
 					}
 				}
 
@@ -218,8 +198,7 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 				SymbolType st = parameterizedType.clone();
 				st.setArrayCount(parameterizedType.getArrayCount() - 1);
 
-				updateTypeMapping(arrayType.getGenericComponentType(),
-						genericsSymbolTable, st, genericArgs,
+				updateTypeMapping(arrayType.getGenericComponentType(), genericsSymbolTable, st, genericArgs,
 						processedTypeVariables);
 
 			} else if (type instanceof Class) {
@@ -227,12 +206,11 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 				Class<?> clazz = (Class<?>) type;
 				Map<String, SymbolType> updateMapping = new LinkedHashMap<String, SymbolType>();
 
-				SymbolType rewrittenType = SymbolType.valueOf(clazz,
-						parameterizedType, updateMapping, null);
-				java.lang.reflect.TypeVariable[] tparams = clazz
-						.getTypeParameters();
-				List<SymbolType> paramTypes = rewrittenType
-						.getParameterizedTypes();
+				
+				SymbolType rewrittenType = SymbolType.valueOf(clazz, parameterizedType, updateMapping,
+						null);
+				java.lang.reflect.TypeVariable[] tparams = clazz.getTypeParameters();
+				List<SymbolType> paramTypes = rewrittenType.getParameterizedTypes();
 				if (paramTypes != null) {
 					Iterator<SymbolType> it = paramTypes.iterator();
 					HashSet<String> processed = new HashSet<String>();
@@ -240,8 +218,7 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
 						SymbolType st = it.next();
 						if (st != null) {
 							st.setTemplateVariable(tparams[i].getName());
-							updateTypeMapping(tparams[i], genericsSymbolTable,
-									st, true, processed);
+							updateTypeMapping(tparams[i], genericsSymbolTable, st, true, processed);
 						}
 					}
 				}

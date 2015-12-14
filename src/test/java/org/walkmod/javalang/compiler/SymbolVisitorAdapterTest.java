@@ -1846,5 +1846,23 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(sd);
 		
 	}
+	
+	@Test
+	public void testMethodResolutionWithArgsThatHaveMultipleUpperBounds() throws Exception{
+		String externalClass ="package foo; public interface ExternalClass{ }";
+		String otherClass = "package foo; public class Bar { public void hello(ExternalClass c){} }";
+		String main = "import java.util.LinkedList; import foo.Bar; import foo.ExternalClass; public abstract class Foo <T extends LinkedList<String> & Foo.InnerClass>{ public abstract T get(); void execute(Bar bar){ bar.hello(get()); } public static interface InnerClass extends ExternalClass{}}";
+		CompilationUnit cu = run(main, otherClass, externalClass);
+		Assert.assertNotNull(cu);
+	}
+	
+	@Test
+	public void testFieldAccessWithGenericsFromVars() throws Exception{
+		String generics = "import java.util.Collection; public class Generic<T extends Collection>{ public T job; }";
+		String helper = "import java.util.List; public class Helper{ public static void doStmt(List t){} }";
+		String code = "import java.util.List; public class Foo extends Generic<List> { void execute(Foo var) { Helper.doStmt(var.job); } }";
+		CompilationUnit cu = run(code, generics, helper);
+		Assert.assertNotNull(cu);
+	}
 
 }
