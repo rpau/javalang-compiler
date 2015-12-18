@@ -19,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
@@ -49,11 +50,9 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
 		Node node = symbol.getLocation();
 
-		if (node instanceof TypeDeclaration
-				|| node instanceof ObjectCreationExpr) {
+		if (node instanceof TypeDeclaration || node instanceof ObjectCreationExpr) {
 			if (symbol.getName().equals("this")) {
-				LoadInheritedNestedClasses<?> vis = new LoadInheritedNestedClasses<Object>(
-						table);
+				LoadInheritedNestedClasses<?> vis = new LoadInheritedNestedClasses<Object>(table);
 				node.accept(vis, null);
 			}
 		}
@@ -101,8 +100,7 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 			loadExtendsOrImplements(extendsList);
 		}
 
-		private void loadExtendsOrImplements(
-				List<ClassOrInterfaceType> extendsList) {
+		private void loadExtendsOrImplements(List<ClassOrInterfaceType> extendsList) {
 			if (extendsList != null) {
 				for (ClassOrInterfaceType type : extendsList) {
 					String name = type.getName();
@@ -110,38 +108,32 @@ public class LoadTypeDeclarationsAction extends SymbolAction {
 					if (scope != null) {
 						name = scope.toString() + "." + name;
 					}
-					Symbol<?> s = symbolTable.findSymbol(name,
-							ReferenceType.TYPE, ReferenceType.TYPE_PARAM);
+					Symbol<?> s = symbolTable.findSymbol(name, ReferenceType.TYPE, ReferenceType.TYPE_PARAM);
 					if (s != null) {
 						Object location = s.getLocation();
-						if (location != null
-								&& location instanceof TypeDeclaration) {
+						if (location != null && location instanceof TypeDeclaration) {
 
 							((TypeDeclaration) location).accept(this, null);
 
 						} else {
 							Class<?> clazz = s.getType().getClazz();
-							Set<Class<?>> innerClasses = ClassInspector
-									.getNonPrivateClassMembers(clazz);
+							Set<Class<?>> innerClasses = ClassInspector.getNonPrivateClassMembers(clazz);
 							innerClasses.remove(clazz);
 							for (Class<?> innerClass : innerClasses) {
 								try {
-									Symbol<?> aux = symbolTable.findSymbol(
-											innerClass.getSimpleName(),
+									Symbol<?> aux = symbolTable.findSymbol(innerClass.getSimpleName(),
 											ReferenceType.TYPE);
 									boolean add = aux == null;
 									if (!add) {
 										Node oldLoc = aux.getLocation();
-										add = (oldLoc == null || !(oldLoc instanceof TypeDeclaration));
+										add = (oldLoc == null || !(oldLoc instanceof TypeDeclaration
+												|| oldLoc instanceof ImportDeclaration));
 									}
 
 									if (add) {
 
-										symbolTable.pushSymbol(innerClass
-												.getSimpleName(),
-												ReferenceType.TYPE, SymbolType
-														.valueOf(innerClass,
-																null), null);
+										symbolTable.pushSymbol(innerClass.getSimpleName(), ReferenceType.TYPE,
+												SymbolType.valueOf(innerClass, null), null);
 
 									}
 								} catch (InvalidTypeException e) {

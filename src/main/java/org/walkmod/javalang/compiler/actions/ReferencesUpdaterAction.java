@@ -20,6 +20,7 @@ import java.util.Stack;
 
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.SymbolReference;
+import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.FieldAccessExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
@@ -74,6 +75,18 @@ public class ReferencesUpdaterAction extends SymbolAction {
 					if (emitter instanceof FieldAccessExpr) {
 						FieldAccessExpr mce = (FieldAccessExpr) emitter;
 						addUsage = mce.getScope() == null;
+					}
+				}
+			}
+			else if(refType.equals(ReferenceType.TYPE)){
+				if(def instanceof TypeDeclaration){
+					Scope baseScope = table.getScopes().get(0);
+					Symbol<?> importSymbol = baseScope.findSymbol(symbol.getName(), ReferenceType.TYPE);
+					if(importSymbol != null){
+						SymbolDefinition auxLocation = importSymbol.getLocation();
+						if(auxLocation != null){
+							auxLocation.addUsage(emitter);
+						}
 					}
 				}
 			}

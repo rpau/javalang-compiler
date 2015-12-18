@@ -1679,200 +1679,227 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		String otherClass = "public class Bar { void hello() {} }";
 		CompilationUnit cu = run(code, otherClass);
 		Assert.assertNotNull(cu);
-		
+
 		ClassOrInterfaceDeclaration barType = (ClassOrInterfaceDeclaration) cu.getTypes().get(0).getMembers().get(1);
 		MethodDeclaration md = (MethodDeclaration) barType.getMembers().get(0);
-		ExpressionStmt exprStmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr mce = (MethodCallExpr)exprStmt.getExpression();
+		ExpressionStmt exprStmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) exprStmt.getExpression();
 		Assert.assertEquals("Container", mce.getSymbolData().getMethod().getDeclaringClass().getName());
 
 	}
-	
+
 	@Test
-	public void testGenericTypesWithoutParameters() throws Exception{
-		String code ="public class Foo { public Class getItemType(){ return null; } public void bar() { getItemType(); } }";
+	public void testGenericTypesWithoutParameters() throws Exception {
+		String code = "public class Foo { public Class getItemType(){ return null; } public void bar() { getItemType(); } }";
 		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertEquals("java.lang.Class", md.getSymbolData().getName());
-		
+
 		Assert.assertEquals(null, md.getSymbolData().getParameterizedTypes());
 	}
-	
-	
+
 	@Test
-	public void testGenericTypesWithoutParameters3() throws Exception{
+	public void testGenericTypesWithoutParameters3() throws Exception {
 		String codeParent = "public class FooParent { public Class getItemType(){ return null; }}";
-		String code ="public class Foo extends FooParent { public void bar(Class<? extends Foo> arg) {  bar(getItemType()); } }";
+		String code = "public class Foo extends FooParent { public void bar(Class<? extends Foo> arg) {  bar(getItemType()); } }";
 		CompilationUnit cu = run(code, codeParent);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testGenericTypesWithoutParameters2() throws Exception{
-		String code ="public class Foo { public Class getItemType(){ return null; } public void bar(Class<? extends Foo> arg) { bar(getItemType()); } }";
+	public void testGenericTypesWithoutParameters2() throws Exception {
+		String code = "public class Foo { public Class getItemType(){ return null; } public void bar(Class<? extends Foo> arg) { bar(getItemType()); } }";
 		CompilationUnit cu = run(code);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		Assert.assertEquals("java.lang.Class", md.getSymbolData().getName());
-		
+
 		Assert.assertEquals(null, md.getSymbolData().getParameterizedTypes());
 	}
-	
-	
+
 	@Test
-	public void testFieldTypeRedefinition() throws Exception{
-		String parentClass ="import java.util.Collection; public class ParentClass<T extends Collection<T>>{ T project; }";
+	public void testFieldTypeRedefinition() throws Exception {
+		String parentClass = "import java.util.Collection; public class ParentClass<T extends Collection<T>>{ T project; }";
 		String childClass = "import java.util.List; public class ChildClass<P extends List<P>> extends ParentClass<P> { public void foo() { project.listIterator(); } }";
 		CompilationUnit cu = run(childClass, parentClass);
 		Assert.assertNotNull(cu);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
 	}
-	
-	
+
 	@Test
-	public void testFieldTypeRedefinition2() throws Exception{
-		String grandParentClass ="public class GrandParentClass<R>{ R project; }";
-		String parentClass ="import java.util.Collection; public class ParentClass<T extends Collection<T>> extends GrandParentClass<T>{ }";
+	public void testFieldTypeRedefinition2() throws Exception {
+		String grandParentClass = "public class GrandParentClass<R>{ R project; }";
+		String parentClass = "import java.util.Collection; public class ParentClass<T extends Collection<T>> extends GrandParentClass<T>{ }";
 		String childClass = "import java.util.List; public class ChildClass<P extends List<P>> extends ParentClass<P> { public void foo() { project.listIterator(); } }";
 		CompilationUnit cu = run(childClass, parentClass, grandParentClass);
 		Assert.assertNotNull(cu);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
-		MethodCallExpr method = (MethodCallExpr)stmt.getExpression();
+		MethodCallExpr method = (MethodCallExpr) stmt.getExpression();
 		Assert.assertNotNull(method.getScope().getSymbolData());
 		Assert.assertEquals("List", method.getScope().getSymbolData().getClazz().getSimpleName());
 		Assert.assertNotNull(stmt.getExpression().getSymbolData());
 	}
-	
+
 	@Test
-	public void testMultipleBounds() throws Exception{
+	public void testMultipleBounds() throws Exception {
 		String topLevelItem = "public interface TopLevelItem{}";
 		String abstractItem = "public class AbstractItem{}";
-		
-		String code ="public class A { public void foo(TopLevelItem item){} public <I extends AbstractItem & TopLevelItem> void move(I item){ foo(item); }  }";
-	
+
+		String code = "public class A { public void foo(TopLevelItem item){} public <I extends AbstractItem & TopLevelItem> void move(I item){ foo(item); }  }";
+
 		CompilationUnit cu = run(code, abstractItem, topLevelItem);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testStaticImportsWithInheritedInnerClassesFromInterfaces() throws Exception{
+	public void testStaticImportsWithInheritedInnerClassesFromInterfaces() throws Exception {
 		String importedType = "package foo; public class ExternalClass implements SomeInterface{}";
 		String interfaceType = "package foo; public interface SomeInterface{ public class InnerClass{} }";
-		String code ="package bar; import static foo.ExternalClass.*; public class MainClass{ public void something(){ InnerClass c = new InnerClass(); }}";
-	
+		String code = "package bar; import static foo.ExternalClass.*; public class MainClass{ public void something(){ InnerClass c = new InnerClass(); }}";
+
 		CompilationUnit cu = run(code, importedType, interfaceType);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testThrowExceptionsWithFullClassName() throws Exception{
+	public void testThrowExceptionsWithFullClassName() throws Exception {
 		String codeException = "package foo; public class Bar{ public class BarException extends Exception{} } ";
-		String code ="public class Foo { public void hello() throws foo.Bar.BarException{} }";
+		String code = "public class Foo { public void hello() throws foo.Bar.BarException{} }";
 		CompilationUnit cu = run(code, codeException);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testInheritedFieldByAnonymousClass() throws Exception{
+	public void testInheritedFieldByAnonymousClass() throws Exception {
 		String externalCode = "package bar; import java.util.List; public class A{ public List DEFAULT = null; }";
-		String code ="public class Foo{  public void foo() { bar.A x = new bar.A(){  void hello() { Object aux = DEFAULT.get(0); }};}}";
+		String code = "public class Foo{  public void foo() { bar.A x = new bar.A(){  void hello() { Object aux = DEFAULT.get(0); }};}}";
 		CompilationUnit cu = run(code, externalCode);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testGenericsResolutionForClassParameters() throws Exception{
-		String externalCode ="package test; import java.util.Collection; public class Foo{ public <T extends Collection> T getProperty(Class<T> clazz) { return null;}}";
-		String code ="import test.Foo; import java.util.List; public class Bar{ public void foo(Foo x){ Class<? extends List> pt = null; x.getProperty(pt).listIterator();} }";
+	public void testGenericsResolutionForClassParameters() throws Exception {
+		String externalCode = "package test; import java.util.Collection; public class Foo{ public <T extends Collection> T getProperty(Class<T> clazz) { return null;}}";
+		String code = "import test.Foo; import java.util.List; public class Bar{ public void foo(Foo x){ Class<? extends List> pt = null; x.getProperty(pt).listIterator();} }";
 		CompilationUnit cu = run(code, externalCode);
 		Assert.assertNotNull(cu);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(1);
-		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		Assert.assertNotNull(mce.getSymbolData());
-		
+
 	}
-	
+
 	@Test
-	public void testGenericsWithWildcardAndUpperBoundTypes() throws Exception{
-		String scmClass ="public class SCMClass{ SCMDescriptor<?> getDescriptor(){return null;} }";
+	public void testGenericsWithWildcardAndUpperBoundTypes() throws Exception {
+		String scmClass = "public class SCMClass{ SCMDescriptor<?> getDescriptor(){return null;} }";
 		String scmDescriptor = "import java.util.List; public class SCMDescriptor<T extends List>{}";
 		String mainClass = "import java.util.Set; import java.util.HashSet; public class Foo{ public void bar(SCMClass scm) { Set<SCMDescriptor<?>> descriptors = new HashSet<SCMDescriptor<?>>(); descriptors.add(scm.getDescriptor()); } }";
 		CompilationUnit cu = run(mainClass, scmDescriptor, scmClass);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testFieldTypeOverriding() throws Exception{
+	public void testFieldTypeOverriding() throws Exception {
 		String jobClass = "import java.util.Collection; public abstract class Trigger<J extends Collection>{ J job; }";
 		String code = "import java.util.List; public class TimerTrigger extends Trigger<List> { public void foo() { job.listIterator(); } }";
-		CompilationUnit cu = run(code,  jobClass);
+		CompilationUnit cu = run(code, jobClass);
 		Assert.assertNotNull(cu);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		Assert.assertNotNull(mce.getSymbolData());
-		
+
 	}
-	
+
 	@Test
-	public void testMethodScopeResolution() throws Exception{
-		String externalClass="package foo; public class ExternalClass{ public String foo(String s) { return null; }}";
+	public void testMethodScopeResolution() throws Exception {
+		String externalClass = "package foo; public class ExternalClass{ public String foo(String s) { return null; }}";
 		String code = "package bar; import foo.ExternalClass; public class Foo{ void bar(ExternalClass a) { a.foo(\"hello\"); } void foo(String s){}}";
 		CompilationUnit cu = run(code, externalClass);
 		Assert.assertNotNull(cu);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
-		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
 		Assert.assertNotNull(mce.getSymbolData());
 		Assert.assertEquals("java.lang.String", mce.getSymbolData().getName());
-		
+
 	}
-	
+
 	@Test
-	public void testGenericsWithFieldAccessResolution() throws Exception{
+	public void testGenericsWithFieldAccessResolution() throws Exception {
 		String externalClass = "package hudson.model; public class Job<T, K>{ public transient String runIdMigrator; }";
 		String code = "import hudson.model.Job;import java.util.Map;public abstract class LazyBuildMixIn<JobT extends Job<String, String>, RunT extends Map<JobT, String>> { protected abstract JobT asJob(); public void foo() { String aux = asJob().runIdMigrator; } }";
 		CompilationUnit cu = run(code, externalClass);
 		Assert.assertNotNull(cu);
-		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
-		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
+		ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		VariableDeclarationExpr ae = (VariableDeclarationExpr) stmt.getExpression();
 		SymbolData sd = ae.getVars().get(0).getInit().getSymbolData();
-		
+
 		Assert.assertNotNull(sd);
-		
+
 	}
-	
+
 	@Test
-	public void testMethodResolutionWithArgsThatHaveMultipleUpperBounds() throws Exception{
-		String externalClass ="package foo; public interface ExternalClass{ }";
+	public void testMethodResolutionWithArgsThatHaveMultipleUpperBounds() throws Exception {
+		String externalClass = "package foo; public interface ExternalClass{ }";
 		String otherClass = "package foo; public class Bar { public void hello(ExternalClass c){} }";
 		String main = "import java.util.LinkedList; import foo.Bar; import foo.ExternalClass; public abstract class Foo <T extends LinkedList<String> & Foo.InnerClass>{ public abstract T get(); void execute(Bar bar){ bar.hello(get()); } public static interface InnerClass extends ExternalClass{}}";
 		CompilationUnit cu = run(main, otherClass, externalClass);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testFieldAccessWithGenericsFromVars() throws Exception{
+	public void testFieldAccessWithGenericsFromVars() throws Exception {
 		String generics = "import java.util.Collection; public class Generic<T extends Collection>{ public T job; }";
 		String helper = "import java.util.List; public class Helper{ public static void doStmt(List t){} }";
 		String code = "import java.util.List; public class Foo extends Generic<List> { void execute(Foo var) { Helper.doStmt(var.job); } }";
 		CompilationUnit cu = run(code, generics, helper);
 		Assert.assertNotNull(cu);
 	}
-	
+
 	@Test
-	public void testUsagesFromArrayCreation() throws Exception{
+	public void testUsagesFromArrayCreation() throws Exception {
 		String other = "import java.net.URL; public class Bar { public static void help(URL[] url) {} } ";
-		String code ="import java.net.URL; public class Foo { public void execute() { Bar.help(new URL[0]); } }";
+		String code = "import java.net.URL; public class Foo { public void execute() { Bar.help(new URL[0]); } }";
 		CompilationUnit cu = run(code, other);
 		Assert.assertNotNull(cu);
-		
+
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 		Assert.assertEquals(1, cu.getImports().get(0).getUsages().size());
+	}
+
+	@Test
+	public void testInnerClassUsages() throws Exception {
+		String innerClass = "package bar; import static java.lang.annotation.ElementType.TYPE;import java.lang.annotation.Retention;import static java.lang.annotation.RetentionPolicy.RUNTIME;import java.lang.annotation.Target; public interface ExtensionPoint {  @Target(TYPE) @Retention(RUNTIME) @interface LegacyInstancesAreScopedToHudson {} }";
+		String code = "package bar; import bar.ExtensionPoint.LegacyInstancesAreScopedToHudson; @LegacyInstancesAreScopedToHudson public abstract class CLICommand implements ExtensionPoint{}";
+		CompilationUnit cu = run(code, innerClass);
+		Assert.assertNotNull(cu);
+
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+
+	}
+
+	@Test
+	public void testParameterizedClassUsages() throws Exception {
+		String extCode = "public interface Bar<T>{}";
+		String code = "import java.net.URL; public class Foo implements Bar<URL>{}";
+		CompilationUnit cu = run(code, extCode);
+		Assert.assertNotNull(cu);
+
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+	}
+
+	@Test
+	public void testImportsOfNestedClasses() throws Exception {
+		String code = "package bar; import bar.Foo.Bar;import java.util.LinkedList; public class Foo extends LinkedList<Bar>{ public static final class Bar{}}";
+		CompilationUnit cu = run(code);
+		Assert.assertNotNull(cu);
+
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
 
 }
