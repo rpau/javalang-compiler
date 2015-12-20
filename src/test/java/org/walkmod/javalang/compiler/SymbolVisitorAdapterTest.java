@@ -1921,5 +1921,23 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
 		Assert.assertEquals("java.lang.Object", mce.getSymbolData().getMethod().getParameterTypes()[0].getName());
 	}
+	
+	@Test
+	public void testMethodCallsWithDynamicArgsResolution() throws Exception{
+		String causeOfInterruption = "public class CauseOfInterruption{}";
+		String result = "public class Result{}";
+		String code = "public class Executor{ "+
+				"public void interrupt(Result result){}" +
+				"private void interrupt(Result result, boolean forShutdown, CauseOfInterruption... causes) {} "
+				+"private void interrupt(Result result, boolean forShutdown) {} "
+				+"public void interrupt(Result result, CauseOfInterruption... causes) {interrupt(result, true, causes);}"
+				+" }";
+		CompilationUnit cu = run(code, result, causeOfInterruption);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(3);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		Assert.assertEquals(3, mce.getSymbolData().getMethod().getParameterTypes().length);
+	}
 
 }

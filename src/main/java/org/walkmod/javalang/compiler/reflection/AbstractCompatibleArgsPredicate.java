@@ -34,7 +34,7 @@ public abstract class AbstractCompatibleArgsPredicate {
 	private boolean isVarAgs;
 
 	private int paramsCount;
-	
+
 	private SymbolType[] inferredMethodArgs;
 
 	public AbstractCompatibleArgsPredicate() {
@@ -43,19 +43,17 @@ public abstract class AbstractCompatibleArgsPredicate {
 	public AbstractCompatibleArgsPredicate(SymbolType[] typeArgs) {
 		this.typeArgs = typeArgs;
 	}
-	
-	public SymbolType[] getInferredMethodArgs(){
+
+	public SymbolType[] getInferredMethodArgs() {
 		return inferredMethodArgs;
 	}
-	
 
 	public boolean filter() throws Exception {
 		int numParams = typeArgs == null ? 0 : typeArgs.length;
 		SymbolType lastVariableTypeArg = null;
 		SymbolType[] newTypeArgs = typeArgs;
 		boolean isCompatible = true;
-		if ((paramsCount == numParams)
-				|| (isVarAgs && numParams >= (paramsCount - 1))) {
+		if ((paramsCount == numParams) || (isVarAgs && numParams >= (paramsCount - 1))) {
 
 			// if I enter again, is that the previous method is not valid
 			if (methodArgsMapping != null && !methodArgsMapping.isEmpty() && typeMapping != null) {
@@ -68,62 +66,68 @@ public abstract class AbstractCompatibleArgsPredicate {
 			inferredMethodArgs = new SymbolType[genericParameterTypes.length];
 
 			for (int i = 0; i < genericParameterTypes.length && i < numParams; i++) {
-				inferredMethodArgs[i] = SymbolType.valueOf(genericParameterTypes[i],
-						typeArgs[i], methodArgsMapping, typeMapping);
+				inferredMethodArgs[i] = SymbolType.valueOf(genericParameterTypes[i], typeArgs[i], methodArgsMapping,
+						typeMapping);
 
 			}
 			if (isVarAgs) {
 
 				if (paramsCount <= numParams) {
 					if (numParams == (paramsCount - 1)) {
-						lastVariableTypeArg = SymbolType.valueOf(
-								genericParameterTypes[paramsCount - 1],
-								typeMapping);
+						lastVariableTypeArg = SymbolType.valueOf(genericParameterTypes[paramsCount - 1], typeMapping);
 					} else {
 						lastVariableTypeArg = inferredMethodArgs[inferredMethodArgs.length - 1];
 					}
-					numParams = paramsCount;
 
-					// changing the last argument to an array
-					newTypeArgs = new SymbolType[paramsCount];
-
-					for (int i = 0; i < newTypeArgs.length - 1
-							&& i < typeArgs.length; i++) {
-						newTypeArgs[i] = typeArgs[i];
-					}
-
-					if (inferredMethodArgs.length == numParams && newTypeArgs[numParams-1] != null) {
-						if (inferredMethodArgs[numParams - 1].getArrayCount() != newTypeArgs[numParams - 1]
-								.getArrayCount()) {
-							newTypeArgs[newTypeArgs.length - 1] = lastVariableTypeArg
-									.clone();
-							newTypeArgs[newTypeArgs.length - 1]
-									.setArrayCount(newTypeArgs[newTypeArgs.length - 1]
-											.getArrayCount() - 1);
+					if (paramsCount < typeArgs.length) {
+						// checking if the list of received type args from the
+						// dynamic argument position are compatibles with the array type.
+						SymbolType lastParam = inferredMethodArgs[paramsCount - 1].clone();
+						lastParam.setArrayCount(lastParam.getArrayCount() - 1);
+						for (int i = paramsCount - 1; i < typeArgs.length && isCompatible; i++) {
+							isCompatible = lastParam.isCompatible(typeArgs[i]);
 						}
+					}
+					if (isCompatible) {
+
+						numParams = paramsCount;
+
+						// changing the last argument to an array
+						newTypeArgs = new SymbolType[paramsCount];
+
+						for (int i = 0; i < newTypeArgs.length - 1 && i < typeArgs.length; i++) {
+							newTypeArgs[i] = typeArgs[i];
+						}
+
+						if (inferredMethodArgs.length == numParams && newTypeArgs[numParams - 1] != null) {
+							if (inferredMethodArgs[numParams - 1].getArrayCount() != newTypeArgs[numParams - 1]
+									.getArrayCount()) {
+								newTypeArgs[newTypeArgs.length - 1] = lastVariableTypeArg.clone();
+								newTypeArgs[newTypeArgs.length - 1]
+										.setArrayCount(newTypeArgs[newTypeArgs.length - 1].getArrayCount() - 1);
+							}
+						}
+
 					}
 
 				} else {
-					if (inferredMethodArgs.length > 0 && inferredMethodArgs[inferredMethodArgs.length-1] != null) {
-						inferredMethodArgs[inferredMethodArgs.length-1]
-								.setArrayCount(inferredMethodArgs[inferredMethodArgs.length-1]
-										.getArrayCount() - 1);
+					if (inferredMethodArgs.length > 0 && inferredMethodArgs[inferredMethodArgs.length - 1] != null) {
+						inferredMethodArgs[inferredMethodArgs.length - 1]
+								.setArrayCount(inferredMethodArgs[inferredMethodArgs.length - 1].getArrayCount() - 1);
 					}
 				}
 			}
 
 			for (int i = 0; i < numParams && isCompatible; i++) {
 
-				isCompatible = newTypeArgs[i] == null
-						|| inferredMethodArgs[i].isCompatible(newTypeArgs[i]);
+				isCompatible = newTypeArgs[i] == null || inferredMethodArgs[i].isCompatible(newTypeArgs[i]);
 
 			}
 
 			if (isCompatible && lastVariableTypeArg != null) {
 
 				for (int j = numParams; j < newTypeArgs.length && isCompatible; j++) {
-					isCompatible = lastVariableTypeArg
-							.isCompatible(newTypeArgs[j]);
+					isCompatible = lastVariableTypeArg.isCompatible(newTypeArgs[j]);
 
 				}
 

@@ -298,7 +298,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					isCompatible = other.isCompatible(it.next());
 				}
 			}
-			if (isCompatible) {
+			if (isCompatible && other != null) {
 
 				List<SymbolType> otherParams = other.getParameterizedTypes();
 				if (parameterizedTypes != null && otherParams != null) {
