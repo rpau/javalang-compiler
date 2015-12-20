@@ -1620,7 +1620,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testNestedMultipleAnonymousClasses() throws Exception {
 		String otherIteratorCode = "public interface OtherIterator{ public void expand(); } "; // $1$1
-		String adaptedIteratorCode = "import java.util.Iterator; public abstract class AdaptedIterator<T> implements Iterator<T>{ public AdaptedIterator(OtherIterator aux){} public abstract String adapt(); public T next() { return null; } public boolean hasNext() { return false; } }"; // $1$2
+		String adaptedIteratorCode = "import java.util.Iterator; public abstract class AdaptedIterator<T> implements Iterator<T>{ public AdaptedIterator(OtherIterator aux){} public abstract String adapt(); public T next() { return null; } public void remove(){} public boolean hasNext() { return false; } }"; // $1$2
 		String iteratorCode = "public Iterator<String> iterator() { return new AdaptedIterator<String>( new OtherIterator() { public void expand() {} }){ public String adapt() { return null; }}; }";
 		String code = "import java.util.Iterator; public class NestedMultipleAnonymousClasses { public Iterable<String> list() { return new Iterable<String>() { "
 				+ iteratorCode + "}; } }";
