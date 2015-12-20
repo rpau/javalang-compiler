@@ -104,6 +104,8 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 	private SymbolActionProvider actionProvider = null;
 
 	private ASTSymbolTypeResolver symbolResolver = null;
+	
+	public static String VISITOR_SCOPE_PROCESSOR = "_visitor_scope_processor";
 
 	public SymbolTable getSymbolTable() {
 		return symbolTable;
@@ -661,7 +663,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 	public void visit(FieldAccessExpr n, A arg) {
 
 		if (n.getScope() != null) {
-			n.getScope().accept(this, arg);
+			
+			if (!arg.containsKey(VISITOR_SCOPE_PROCESSOR)){
+				n.getScope().accept(this, arg);
+			}
 			SymbolType scopeType = (SymbolType) n.getScope().getSymbolData();
 
 			lookupSymbol(n.getField(), arg, n, scopeType, ReferenceType.VARIABLE);
@@ -675,7 +680,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 	public void visit(AssignExpr n, A arg) {
 		AccessType old = (AccessType) arg.get(AccessType.ACCESS_TYPE);
 		arg.put(AccessType.ACCESS_TYPE, AccessType.WRITE);
-		n.getTarget().accept(this, arg);
+		n.getTarget().accept(expressionTypeAnalyzer, arg);
 		arg.put(AccessType.ACCESS_TYPE, AccessType.READ);
 		n.getValue().accept(expressionTypeAnalyzer, arg);
 		arg.put(AccessType.ACCESS_TYPE, old);

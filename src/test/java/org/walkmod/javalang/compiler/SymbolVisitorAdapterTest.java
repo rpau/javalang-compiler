@@ -1901,5 +1901,14 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
+	
+	@Test
+	public void testStaticMethodsCalls() throws Exception{
+		String externalClass = "package foo; public class Bar { public String name; public static Bar hello() { return null; } }";
+		String code ="package bar; import foo.Bar; public class Foo { public void bar() { Bar.hello().name = null; } }";
+		CompilationUnit cu = run(code, externalClass);
+		Assert.assertNotNull(cu);
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+	}
 
 }

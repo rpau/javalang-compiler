@@ -106,6 +106,7 @@ import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
+import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
@@ -348,7 +349,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 
 		}
 		if (semanticVisitor != null) {
+			arg.put(SymbolVisitorAdapter.VISITOR_SCOPE_PROCESSOR, this);
 			n.accept(semanticVisitor, arg);
+			arg.remove(SymbolVisitorAdapter.VISITOR_SCOPE_PROCESSOR);
 		}
 	}
 
