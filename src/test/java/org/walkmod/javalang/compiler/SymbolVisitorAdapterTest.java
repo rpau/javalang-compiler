@@ -1910,5 +1910,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(cu);
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
+	
+	@Test
+	public void testMethodCallsWithGenerics() throws Exception{
+		String code = "import java.util.List; public class HistoryPageFilter<T> { public void add(List<T> items) {} private boolean add(T entry) { return true; } private void bar(T aux){ add(aux); } }";
+		CompilationUnit cu = run(code);
+		Assert.assertNotNull(cu);
+		MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(2);
+		ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(0);
+		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+		Assert.assertEquals("java.lang.Object", mce.getSymbolData().getMethod().getParameterTypes()[0].getName());
+	}
 
 }

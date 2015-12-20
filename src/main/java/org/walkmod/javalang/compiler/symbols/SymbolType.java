@@ -356,8 +356,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 					isCompatible = found;
 				} else {
 					String otherName = other.getName();
-					boolean isUndefinedTemplateVar = other.isTemplateVariable()
-							&& (otherName == null || otherName.equals("java.lang.Object"));
+					boolean isUndefinedTemplateVar = other.isTemplateVariable() && otherName == null;
 					isCompatible = isUndefinedTemplateVar;
 					if (!isCompatible) {
 						List<Class<?>> boundClasses = other.getBoundClasses();
@@ -516,7 +515,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 	}
 
 	private SymbolType getParameterizedType(String variableName, Set<SymbolType> visited) {
-		if(method != null){
+		if (method != null) {
 			return null;
 		}
 		if (variableName.equals(templateVariable)) {
@@ -702,13 +701,14 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 				Type[] bounds = ((TypeVariable<?>) type).getBounds();
 
 				if (arg != null) {
-					
+
 					returnType = arg.getParameterizedType(variableName, new HashSet<SymbolType>());
-					
+
 					Class<?> argClazz = arg.getClazz();
-					
-					if (returnType != null && argClazz != null && argClazz.getName().equals(returnType.getClazz().getName())) {
-						
+
+					if (returnType != null && argClazz != null
+							&& argClazz.getName().equals(returnType.getClazz().getName())) {
+
 						arg = returnType;
 					}
 					returnType = new SymbolType(arg.getName(), arg.getBounds(), arg.getLowerBounds());
