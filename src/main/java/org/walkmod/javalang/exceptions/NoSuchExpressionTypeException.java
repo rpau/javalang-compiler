@@ -17,6 +17,10 @@ package org.walkmod.javalang.exceptions;
 
 public class NoSuchExpressionTypeException extends RuntimeException {
 
+   public NoSuchExpressionTypeException(String msg){
+      super(msg);
+   }
+   
    public NoSuchExpressionTypeException(Exception e) {
       super(e);
    }
