@@ -684,6 +684,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
       arg.put(AccessType.ACCESS_TYPE, AccessType.READ);
       n.getValue().accept(expressionTypeAnalyzer, arg);
       arg.put(AccessType.ACCESS_TYPE, old);
+      n.setSymbolData(n.getTarget().getSymbolData());
    }
 
    public void visit(VariableDeclarationExpr n, A arg) {

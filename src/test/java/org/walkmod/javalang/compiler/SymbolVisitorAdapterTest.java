@@ -1939,5 +1939,23 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
 		Assert.assertEquals(3, mce.getSymbolData().getMethod().getParameterTypes().length);
 	}
+	
+	@Test
+	public void testTernaryOperators() throws Exception{
+	   String code = "import java.util.List; import java.util.ArrayList; public class Foo{ void test(List<Integer> x) { List<Integer> dogs = x; bar(dogs == null ? new ArrayList<Integer>(): dogs);} void bar(List<Integer> list){} }";
+	   CompilationUnit cu = run(code);
+	   Assert.assertNotNull(cu);
+	   MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+      ExpressionStmt stmt = (ExpressionStmt)md.getBody().getStmts().get(1);
+      MethodCallExpr mce = (MethodCallExpr)stmt.getExpression();
+      Assert.assertNotNull(mce.getSymbolData());
+	}
+	
+	@Test
+	public void testIfAssignments() throws Exception{
+	   String code = "public class Foo{String hello() {return null;} void getMessageKeyInto() { String messageKey; if (!(messageKey = hello()).equals(null)) { System.out.println(messageKey);}}}";
+	   CompilationUnit cu = run(code);
+      Assert.assertNotNull(cu);
+	}
 
 }
