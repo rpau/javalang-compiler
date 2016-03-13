@@ -1128,7 +1128,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 			methodType.setMethod(st.getMethod());
 			n.setSymbolData(methodType);
 		} catch (Exception e) {
-			throw new NoSuchExpressionTypeException(e);
+			throw new NoSuchExpressionTypeException("Error resolving the signature of the method "+n.getName()+" at ["+n.getBeginLine()+", "+n.getBeginColumn()+"]",e);
 		}
 
 	}
