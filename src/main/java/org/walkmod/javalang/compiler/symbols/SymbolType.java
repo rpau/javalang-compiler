@@ -23,8 +23,10 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -417,24 +419,30 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 	@Override
 	public String toString() {
 		StringBuffer result = new StringBuffer();
+                addString(result, new ArrayDeque<SymbolType>());
+		return result.toString();
+	}
+
+	private void addString(StringBuffer result, Deque<SymbolType> visited) {
 		result.append(name);
-		if (parameterizedTypes != null) {
+		if (parameterizedTypes != null && !visited.contains(this)) {
+	        	visited.push(this);
 			result.append("<");
 			Iterator<? extends SymbolData> it = parameterizedTypes.iterator();
 			while (it.hasNext()) {
 				SymbolType next = (SymbolType) it.next();
-				result.append(next.toString());
+				next.addString(result, visited);
 				if (it.hasNext()) {
 					result.append(", ");
 				}
 			}
 			result.append(">");
+			visited.pop();
 		}
 		for (int i = 0; i < arrayCount; i++) {
 			result.append("[]");
 		}
-		return result.toString();
-	}
+        }
 
 	public SymbolType clone() {
 		return clone(null, null);
