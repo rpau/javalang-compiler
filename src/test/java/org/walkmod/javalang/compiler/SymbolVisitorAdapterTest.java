@@ -1982,5 +1982,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	   Assert.assertNotNull(cu);
 	}
 	
+	@Test
+	public void testIssueArrayClassNotpropagated() throws Exception{
+	   CompilationUnit cu = run("public class Foo { public void bar() { anyObject(Foo[].class); } public static <T> T anyObject(final Class<T> clazz) { return null; } }");
+	   Assert.assertNotNull(cu);
+	   MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+	   ExpressionStmt expr = (ExpressionStmt)md.getBody().getStmts().get(0);
+      MethodCallExpr mce = (MethodCallExpr)expr.getExpression();
+      Assert.assertNotNull(mce.getSymbolData());
+	}
+	
 
 }
