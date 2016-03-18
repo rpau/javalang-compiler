@@ -1974,5 +1974,13 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	   CompilationUnit cu = run("public interface Mixin<T extends Mixin> extends java.io.Serializable {}");
 	   Assert.assertNotNull(cu);
 	}
+	
+	@Test
+	public void testMethodFindingByteMatrix() throws Exception{
+	   CompilationUnit cu = run("public class Foo{ private byte[][] files; public byte[][] getFiles(){ return files;} public void bar(Foo other){java.util.Arrays.equals(this.files, other.getFiles());} }");
+	  
+	   Assert.assertNotNull(cu);
+	}
+	
 
 }
