@@ -1967,5 +1967,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
       
       Assert.assertNotNull(mce.getSymbolData());
    }
+	
+	@Test
+	public void testRecursiveGenericsInInterfaces() throws Exception{
+	  
+	   CompilationUnit cu = run("public interface Mixin<T extends Mixin> extends java.io.Serializable {}");
+	   Assert.assertNotNull(cu);
+	}
 
 }
