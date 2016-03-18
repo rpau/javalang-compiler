@@ -43,6 +43,7 @@ import org.walkmod.javalang.ast.expr.ArrayCreationExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
+import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
@@ -1990,6 +1991,19 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	   ExpressionStmt expr = (ExpressionStmt)md.getBody().getStmts().get(0);
       MethodCallExpr mce = (MethodCallExpr)expr.getExpression();
       Assert.assertNotNull(mce.getSymbolData());
+	}
+	
+	@Test
+	public void testFieldTemplateTypeRedefinition() throws Exception{
+	   CompilationUnit cu = run("public class SubSubClass extends TypedSubclass{ public boolean foo(){ return arg.isEmpty(); } }", 
+	         "public class TypedSubclass extends SuperClass<java.util.List>{}", 
+	         "public class SuperClass<T extends java.util.Collection>{ protected T arg; }");
+	   Assert.assertNotNull(cu);
+	   MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(0);
+      ReturnStmt expr = (ReturnStmt)md.getBody().getStmts().get(0);
+      MethodCallExpr mce = (MethodCallExpr)expr.getExpr();
+      NameExpr ne = (NameExpr) mce.getScope();
+      Assert.assertEquals("java.util.List", ne.getSymbolData().getName());
 	}
 	
 
