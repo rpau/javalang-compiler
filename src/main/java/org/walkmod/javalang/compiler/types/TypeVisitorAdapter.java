@@ -267,7 +267,13 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 	@Override
 	public void visit(ClassExpr n, A arg) {
 		n.getType().accept(this, arg);
-		n.setSymbolData(new SymbolType("java.lang.Class"));
+		
+		SymbolType st = (SymbolType)n.getType().getSymbolData();
+		SymbolType aux = new SymbolType("java.lang.Class");
+		List<SymbolType> args = new LinkedList<SymbolType>();
+		args.add(st.clone());		
+		aux.setParameterizedTypes(args);
+		n.setSymbolData(aux);
 	}
 
 	@Override

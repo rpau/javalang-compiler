@@ -1957,5 +1957,15 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	   CompilationUnit cu = run(code);
       Assert.assertNotNull(cu);
 	}
+	
+	@Test
+   public void testReflectionCastOperation() throws Exception{
+      CompilationUnit cu = run("public class GroupRole extends GroupObject{ public static void isGroupRole(GroupObject o){} public void foo(GroupObject o) {GroupRole.isGroupRole(GroupObject.class.cast(o));}}", "public class GroupObject{}");
+      MethodDeclaration md = (MethodDeclaration)cu.getTypes().get(0).getMembers().get(1);
+      ExpressionStmt expr = (ExpressionStmt)md.getBody().getStmts().get(0);
+      MethodCallExpr mce = (MethodCallExpr)expr.getExpression();
+      
+      Assert.assertNotNull(mce.getSymbolData());
+   }
 
 }
