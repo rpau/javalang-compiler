@@ -2019,4 +2019,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
             "public class Capture<T>{}");
       Assert.assertNotNull(cu);
    }
+	
+	@Test
+	public void testCastTypeInferrence() throws Exception{
+	   CompilationUnit cu = run("import java.util.List; public class Foo{ void intercept(List l, Class x){}  void bar(Object o) { intercept(List.class.cast(o), String.class); } }");
+	   Assert.assertNotNull(cu);
+	}
+	
+	@Test
+	public void testDeeperEmbeddedClasses() throws Exception{
+	   CompilationUnit cu = run("import foo.SearchModule.ExtendedSearchHandler.ESResult; public class Foo{}","package foo; public class SearchModule{ public static interface ExtendedSearchHandler { public static class ESResult {} } }");
+	   Assert.assertNotNull(cu); //the imported class is at foo/SearchModule$ExtendedSearchHandler$ESResult.class
+	}
 }

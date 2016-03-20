@@ -515,8 +515,14 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
 				}
 			} catch (ClassNotFoundException e1) {
-				throw new RuntimeException("The referenced class "
+			   int indexDot = internalName.indexOf(".");
+			   if(indexDot == -1){
+			      throw new RuntimeException("The referenced class "
 						+ internalName + " does not exists");
+			   }
+			   else{
+			      loadInnerClass(internalName, imported, node, actions);
+			   }
 			} catch (IncompatibleClassChangeError e2) {
 				// existent bug of the JVM
 				// http://bugs.java.com/view_bug.do?bug_id=7003595
