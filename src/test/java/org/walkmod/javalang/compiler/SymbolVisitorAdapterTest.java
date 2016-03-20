@@ -2031,4 +2031,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	   CompilationUnit cu = run("import foo.SearchModule.ExtendedSearchHandler.ESResult; public class Foo{}","package foo; public class SearchModule{ public static interface ExtendedSearchHandler { public static class ESResult {} } }");
 	   Assert.assertNotNull(cu); //the imported class is at foo/SearchModule$ExtendedSearchHandler$ESResult.class
 	}
+	
+	@Test
+	public void testErrorWithStaticAndNotStaticImports() throws Exception{
+	   CompilationUnit cu = run("package bar; import static foo.SomeInterface.Inner1; import foo.SomeInterface;  public class Importer{ public static String foo(SomeInterface.Inner1 v) {return v.toString();} public static String bar(Inner1 v) { return v.toString(); } }",
+	         "package foo; public interface SomeInterface { static enum Inner1 { A,B; } }");
+	   
+	   Assert.assertNotNull(cu);
+	}
 }
