@@ -2011,4 +2011,12 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	   CompilationUnit cu = run("public class ClassLiteral { <T> T doClass(String x, Class<T> clazz) {return null;}public void x() { doClass(\"x\", null); }}");
 	   Assert.assertNotNull(cu);
 	}
+	
+	@Test
+   public void testTypePropagation() throws Exception{
+      CompilationUnit cu = run("public class Foo{ public static <T> T capture(final Capture<T> captured) { return null; } public void doFile(java.io.File f){} void x(){ final FileContentCapture capturedFileContent = new FileContentCapture();  doFile(capture(capturedFileContent)); } }",
+            "public class FileContentCapture extends Capture<java.io.File> {}",
+            "public class Capture<T>{}");
+      Assert.assertNotNull(cu);
+   }
 }
