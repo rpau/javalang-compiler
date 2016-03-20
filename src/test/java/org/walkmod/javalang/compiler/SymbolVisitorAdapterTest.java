@@ -2005,6 +2005,10 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
       NameExpr ne = (NameExpr) mce.getScope();
       Assert.assertEquals("java.util.List", ne.getSymbolData().getName());
 	}
-	
-
+		
+	@Test
+	public void testTemplateParametersWithNullValues() throws Exception{
+	   CompilationUnit cu = run("public class ClassLiteral { <T> T doClass(String x, Class<T> clazz) {return null;}public void x() { doClass(\"x\", null); }}");
+	   Assert.assertNotNull(cu);
+	}
 }
