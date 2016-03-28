@@ -337,7 +337,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
             finish = true;
 
-         } catch (ClassNotFoundException e) {
+         } catch (Throwable e) {
             int index = className.lastIndexOf('.');
             if (index != -1) {
                String aux = className.substring(0, index) + "$" + className.substring(index + 1);
