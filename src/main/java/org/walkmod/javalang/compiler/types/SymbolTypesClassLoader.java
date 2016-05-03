@@ -35,6 +35,7 @@ public class SymbolTypesClassLoader extends ClassLoader {
 		primitiveClasses.put("float", float.class);
 		primitiveClasses.put("short", short.class);
 		primitiveClasses.put("byte", byte.class);
+		primitiveClasses.put("void", void.class);
 	}
 
 	public SymbolTypesClassLoader(ClassLoader parent) {
