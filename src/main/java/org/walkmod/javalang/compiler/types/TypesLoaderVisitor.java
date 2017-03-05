@@ -528,7 +528,6 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
    private List<String> getClassNamesForJar(JarFile jar, String directory, String jarFilePath) {
       final List<String> classNames = jarFileClassNames.get(jarFilePath);
       if (classNames == null) {
-         System.out.println(this + ".readClassNamesFromJar(" + jarFilePath + ")");
          final List<String> loadedClassNames = readClassNamesFromJar(jar, directory);
          jarFileClassNames.put(jarFilePath, loadedClassNames);
          return loadedClassNames;
