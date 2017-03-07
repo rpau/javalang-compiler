@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -76,6 +77,8 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
    private static Set<String> defaultJavaLangClasses = new HashSet<String>();
 
    private static Map<String, Class<?>> primitiveClasses = new HashMap<String, Class<?>>();
+
+   private static Map<String, List<String>> jarFileClassNames = new HashMap<String, List<String>>();
 
    private static JarFile SDKJar;
 
@@ -511,8 +514,31 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       }
    }
 
-   private void loadClassesFromJar(JarFile jar, String directory, Node node) {
+   private void loadClassesFromJar(JarFile jar, String directory, Node node, String jarFilePath) {
+      List<String> classNames = getClassNamesForJar(jar, directory, jarFilePath);
 
+      for (String name : classNames) {
+         String[] split = name.split("\\$\\d");
+         if (split.length == 1) {
+            addType(name, false, node, actions);
+         }
+      }
+   }
+
+   private List<String> getClassNamesForJar(JarFile jar, String directory, String jarFilePath) {
+      final String key = jarFilePath + "@" + directory;
+      final List<String> classNames = jarFileClassNames.get(key);
+      if (classNames == null) {
+         final List<String> loadedClassNames = readClassNamesFromJar(jar, directory);
+         jarFileClassNames.put(key, loadedClassNames);
+         return loadedClassNames;
+      } else {
+         return classNames;
+      }
+   }
+
+   private List<String> readClassNamesFromJar(JarFile jar, String directory) {
+      List<String> classNames = new ArrayList<String>();
       Enumeration<JarEntry> entries = jar.entries();
       while (entries.hasMoreElements()) {
          JarEntry entry = entries.nextElement();
@@ -525,13 +551,10 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             name = name.replaceAll("/", ".");
             name = name.substring(0, name.length() - 6);
 
-            String[] split = name.split("\\$\\d");
-            if (split.length == 1) {
-               addType(name, false, node, actions);
-            }
-
+            classNames.add(name);
          }
       }
+      return classNames;
    }
 
    private void loadClassesFromPackage(String packageName, List<SymbolAction> actions, Node node) {
@@ -539,7 +562,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       URL[] urls = ((URLClassLoader) classLoader.getParent()).getURLs();
       String directory = packageName.replaceAll("\\.", "/");
 
-      loadClassesFromJar(SDKJar, directory, node);
+      loadClassesFromJar(SDKJar, directory, node, "sdkjar");
 
       for (URL url : urls) {
          File file = new File(url.getFile());
@@ -552,7 +575,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             } catch (IOException e) {
                throw new RuntimeException(e);
             }
-            loadClassesFromJar(jar, directory, node);
+            loadClassesFromJar(jar, directory, node, file.getPath());
 
          } else if (file.isDirectory() && file.canRead()) {
             File aux = new File(file, directory);
