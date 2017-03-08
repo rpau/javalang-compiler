@@ -21,6 +21,7 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -514,8 +515,11 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       }
    }
 
-   private void loadClassesFromJar(JarFile jar, String directory, Node node, String jarFilePath) {
-      List<String> classNames = getClassNamesForJar(jar, directory, jarFilePath);
+   /**
+    * Note: only one of jarFile or jar is set
+    */
+   private void loadClassesFromJar(File jarFile, JarFile jar, String directory, Node node) {
+      List<String> classNames = getClassNamesForJar(jarFile, jar, directory);
 
       for (String name : classNames) {
          String[] split = name.split("\\$\\d");
@@ -525,28 +529,43 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       }
    }
 
-   private List<String> getClassNamesForJar(JarFile jar, String directory, String jarFilePath) {
-      final String key = jarFilePath + "@" + directory;
-      final List<String> classNames = jarFileClassNames.get(key);
-      if (classNames == null) {
-         final List<String> loadedClassNames = readClassNamesFromJar(jar, directory);
-         jarFileClassNames.put(key, loadedClassNames);
-         return loadedClassNames;
-      } else {
-         return classNames;
+   private JarFile jarFile(File file) {
+      try {
+         return new JarFile(file);
+      } catch (IOException e) {
+         throw new RuntimeException(e);
       }
    }
 
-   private List<String> readClassNamesFromJar(JarFile jar, String directory) {
+   /**
+    * Note: only one of jarFile or jar is set
+    */
+   private List<String> getClassNamesForJar(File jarFile, JarFile jar, String directory) {
+      final String jarFilePath = jarFile != null ? jarFile.getPath() : jar.getName();
+      final String key = jarFilePath + "@" + directory;
+      final List<String> classNames = jarFileClassNames.get(key);
+      if (classNames != null) {
+         return classNames;
+      }
+      List<String> allClassNames = jarFileClassNames.get(jarFilePath);
+      if (allClassNames == null) {
+         // creating a JarFile instance is costly so only do it when needed.
+         allClassNames = readClassNamesFromJar(jar != null ? jar : jarFile(jarFile));
+         jarFileClassNames.put(jarFilePath, allClassNames);
+      }
+      final List<String> selectedClassNames = selectClassNamesByPackage(allClassNames, directory.replace("/", "."));
+      jarFileClassNames.put(key, selectedClassNames);
+      return selectedClassNames;
+   }
+
+   private List<String> readClassNamesFromJar(JarFile jar) {
       List<String> classNames = new ArrayList<String>();
       Enumeration<JarEntry> entries = jar.entries();
       while (entries.hasMoreElements()) {
          JarEntry entry = entries.nextElement();
          String name = entry.getName();
 
-         int index = name.indexOf(directory);
-
-         if (index != -1 && name.endsWith(".class") && name.lastIndexOf("/") == directory.length()) {
+         if (name.endsWith(".class")) {
 
             name = name.replaceAll("/", ".");
             name = name.substring(0, name.length() - 6);
@@ -554,7 +573,19 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             classNames.add(name);
          }
       }
-      return classNames;
+      return Collections.unmodifiableList(classNames);
+   }
+
+   private List<String> selectClassNamesByPackage(List<String> allClassNames, String packageName) {
+      List<String> classNames = new ArrayList<String>();
+      for (String name : allClassNames) {
+         int index = name.indexOf(packageName);
+
+         if (index != -1 && name.lastIndexOf(".") == packageName.length()) {
+            classNames.add(name);
+         }
+      }
+      return Collections.unmodifiableList(classNames);
    }
 
    private void loadClassesFromPackage(String packageName, List<SymbolAction> actions, Node node) {
@@ -562,38 +593,36 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       URL[] urls = ((URLClassLoader) classLoader.getParent()).getURLs();
       String directory = packageName.replaceAll("\\.", "/");
 
-      loadClassesFromJar(SDKJar, directory, node, "sdkjar");
+      loadClassesFromJar(null, SDKJar, directory, node);
 
       for (URL url : urls) {
          File file = new File(url.getFile());
 
-         if (!file.isDirectory() && file.canRead()) {
+         final boolean isDirectory = file.isDirectory();
+         final boolean canRead = file.canRead();
+         if (!isDirectory && canRead) {
             // it is a jar file
-            JarFile jar = null;
-            try {
-               jar = new JarFile(file);
-            } catch (IOException e) {
-               throw new RuntimeException(e);
-            }
-            loadClassesFromJar(jar, directory, node, file.getPath());
+            loadClassesFromJar(file, null, directory, node);
 
-         } else if (file.isDirectory() && file.canRead()) {
+         } else if (isDirectory && canRead) {
             File aux = new File(file, directory);
             if (aux.exists() && aux.isDirectory()) {
                File[] contents = aux.listFiles();
-               for (File resource : contents) {
-                  if (resource.getName().endsWith(".class")) {
-                     String simpleName = resource.getName().substring(0, resource.getName().lastIndexOf(".class"));
-                     String name = simpleName;
-                     if (!"".equals(packageName)) {
-                        name = packageName + "." + simpleName;
-                     }
+               if (contents != null) {
+                  for (File resource : contents) {
+                     if (resource.getName().endsWith(".class")) {
+                        String simpleName = resource.getName().substring(0, resource.getName().lastIndexOf(".class"));
+                        String name = simpleName;
+                        if (!"".equals(packageName)) {
+                           name = packageName + "." + simpleName;
+                        }
 
-                     String[] split = resource.getName().split("\\$\\d");
-                     if (split.length == 1) {
-                        addType(name, false, node, actions);
-                     }
+                        String[] split = resource.getName().split("\\$\\d");
+                        if (split.length == 1) {
+                           addType(name, false, node, actions);
+                        }
 
+                     }
                   }
                }
             }
