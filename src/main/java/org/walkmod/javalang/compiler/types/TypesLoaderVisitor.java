@@ -68,6 +68,21 @@ import org.walkmod.javalang.visitors.VoidVisitorAdapter;
  */
 public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
+   private enum  FileFlag {
+      Directory,
+      Readable;
+
+      private final int mask;
+
+      FileFlag() {
+         this.mask = 1 << ordinal();
+      }
+
+      public boolean isSetIn(int flags) {
+         return (mask & flags) != 0;
+      }
+   }
+
    private String contextName = null;
 
    private String packageName = null;
@@ -80,6 +95,9 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
    private static Map<String, Class<?>> primitiveClasses = new HashMap<String, Class<?>>();
 
    private static Map<String, List<String>> jarFileClassNames = new HashMap<String, List<String>>();
+
+   /** conceptually a Map<File.absoluteFilePath,EnumSet<FileFlag>> */
+   private static Map<String, Integer> fileFlagCache = new HashMap<String, Integer>();
 
    private static JarFile SDKJar;
 
@@ -598,15 +616,15 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       for (URL url : urls) {
          File file = new File(url.getFile());
 
-         final boolean isDirectory = file.isDirectory();
-         final boolean canRead = file.canRead();
+         final boolean isDirectory = isDirectory(file);
+         final boolean canRead = canRead(file);
          if (!isDirectory && canRead) {
             // it is a jar file
             loadClassesFromJar(file, null, directory, node);
 
          } else if (isDirectory && canRead) {
             File aux = new File(file, directory);
-            if (aux.exists() && aux.isDirectory()) {
+            if (aux.exists() && isDirectory(aux)) {
                File[] contents = aux.listFiles();
                if (contents != null) {
                   for (File resource : contents) {
@@ -629,6 +647,25 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
          }
       }
 
+   }
+
+   private boolean canRead(File file) {
+      return FileFlag.Readable.isSetIn(cachedFileFlags(file));
+   }
+
+   private boolean isDirectory(File file) {
+      return FileFlag.Directory.isSetIn(cachedFileFlags(file));
+   }
+
+   private int cachedFileFlags(File file) {
+      final String absolutePath = file.getAbsolutePath();
+      Integer v = fileFlagCache.get(absolutePath);
+      if (v == null) {
+         v = (file.isDirectory() ? FileFlag.Directory.mask : 0)
+                 | (file.canRead() ? FileFlag.Readable.mask : 0);
+         fileFlagCache.put(absolutePath, v);
+      }
+      return v;
    }
 
    static {
