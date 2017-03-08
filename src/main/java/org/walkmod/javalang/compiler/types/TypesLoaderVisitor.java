@@ -21,6 +21,7 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -528,25 +529,27 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
    private List<String> getClassNamesForJar(JarFile jar, String directory, String jarFilePath) {
       final String key = jarFilePath + "@" + directory;
       final List<String> classNames = jarFileClassNames.get(key);
-      if (classNames == null) {
-         final List<String> loadedClassNames = readClassNamesFromJar(jar, directory);
-         jarFileClassNames.put(key, loadedClassNames);
-         return loadedClassNames;
-      } else {
+      if (classNames != null) {
          return classNames;
       }
+      List<String> allClassNames = jarFileClassNames.get(jarFilePath);
+      if (allClassNames == null) {
+         allClassNames = readClassNamesFromJar(jar);
+         jarFileClassNames.put(jarFilePath, allClassNames);
+      }
+      final List<String> selectedClassNames = selectClassNamesByPackage(allClassNames, directory.replace("/", "."));
+      jarFileClassNames.put(key, selectedClassNames);
+      return selectedClassNames;
    }
 
-   private List<String> readClassNamesFromJar(JarFile jar, String directory) {
+   private List<String> readClassNamesFromJar(JarFile jar) {
       List<String> classNames = new ArrayList<String>();
       Enumeration<JarEntry> entries = jar.entries();
       while (entries.hasMoreElements()) {
          JarEntry entry = entries.nextElement();
          String name = entry.getName();
 
-         int index = name.indexOf(directory);
-
-         if (index != -1 && name.endsWith(".class") && name.lastIndexOf("/") == directory.length()) {
+         if (name.endsWith(".class")) {
 
             name = name.replaceAll("/", ".");
             name = name.substring(0, name.length() - 6);
@@ -554,7 +557,19 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             classNames.add(name);
          }
       }
-      return classNames;
+      return Collections.unmodifiableList(classNames);
+   }
+
+   private List<String> selectClassNamesByPackage(List<String> allClassNames, String packageName) {
+      List<String> classNames = new ArrayList<String>();
+      for (String name : allClassNames) {
+         int index = name.indexOf(packageName);
+
+         if (index != -1 && name.lastIndexOf(".") == packageName.length()) {
+            classNames.add(name);
+         }
+      }
+      return Collections.unmodifiableList(classNames);
    }
 
    private void loadClassesFromPackage(String packageName, List<SymbolAction> actions, Node node) {
