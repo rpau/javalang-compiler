@@ -391,7 +391,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
          }
          return isCompatible;
       }
-      return true;
+      int otherArrayCount = 0;
+      if(other != null){
+         otherArrayCount = other.arrayCount;
+      }
+      return arrayCount == otherArrayCount;
    }
 
    public boolean isCompatible(SymbolType other) {

@@ -15,33 +15,22 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
+import org.junit.Assert;
+import org.junit.Test;
+import org.walkmod.javalang.ASTManager;
+import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.ast.expr.*;
+import org.walkmod.javalang.compiler.symbols.*;
+import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
+import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
+import org.walkmod.javalang.test.SemanticTest;
+
+import javax.lang.model.SourceVersion;
 import java.beans.Expression;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import javax.lang.model.SourceVersion;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.walkmod.javalang.ASTManager;
-import org.walkmod.javalang.ast.CompilationUnit;
-import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
-import org.walkmod.javalang.ast.expr.BinaryExpr;
-import org.walkmod.javalang.ast.expr.FieldAccessExpr;
-import org.walkmod.javalang.ast.expr.MethodCallExpr;
-import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
-import org.walkmod.javalang.ast.expr.NameExpr;
-import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
-import org.walkmod.javalang.ast.expr.UnaryExpr;
-import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
-import org.walkmod.javalang.compiler.symbols.ReferenceType;
-import org.walkmod.javalang.compiler.symbols.SymbolTable;
-import org.walkmod.javalang.compiler.symbols.SymbolType;
-import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
-import org.walkmod.javalang.compiler.types.TypeVisitorAdapter;
-import org.walkmod.javalang.test.SemanticTest;
 
 
 public class TypeVisitorAdapterTest extends SemanticTest {
@@ -999,6 +988,29 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		SymbolType type = (SymbolType) expr.getSymbolData();
 		Assert.assertNotNull(type);
 		Assert.assertEquals("OuterClass$InnerClass", type.getName());
+	}
+
+	@Test
+	public void testTargetInferenceShouldFail() throws Exception {
+
+		compile("import java.util.Collections; "
+				+ "import java.util.List; "
+				+ "public class A { public static <T> void processStringList(T[] args) {}}");
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		SymbolTable symTable = getSymbolTable();
+		symTable.pushScope();
+		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
+
+		try {
+			MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(
+					Expression.class,
+					"A.processStringList(Collections.emptyList());");
+			HashMap<String, Object> ctx = new HashMap<String, Object>();
+			expressionAnalyzer.visit(expr, ctx);
+			Assert.fail("should not be reached: type=" + expr.getSymbolData().getMethod());
+		} catch (NoSuchExpressionTypeException e) {
+			Assert.assertTrue(e.getMessage(), e.getMessage().contains("Ops! The method call A.processStringList(Collections.emptyList()) is not resolved"));
+		}
 	}
 
 }
