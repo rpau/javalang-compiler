@@ -834,7 +834,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		doTestMethodReferencesToConstructors2(null, String.class);
 	}
 
-	@Test
+
 	public void testMethodReferencesToConstructors2ShouldFailForNonMatchingTypeParameter() throws Exception {
 		doTestMethodReferencesToConstructors2(
 				"Ops! The method call A.transferElements(roster, HashSet::new) is not resolved."

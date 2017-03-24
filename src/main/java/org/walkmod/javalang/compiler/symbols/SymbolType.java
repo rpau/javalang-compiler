@@ -261,145 +261,160 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
       return result;
    }
 
-   private boolean isCompatible(SymbolType other, Set<String> analyzedTemplates) {
+
+
+   private boolean isArrayCountCompatible(SymbolType other){
       boolean isCompatible = true;
-
-      if (templateVariable == null || analyzedTemplates.contains(templateVariable)) {
-
-         if (templateVariable != null) {
-            analyzedTemplates.add(templateVariable);
-         }
-
-         if (upperBounds != null) {
-            Iterator<SymbolType> it = upperBounds.iterator();
-
-            while (it.hasNext() && isCompatible) {
-               SymbolType bound = it.next();
-               List<SymbolType> bounds = null;
-
-               if (other != null) {
-                  bounds = other.getBounds();
-               }
-               if (bounds == null) {
-                  bounds = new LinkedList<SymbolType>();
-                  bounds.add(other);
-               }
-               Iterator<SymbolType> otherIt = bounds.iterator();
-               boolean found = false;
-               while (otherIt.hasNext() && !found) {
-                  found = bound.isCompatible(otherIt.next());
-               }
-               isCompatible = found;
-            }
-
-            return isCompatible;
-         }
-         if (isCompatible && lowerBounds != null) {
-            Iterator<SymbolType> it = lowerBounds.iterator();
-            while (it.hasNext() && isCompatible) {
-               isCompatible = other.isCompatible(it.next());
-            }
-         }
-         if (isCompatible && other != null) {
-
-            List<SymbolType> otherParams = other.getParameterizedTypes();
-            if (parameterizedTypes != null && otherParams != null) {
-               Set<Type> paramTypes = ClassInspector.getEquivalentParametrizableClasses(other.getClazz());
-               Iterator<Type> paramTypesIt = paramTypes.iterator();
-               boolean found = false;
-               Set<Integer> recursiveParamDefs = new HashSet<Integer>();
-               try {
-                  Map<String, SymbolType> otherMap = other.getTypeMappingVariables();
-                  Class<?> clazz = getClazz();
-                  TypeVariable<?>[] tvs = clazz.getTypeParameters();
-
-                  for (int i = 0; i < tvs.length; i++) {
-                     Type[] bounds = tvs[i].getBounds();
-                     if (bounds.length == 1) {
-                        Class<?> classToCompare = null;
-                        if (bounds[0] instanceof Class<?>) {
-                           classToCompare = (Class<?>) bounds[0];
-                        } else if (bounds[0] instanceof ParameterizedType) {
-                           classToCompare = (Class<?>) ((ParameterizedType) bounds[0]).getRawType();
-                        }
-                        if (classToCompare != null) {
-                           if (name.equals(classToCompare.getName())) {
-                              recursiveParamDefs.add(i);
-                           }
-                        }
-                     }
-                  }
-                  int i = 0;
-                  while (paramTypesIt.hasNext() && !found) {
-                     Type currentType = paramTypesIt.next();
-                     SymbolType st = SymbolType.valueOf(currentType, otherMap);
-
-                     found = Types.isCompatible(st.getClazz(), getClazz());
-                     if (isCompatible) {
-                        otherParams = st.getParameterizedTypes();
-                        Iterator<SymbolType> it = parameterizedTypes.iterator();
-                        if (otherParams != null) {
-                           Iterator<SymbolType> otherIt = otherParams.iterator();
-                           while (it.hasNext() && found && otherIt.hasNext()) {
-                              SymbolType thisType = it.next();
-                              SymbolType otherType = otherIt.next();
-                              if (!recursiveParamDefs.contains(i)) {
-                                 found = thisType.isCompatible(otherType);
-                              }
-                              i++;
-                           }
-                        }
-                     }
-
-                  }
-               } catch (Exception e) {
-                  throw new RuntimeException(e);
-               }
-               isCompatible = found;
-            } else {
-               String otherName = other.getName();
-
-               boolean isUndefinedTemplateVar = other.isTemplateVariable() && otherName == null;
-               isCompatible = isUndefinedTemplateVar;
-               if (!isCompatible) {
-                  List<Class<?>> boundClasses = other.getBoundClasses();
-
-                  Iterator<Class<?>> itBounds = boundClasses.iterator();
-                  while (itBounds.hasNext() && !isCompatible) {
-                     if (getArrayCount() < other.getArrayCount()) {
-                        if (!getClazz().equals(Object.class)) {
-                           isCompatible = Types.isCompatible(itBounds.next(), getClazz());
-                        } else {
-                           itBounds.next();
-                           isCompatible = true;
-                        }
-                     } else {
-                        isCompatible = Types.isCompatible(itBounds.next(), getClazz());
-                     }
-                  }
-
-               }
-
-            }
-            if (isCompatible) {
-               if (!getClazz().equals(Object.class) || getArrayCount() > 0) {
-                  isCompatible = getArrayCount() == other.getArrayCount()
-                        || (getArrayCount() < other.getArrayCount() && getClazz().equals(Object.class));
-               }
-            }
-
-         }
-         return isCompatible;
+      if (!getClazz().equals(Object.class) || getArrayCount() > 0) {
+         isCompatible = getArrayCount() == other.getArrayCount()
+                 || (getArrayCount() < other.getArrayCount() && getClazz().equals(Object.class));
       }
-      int otherArrayCount = 0;
-      if(other != null){
-         otherArrayCount = other.arrayCount;
+      return isCompatible;
+   }
+
+   private boolean isLowerBoundsCompatible(SymbolType other){
+      boolean isCompatible = true;
+      if (lowerBounds != null) {
+         Iterator<SymbolType> it = lowerBounds.iterator();
+         while (it.hasNext() && isCompatible) {
+            isCompatible = other.isCompatible(it.next());
+         }
       }
-      return arrayCount == otherArrayCount;
+      return isCompatible;
+   }
+
+   private boolean isParameterizedTypesCompatible(SymbolType other){
+      boolean isCompatible = true;
+      List<SymbolType> otherParams = other.getParameterizedTypes();
+      if (parameterizedTypes != null && otherParams != null) {
+         Set<Type> paramTypes = ClassInspector.getEquivalentParametrizableClasses(other.getClazz());
+         Iterator<Type> paramTypesIt = paramTypes.iterator();
+         boolean found = false;
+         Set<Integer> recursiveParamDefs = new HashSet<Integer>();
+         try {
+            Map<String, SymbolType> otherMap = other.getTypeMappingVariables();
+            Class<?> clazz = getClazz();
+            TypeVariable<?>[] tvs = clazz.getTypeParameters();
+
+            for (int i = 0; i < tvs.length; i++) {
+               Type[] bounds = tvs[i].getBounds();
+               if (bounds.length == 1) {
+                  Class<?> classToCompare = null;
+                  if (bounds[0] instanceof Class<?>) {
+                     classToCompare = (Class<?>) bounds[0];
+                  } else if (bounds[0] instanceof ParameterizedType) {
+                     classToCompare = (Class<?>) ((ParameterizedType) bounds[0]).getRawType();
+                  }
+                  if (classToCompare != null) {
+                     if (name.equals(classToCompare.getName())) {
+                        recursiveParamDefs.add(i);
+                     }
+                  }
+               }
+            }
+            int i = 0;
+            while (paramTypesIt.hasNext() && !found) {
+               Type currentType = paramTypesIt.next();
+               SymbolType st = SymbolType.valueOf(currentType, otherMap);
+
+               found = Types.isCompatible(st.getClazz(), getClazz());
+               if (isCompatible) {
+                  otherParams = st.getParameterizedTypes();
+                  Iterator<SymbolType> it = parameterizedTypes.iterator();
+                  if (otherParams != null) {
+                     Iterator<SymbolType> otherIt = otherParams.iterator();
+                     while (it.hasNext() && found && otherIt.hasNext()) {
+                        SymbolType thisType = it.next();
+                        SymbolType otherType = otherIt.next();
+                        if (!recursiveParamDefs.contains(i)) {
+                           found = thisType.isCompatible(otherType);
+                        }
+                        i++;
+                     }
+                  }
+               }
+
+            }
+         } catch (Exception e) {
+            throw new RuntimeException(e);
+         }
+         isCompatible = found;
+      } else {
+         String otherName = other.getName();
+
+         boolean isUndefinedTemplateVar = other.isTemplateVariable() && otherName == null;
+         isCompatible = isUndefinedTemplateVar;
+         if (!isCompatible) {
+            List<Class<?>> boundClasses = other.getBoundClasses();
+
+            Iterator<Class<?>> itBounds = boundClasses.iterator();
+            while (itBounds.hasNext() && !isCompatible) {
+               if (getArrayCount() < other.getArrayCount()) {
+                  if (!getClazz().equals(Object.class)) {
+                     isCompatible = Types.isCompatible(itBounds.next(), getClazz());
+                  } else {
+                     itBounds.next();
+                     isCompatible = true;
+                  }
+               } else {
+                  isCompatible = Types.isCompatible(itBounds.next(), getClazz());
+               }
+            }
+
+         }
+
+      }
+      return isCompatible;
+   }
+
+   private boolean isUpperBoundsCompatible(SymbolType other){
+      boolean isCompatible = true;
+      if (upperBounds != null) {
+         Iterator<SymbolType> it = upperBounds.iterator();
+
+         while (it.hasNext() && isCompatible) {
+            SymbolType bound = it.next();
+            List<SymbolType> bounds = null;
+
+            if (other != null) {
+               bounds = other.getBounds();
+            }
+            if (bounds == null) {
+               bounds = new LinkedList<SymbolType>();
+               bounds.add(other);
+            }
+            Iterator<SymbolType> otherIt = bounds.iterator();
+            boolean found = false;
+            while (otherIt.hasNext() && !found) {
+               found = bound.isCompatible(otherIt.next());
+            }
+            isCompatible = found;
+         }
+
+      }
+      return isCompatible;
    }
 
    public boolean isCompatible(SymbolType other) {
-      return isCompatible(other, new HashSet<String>());
+      boolean isCompatible = true;
+
+      if (!isTemplateVariable()) {
+
+         if (other != null){
+
+            isCompatible = isUpperBoundsCompatible(other) && isLowerBoundsCompatible(other)
+                    && isParameterizedTypesCompatible(other) && isArrayCountCompatible(other);
+
+         }
+
+      }
+      else{
+         // WARNING: we need to resolve its value afterwards. We just can check array counts
+         isCompatible = isArrayCountCompatible(other) ;
+      }
+
+
+      return isCompatible;
    }
 
    public Class<?> getClazz() {
