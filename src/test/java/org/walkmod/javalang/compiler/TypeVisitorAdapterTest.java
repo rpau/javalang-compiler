@@ -15,6 +15,8 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
+import static org.junit.Assert.fail;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -829,6 +831,18 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testMethodReferencesToConstructors2() throws Exception {
+		doTestMethodReferencesToConstructors2(null, String.class);
+	}
+
+	@Test
+	public void testMethodReferencesToConstructors2ShouldFailForNonMatchingTypeParameter() throws Exception {
+		doTestMethodReferencesToConstructors2(
+				"Ops! The method call A.transferElements(roster, HashSet::new) is not resolved."
+						+ " The scope is [A] , and the args are : [ java.util.Collection<java.lang.Integer>, null]",
+				Integer.class);
+	}
+
+	private void doTestMethodReferencesToConstructors2(/* @Nullable */ String expectedFailure, final Class<?> argumentType) throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 
 			String method = "public static "
@@ -847,31 +861,42 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 			SymbolType st = new SymbolType(java.util.Collection.class);
 			List<SymbolType> paramTypes = new LinkedList<SymbolType>();
-			paramTypes.add(new SymbolType(String.class));
+			paramTypes.add(new SymbolType(argumentType));
 			st.setParameterizedTypes(paramTypes);
 
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
 			
-			// roster is a Collection<String>
+			// roster is a Collection<argumentType>
 			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
 					getClassLoader().loadClass("A")), null);
 			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
 
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
-			expressionAnalyzer.visit(expr, ctx);
-			SymbolType type = (SymbolType) expr.getSymbolData();
-			Assert.assertNotNull(type);
-			Assert.assertEquals("transferElements", type.getMethod().getName());
-			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
-					.get(1);
+			try {
+				expressionAnalyzer.visit(expr, ctx);
+				if (expectedFailure == null) {
+					SymbolType type = (SymbolType) expr.getSymbolData();
+					Assert.assertNotNull(type);
+					Assert.assertEquals("transferElements", type.getMethod().getName());
+					MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+							.get(1);
 
-			SymbolType methodType = (SymbolType) arg1
-					.getReferencedMethodSymbolData();
-			Assert.assertNotNull(methodType);
-			Assert.assertEquals("get", methodType.getMethod().getName());
-			Assert.assertEquals("A$Supplier", arg1.getSymbolData().getName());
-
+					SymbolType methodType = (SymbolType) arg1
+							.getReferencedMethodSymbolData();
+					Assert.assertNotNull(methodType);
+					Assert.assertEquals("get", methodType.getMethod().getName());
+					Assert.assertEquals("A$Supplier", arg1.getSymbolData().getName());
+				} else {
+					fail("expected failure " + expectedFailure + "\n    but got " + expr.getSymbolData());
+				}
+			} catch (NoSuchExpressionTypeException e) {
+				if (expectedFailure == null) {
+					throw e;
+				} else {
+					Assert.assertTrue(e.getMessage(), e.getMessage().contains(expectedFailure));
+				}
+			}
 		}
 	}
 
@@ -1007,7 +1032,7 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 					"A.processStringList(Collections.emptyList());");
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
 			expressionAnalyzer.visit(expr, ctx);
-			Assert.fail("should not be reached: type=" + expr.getSymbolData().getMethod());
+			fail("should not be reached: type=" + expr.getSymbolData().getMethod());
 		} catch (NoSuchExpressionTypeException e) {
 			Assert.assertTrue(e.getMessage(), e.getMessage().contains("Ops! The method call A.processStringList(Collections.emptyList()) is not resolved"));
 		}
