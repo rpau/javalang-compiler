@@ -421,6 +421,80 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
+	public void testGenericMethodOverload() throws Exception {
+		compile("import java.util.*;\n"
+				+ " public class A {\n"
+				+ "    public static void f1(Set<Integer> col) {}\n"
+				+ "\n"
+				+ "    public static void f1(Collection<String> col) {}\n"
+				+ "\n"
+				/*
+				+ "    public static void f1usage() {\n"
+				+ "        // select first\n"
+				+ "        f1(new HashSet<Integer>());\n"
+				+ "        // select second\n"
+				+ "        f1(new ArrayList<String>());\n"
+				+ "        // select second\n"
+				+ "        f1(new HashSet<String>());\n"
+				+ "    }\n"
+				*/
+				+ "}");
+		SymbolTable symTable = getSymbolTable();
+		ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
+
+		assertResolvedToMethod(expressionAnalyzer, "A.f1(new HashSet<Integer>())",
+				"public static void A.f1(java.util.Set)");
+		assertResolvedToMethod(expressionAnalyzer, "A.f1(new ArrayList<String>())",
+				"public static void A.f1(java.util.Collection)");
+		assertResolvedToMethod(expressionAnalyzer, "A.f1(new HashSet<String>())",
+				"public static void A.f1(java.util.Collection)");
+	}
+
+	/**
+	 * This kind of method is extensively used in test frameworks like e.g. EasyMock.
+	 */
+	@Test
+	public void testUnboundGenericMethodReturn() throws Exception {
+		compile(""
+				+ " public class A {\n"
+				+ "    public static <T> T anyObject() {\n"
+				+ "        return null;\n"
+				+ "    }"
+				+ "    public static void fs(String s) {}\n"
+				+ "    public static void fi(Integer i) {}\n"
+				+ "}");
+		SymbolTable symTable = getSymbolTable();
+		ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
+		symTable.pushScope();
+		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
+		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
+
+		// test non-generic cases as base line
+		assertResolvedToMethod(expressionAnalyzer, "A.fs(\"s\")",
+				"public static void A.fs(java.lang.String)");
+		assertResolvedToMethod(expressionAnalyzer, "A.fi(1)",
+				"public static void A.fi(java.lang.Integer)");
+		// now the real test
+		assertResolvedToMethod(expressionAnalyzer, "A.fs(anyObject())",
+				"public static void A.fs(java.lang.String");
+		assertResolvedToMethod(expressionAnalyzer, "A.fi(anyObject())",
+				"public static void A.fi(java.lang.Integer)");
+	}
+
+	private static void assertResolvedToMethod(TypeVisitorAdapter<Map<String, Object>> expressionAnalyzer, final String expression,
+											   final String expectedMethod) throws Exception {
+		MethodCallExpr expr = (MethodCallExpr) ASTManager.parse(Expression.class, expression);
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		SymbolType type = (SymbolType) expr.getSymbolData();
+		Assert.assertNotNull(type);
+		Assert.assertEquals(expectedMethod, type.getMethod().toString());
+	}
+
+	@Test
 	public void testGenericMethodsExplicitTypeInvocation() throws Exception {
 		compile("import java.util.ArrayList; import java.io.Serializable;"
 				+ " public class A { public static <T> T pick(T a1, T a2) { return a2; }}");
@@ -831,18 +905,6 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 	@Test
 	public void testMethodReferencesToConstructors2() throws Exception {
-		doTestMethodReferencesToConstructors2(null, String.class);
-	}
-
-
-	public void testMethodReferencesToConstructors2ShouldFailForNonMatchingTypeParameter() throws Exception {
-		doTestMethodReferencesToConstructors2(
-				"Ops! The method call A.transferElements(roster, HashSet::new) is not resolved."
-						+ " The scope is [A] , and the args are : [ java.util.Collection<java.lang.Integer>, null]",
-				Integer.class);
-	}
-
-	private void doTestMethodReferencesToConstructors2(/* @Nullable */ String expectedFailure, final Class<?> argumentType) throws Exception {
 		if (SourceVersion.latestSupported().ordinal() >= 8) {
 
 			String method = "public static "
@@ -861,42 +923,31 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 
 			SymbolType st = new SymbolType(java.util.Collection.class);
 			List<SymbolType> paramTypes = new LinkedList<SymbolType>();
-			paramTypes.add(new SymbolType(argumentType));
+			paramTypes.add(new SymbolType(String.class));
 			st.setParameterizedTypes(paramTypes);
 
 			SymbolTable symTable = getSymbolTable();
 			symTable.pushScope();
 			
-			// roster is a Collection<argumentType>
+			// roster is a Collection<String>
 			symTable.pushSymbol("this", ReferenceType.TYPE, new SymbolType(
 					getClassLoader().loadClass("A")), null);
 			symTable.pushSymbol("roster", ReferenceType.TYPE, st, null);
 
 			HashMap<String, Object> ctx = new HashMap<String, Object>();
-			try {
-				expressionAnalyzer.visit(expr, ctx);
-				if (expectedFailure == null) {
-					SymbolType type = (SymbolType) expr.getSymbolData();
-					Assert.assertNotNull(type);
-					Assert.assertEquals("transferElements", type.getMethod().getName());
-					MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
-							.get(1);
+			expressionAnalyzer.visit(expr, ctx);
+			SymbolType type = (SymbolType) expr.getSymbolData();
+			Assert.assertNotNull(type);
+			Assert.assertEquals("transferElements", type.getMethod().getName());
+			MethodReferenceExpr arg1 = (MethodReferenceExpr) expr.getArgs()
+					.get(1);
 
-					SymbolType methodType = (SymbolType) arg1
-							.getReferencedMethodSymbolData();
-					Assert.assertNotNull(methodType);
-					Assert.assertEquals("get", methodType.getMethod().getName());
-					Assert.assertEquals("A$Supplier", arg1.getSymbolData().getName());
-				} else {
-					fail("expected failure " + expectedFailure + "\n    but got " + expr.getSymbolData());
-				}
-			} catch (NoSuchExpressionTypeException e) {
-				if (expectedFailure == null) {
-					throw e;
-				} else {
-					Assert.assertTrue(e.getMessage(), e.getMessage().contains(expectedFailure));
-				}
-			}
+			SymbolType methodType = (SymbolType) arg1
+					.getReferencedMethodSymbolData();
+			Assert.assertNotNull(methodType);
+			Assert.assertEquals("get", methodType.getMethod().getName());
+			Assert.assertEquals("A$Supplier", arg1.getSymbolData().getName());
+
 		}
 	}
 
