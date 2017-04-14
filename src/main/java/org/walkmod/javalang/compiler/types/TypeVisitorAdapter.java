@@ -30,11 +30,14 @@ import org.apache.log4j.Logger;
 import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolData;
+import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.TypeParameter;
+import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.Parameter;
+import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.body.VariableDeclaratorId;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
@@ -72,6 +75,7 @@ import org.walkmod.javalang.ast.expr.ThisExpr;
 import org.walkmod.javalang.ast.expr.TypeExpr;
 import org.walkmod.javalang.ast.expr.UnaryExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
+import org.walkmod.javalang.ast.stmt.ExplicitConstructorInvocationStmt;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.ast.stmt.ReturnStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
@@ -303,6 +307,32 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
    }
 
    @Override
+   public void visit(ExplicitConstructorInvocationStmt n, A arg) {
+
+      if (n.getTypeArgs() != null) {
+         for (Type t : n.getTypeArgs()) {
+            t.accept(this, arg);
+         }
+      }
+      Node p = n.getParentNode();
+      while (p != null && !(p instanceof ConstructorDeclaration)) {
+         p = p.getParentNode();
+      }
+
+      if (p != null) {
+         final SymbolType st;
+         final ConstructorDeclaration constructorDeclaration = (ConstructorDeclaration) p;
+         if (n.isThis()) {
+            st = (SymbolType) constructorDeclaration.getSymbolData();
+         } else {
+            final ClassOrInterfaceDeclaration parentNode = (ClassOrInterfaceDeclaration) constructorDeclaration.getParentNode();
+            st = (SymbolType) parentNode.getExtends().get(0).getSymbolData();
+         }
+         resolveConstructor(n, n.getArgs(), st, arg);
+      }
+   }
+
+   @Override
    public void visit(DoubleLiteralExpr n, A arg) {
       String value = n.getValue();
       String typeName = "double";
@@ -390,32 +420,9 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
    @Override
    public void visit(MethodCallExpr n, A arg) {
       try {
-         SymbolType[] symbolTypes = null;
-         boolean hasFunctionalExpressions = false;
-         if (n.getArgs() != null) {
-
-            symbolTypes = new SymbolType[n.getArgs().size()];
-            int i = 0;
-
-            for (Expression e : n.getArgs()) {
-               if (!(e instanceof LambdaExpr) && !(e instanceof MethodReferenceExpr)) {
-                  e.accept(this, arg);
-                  SymbolType argType = null;
-                  if (e instanceof ObjectCreationExpr) {
-                     ObjectCreationExpr aux = (ObjectCreationExpr) e;
-                     argType = (SymbolType) aux.getType().getSymbolData();
-                  } else {
-                     argType = (SymbolType) e.getSymbolData();
-                  }
-                  symbolTypes[i] = argType;
-               } else {
-                  hasFunctionalExpressions = true;
-               }
-               i++;
-            }
-         } else {
-            symbolTypes = new SymbolType[0];
-         }
+         final ArgTypes argTypes = argTypes(n.getArgs(), arg);
+         final SymbolType[] symbolTypes = argTypes.symbolTypes;
+         final boolean hasFunctionalExpressions = argTypes.hasFunctionalExpressions;
 
          SymbolType scope = null;
 
@@ -595,14 +602,26 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
          }
       }
       n.getType().accept(this, arg);
+
+      SymbolType st = (SymbolType) n.getType().getSymbolData();
+      resolveConstructor(n, n.getArgs(), st, arg);
+
+      // we need to update the symbol table
+      if (semanticVisitor != null) {
+         n.accept(semanticVisitor, arg);
+      }
+
+   }
+
+   private ArgTypes argTypes(List<Expression> args, A arg) {
       boolean hasFunctionalExpressions = false;
       SymbolType[] symbolTypes = null;
-      if (n.getArgs() != null) {
+      if (args != null) {
 
-         symbolTypes = new SymbolType[n.getArgs().size()];
+         symbolTypes = new SymbolType[args.size()];
          int i = 0;
 
-         for (Expression e : n.getArgs()) {
+         for (Expression e : args) {
             if (!(e instanceof LambdaExpr) && !(e instanceof MethodReferenceExpr)) {
                e.accept(this, arg);
                SymbolType argType = null;
@@ -613,26 +632,35 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
                   argType = (SymbolType) e.getSymbolData();
                }
                symbolTypes[i] = argType;
-
             } else {
                hasFunctionalExpressions = true;
             }
             i++;
          }
+      } else {
+         symbolTypes = new SymbolType[0];
       }
-      SymbolType st = (SymbolType) n.getType().getSymbolData();
+      return new ArgTypes(symbolTypes, hasFunctionalExpressions);
+   }
+
+
+   private void resolveConstructor(SymbolDataAware<SymbolData> n, final List<Expression> args, SymbolType st, A arg) {
+      final ArgTypes argTypes = argTypes(args, arg);
+      final SymbolType[] symbolTypes = argTypes.symbolTypes;
+      final boolean hasFunctionalExpressions = argTypes.hasFunctionalExpressions;
+
       Map<String, SymbolType> typeMapping = new HashMap<String, SymbolType>();
       CompatibleConstructorArgsPredicate pred = new CompatibleConstructorArgsPredicate(symbolTypes);
       ArrayFilter<Constructor<?>> filter = new ArrayFilter<Constructor<?>>(null);
       filter.appendPredicate(pred);
 
       if (hasFunctionalExpressions) {
-         filter.appendPredicate(new CompatibleFunctionalConstructorPredicate<A>(st, this, n.getArgs(), arg, symbolTable,
+         filter.appendPredicate(new CompatibleFunctionalConstructorPredicate<A>(st, this, args, arg, symbolTable,
                pred, symbolTypes));
       }
       CompositeBuilder<Constructor<?>> builder = new CompositeBuilder<Constructor<?>>();
       builder.appendBuilder(
-            new GenericsBuilderFromConstructorParameterTypes(typeMapping, n.getArgs(), symbolTypes, symbolTable));
+            new GenericsBuilderFromConstructorParameterTypes(typeMapping, args, symbolTypes, symbolTable));
 
       try {
          SymbolType aux = ConstructorInspector.findConstructor(st, symbolTypes, filter, builder, typeMapping);
@@ -640,12 +668,6 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
       } catch (Exception e) {
          throw new NoSuchExpressionTypeException(e);
       }
-
-      // we need to update the symbol table
-      if (semanticVisitor != null) {
-         n.accept(semanticVisitor, arg);
-      }
-
    }
 
    @Override
@@ -1176,4 +1198,13 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
       n.setFieldsSymbolData(result);
    }
 
+   private static class ArgTypes {
+      private final SymbolType[] symbolTypes;
+      private final boolean hasFunctionalExpressions;
+
+      private ArgTypes(SymbolType[] symbolTypes, boolean hasFunctionalExpressions) {
+         this.symbolTypes = symbolTypes;
+         this.hasFunctionalExpressions = hasFunctionalExpressions;
+      }
+   }
 }
