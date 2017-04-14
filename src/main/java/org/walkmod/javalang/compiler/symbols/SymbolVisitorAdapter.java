@@ -361,7 +361,22 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
    public void visit(ObjectCreationExpr n, A arg) {
 
       loadThisSymbol(n, arg);
-      List<Expression> args = n.getArgs();
+      SymbolType[] argsType = argsType(n.getArgs());
+      SymbolType scopeType = (SymbolType) n.getType().getSymbolData();
+      symbolTable.lookUpSymbolForRead(scopeType.getClazz().getSimpleName(), n, scopeType, argsType,
+            ReferenceType.METHOD);
+
+      List<Type> typeargs = n.getTypeArgs();
+
+      if (typeargs != null) {
+         for (Type type : typeargs) {
+            type.accept(this, arg);
+         }
+      }
+   }
+
+   private static SymbolType[] argsType(final List<Expression> exprs) {
+      List<Expression> args = exprs;
       SymbolType[] argsType = null;
       if (args != null) {
          Iterator<Expression> it = args.iterator();
@@ -380,17 +395,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
       } else {
          argsType = new SymbolType[0];
       }
-      SymbolType scopeType = (SymbolType) n.getType().getSymbolData();
-      symbolTable.lookUpSymbolForRead(scopeType.getClazz().getSimpleName(), n, scopeType, argsType,
-            ReferenceType.METHOD);
-
-      List<Type> typeargs = n.getTypeArgs();
-
-      if (typeargs != null) {
-         for (Type type : typeargs) {
-            type.accept(this, arg);
-         }
-      }
+      return argsType;
    }
 
    public void pushScope(TypeDeclaration n) {
@@ -627,25 +632,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
          scopeType = (SymbolType) n.getScope().getSymbolData();
 
       }
-      List<Expression> args = n.getArgs();
-      SymbolType[] argsType = null;
-      if (args != null) {
-         Iterator<Expression> it = args.iterator();
-         argsType = new SymbolType[args.size()];
-         int i = 0;
-         while (it.hasNext()) {
-            Expression current = it.next();
-
-            SymbolType argType = (SymbolType) current.getSymbolData();
-
-            argsType[i] = argType;
-
-            i++;
-
-         }
-      } else {
-         argsType = new SymbolType[0];
-      }
+      SymbolType[] argsType = argsType(n.getArgs());
 
       symbolTable.lookUpSymbolForRead(n.getName(), n, scopeType, argsType, ReferenceType.METHOD);
 
@@ -746,9 +733,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
             n.getExpr().accept(expressionTypeAnalyzer, arg);
             n.setSymbolData(n.getExpr().getSymbolData());
          }
-      } else {
-         n.setSymbolData(symbolTable.getType("this", ReferenceType.VARIABLE));
       }
+      // resolve constructor symbol data
+      n.accept(expressionTypeAnalyzer, arg);
+
       if (n.getTypeArgs() != null) {
          for (Type t : n.getTypeArgs()) {
             t.accept(this, arg);

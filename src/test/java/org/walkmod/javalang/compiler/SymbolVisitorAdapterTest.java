@@ -46,6 +46,7 @@ import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.NameExpr;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
+import org.walkmod.javalang.ast.stmt.ExplicitConstructorInvocationStmt;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
 import org.walkmod.javalang.ast.stmt.ReturnStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
@@ -445,6 +446,24 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		Assert.assertNotNull(cd.getSymbolData().getConstructor());
 		Assert.assertEquals(1, cd.getSymbolData().getConstructor().getParameterTypes().length);
 	}
+
+	@Test
+	public void testExplicitThisConstructorInvocationResolution() throws Exception {
+		CompilationUnit cu = run("public class A { private String name; public A() { this(\"empty\"); } public A(String name){this.name = name;}}");
+		ExplicitConstructorInvocationStmt st = (ExplicitConstructorInvocationStmt) ((ConstructorDeclaration)cu.getTypes().get(0).getMembers().get(1)).getBlock().getStmts().get(0);
+		Assert.assertNotNull(st.getSymbolData());
+		Assert.assertEquals("public A(java.lang.String)", st.getSymbolData().getConstructor().toString());
+	}
+
+	@Test
+	public void testExplicitSuperConstructorInvocationResolution() throws Exception {
+		CompilationUnit cu = run("class A { private String name; public A(String name){this.name = name;}}"
+				+ "class B extends A { B() { super(\"empty\"); } } ");
+		ExplicitConstructorInvocationStmt st = (ExplicitConstructorInvocationStmt) ((ConstructorDeclaration)cu.getTypes().get(1).getMembers().get(0)).getBlock().getStmts().get(0);
+		Assert.assertNotNull(st.getSymbolData());
+		Assert.assertEquals("public A(java.lang.String)", st.getSymbolData().getConstructor().toString());
+	}
+
 
 	@Test
 	public void testFieldResolution() throws Exception {
