@@ -326,9 +326,12 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
             st = (SymbolType) constructorDeclaration.getSymbolData();
          } else {
             final ClassOrInterfaceDeclaration parentNode = (ClassOrInterfaceDeclaration) constructorDeclaration.getParentNode();
-            st = (SymbolType) parentNode.getExtends().get(0).getSymbolData();
+            final List<ClassOrInterfaceType> anExtends = parentNode.getExtends();
+            st = anExtends != null && !anExtends.isEmpty() ? (SymbolType) anExtends.get(0).getSymbolData() : null;
          }
-         resolveConstructor(n, n.getArgs(), st, arg);
+         if (st != null) {
+            resolveConstructor(n, n.getArgs(), st, arg);
+         }
       }
    }
 
