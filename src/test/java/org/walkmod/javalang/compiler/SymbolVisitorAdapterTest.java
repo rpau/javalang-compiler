@@ -518,6 +518,27 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	}
 
+
+	@Test
+	public void testGenericMethodWithArrays() throws Exception {
+		CompilationUnit cu = run("import java.util.Collections;\n"
+				+ "import java.util.Map;\n"
+				+ "import java.util.HashMap;\n"
+				+ " public class A {\n"
+				+ "  private final Map<String, Integer[]> params;\n"
+				+ "  public A(Map<String,Integer[]> p) {\n"
+				+ "    Map<String,Integer[]> m = new HashMap<String,Integer[]>(p);\n"
+				+ "    this.params = Collections.unmodifiableMap(m);\n"
+				+ "  }\n"
+				+ "}");
+
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
+
+		ConstructorDeclaration md = (ConstructorDeclaration) type.getMembers().get(1);
+		Assert.assertNotNull(md.getSymbolData());
+	}
+
+
 	@Test
 	public void testInnerClassAttributesReferences() throws Exception {
 		CompilationUnit cu = run(
