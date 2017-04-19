@@ -155,7 +155,9 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
 
                               SymbolType eType = getType(((ClassExpr) e));
 
-                              symbolTable.pushSymbol(letter, ReferenceType.TYPE, eType, e);
+                              // Is this sufficient and correct?
+                              final String pureLetter = letter.replace("? extends ", "");
+                              symbolTable.pushSymbol(pureLetter, ReferenceType.TYPE, eType, e);
 
                            } else {
                               if (!(e instanceof NullLiteralExpr)) {

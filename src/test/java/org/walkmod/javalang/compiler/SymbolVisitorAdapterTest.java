@@ -504,6 +504,28 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
+	public void testGenericMethodClassParameter() throws Exception {
+		run("import java.util.List;\n" +
+				"\n" +
+				"public class TypedMethod {\n" +
+				"  public interface Mixin<T extends Mixin> {\n" +
+				"}\n" +
+				"public class AMixin implements Mixin<AMixin> {\n" +
+				"  public List<String> getList() {\n" +
+				"    return null;\n" +
+				"  }\n" +
+				"}\n" +
+				"public <T extends Mixin> T mixin(Class<? extends  T > mixin) {\n" +
+				"  return null;\n" +
+				"}\n" +
+				"public void m() {\n" +
+				"  mixin(AMixin.class).getList().get(0);\n" +
+				"}\n" +
+				"}\n");
+		Assert.assertTrue(true);
+	}
+
+	@Test
 	public void testGenericMethodResultType2() throws Exception {
 		CompilationUnit cu = run(
 				"import java.util.List;import java.util.LinkedList; public class A { public class B {} public class C {public List<? extends B> foo(){ return new LinkedList<B>();} public void bar() { foo().get(0);} }}");
