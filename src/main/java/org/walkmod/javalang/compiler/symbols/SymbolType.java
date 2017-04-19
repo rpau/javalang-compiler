@@ -24,7 +24,6 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayDeque;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -614,347 +613,367 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
       SymbolType returnType = null;
       if (type instanceof Class<?>) {
-         Class<?> aux = ((Class<?>) type);
-         returnType = new SymbolType();
-         int arrayCount = 0;
-         while (aux.isArray()) {
-            arrayCount++;
-            aux = aux.getComponentType();
-         }
-         returnType.setArrayCount(arrayCount);
-         returnType.setName(aux.getName());
-         Type[] typeParams = aux.getTypeParameters();
-         if (typeParams.length > 0) {
+         returnType = valueOfClass((Class<?>) type, arg, updatedTypeMapping, typeMapping);
+      } else if (type instanceof TypeVariable) {
+         return valueOfTypeVariable((TypeVariable<?>) type, arg, updatedTypeMapping, typeMapping);
+      } else if (type instanceof ParameterizedType) {
+         returnType = valueOfParameterizedType((ParameterizedType) type, arg, updatedTypeMapping, typeMapping);
+      } else if (type instanceof GenericArrayType) {
+         returnType = valueOfGenericArrayType((GenericArrayType) type, arg, updatedTypeMapping, typeMapping);
+      } else if (type instanceof WildcardType) {
+         returnType = valueOfWildcardType((WildcardType) type, arg, updatedTypeMapping, typeMapping);
+      }
+      return returnType;
 
-            List<SymbolType> params = new LinkedList<SymbolType>();
-            List<SymbolType> implParams = new LinkedList<SymbolType>();
-            boolean isParameterizedImplementation = false;
-            List<SymbolType> parameterizedTypes = null;
-            Iterator<SymbolType> it = null;
-            if (arg != null) {
+   }
 
-               Class<?> argClass = arg.getClazz();
-               parameterizedTypes = arg.getParameterizedTypes();
-               if (parameterizedTypes != null) {
-                  it = parameterizedTypes.iterator();
+   private static SymbolType valueOfClass(Class<?> type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping, Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+      SymbolType returnType;
+      Class<?> aux = type;
+      returnType = new SymbolType();
+      int arrayCount = 0;
+      while (aux.isArray()) {
+         arrayCount++;
+         aux = aux.getComponentType();
+      }
+      returnType.setArrayCount(arrayCount);
+      returnType.setName(aux.getName());
+      Type[] typeParams = aux.getTypeParameters();
+      if (typeParams.length > 0) {
 
-               }
-               List<Type> implementations = ClassInspector.getInterfaceOrSuperclassImplementations(argClass, aux);
+         List<SymbolType> params = new LinkedList<SymbolType>();
+         List<SymbolType> implParams = new LinkedList<SymbolType>();
+         boolean isParameterizedImplementation = false;
+         List<SymbolType> parameterizedTypes = null;
+         Iterator<SymbolType> it = null;
+         if (arg != null) {
 
-               Iterator<Type> itTypes = implementations.iterator();
-               Type[] typeParamsAux = typeParams;
-               Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
-               while (itTypes.hasNext()) {
-                  Type implementation = itTypes.next();
-                  if (implementation instanceof ParameterizedType) {
-                     ParameterizedType ptype = (ParameterizedType) implementation;
-                     Map<String, SymbolType> typeMappingVars = arg.getTypeMappingVariables();
-
-                     Type[] targuments = ptype.getActualTypeArguments();
-                     for (int i = 0; i < targuments.length; i++) {
-
-                        SymbolType st = null;
-                        if (targuments[i] instanceof TypeVariable) {
-                           String name = ((TypeVariable<?>) targuments[i]).getName();
-                           if (typeMappingVars != null && typeMappingVars.containsKey(name)) {
-                              st = typeMappingVars.get(name);
-                           } else if (it != null && it.hasNext()) {
-                              st = it.next();
-                           } else {
-                              st = new SymbolType(Object.class);
-                           }
-                        } else {
-
-                           st = SymbolType.valueOf(targuments[i], auxMap);
-                        }
-                        if (st != null) {
-                           implParams.add(st);
-                        }
-                     }
-                     isParameterizedImplementation = true;
-                     it = implParams.iterator();
-                     params = implParams;
-                     implParams = new LinkedList<SymbolType>();
-                     parameterizedTypes = params;
-                  } else if (implementation instanceof Class<?>) {
-                     Class<?> auxClass = (Class<?>) implementation;
-                     boolean isRecursiveThenOmit = false;
-                     if (type instanceof Class<?>) {
-                        isRecursiveThenOmit = ((Class<?>) type).getName().equals(auxClass.getName());
-                     }
-                     if (!isRecursiveThenOmit) {
-                        typeParamsAux = auxClass.getTypeParameters();
-                        loadTypeParams(it, typeParamsAux, parameterizedTypes, typeMapping, auxMap);
-                     }
-                  }
-               }
+            Class<?> argClass = arg.getClazz();
+            parameterizedTypes = arg.getParameterizedTypes();
+            if (parameterizedTypes != null) {
+               it = parameterizedTypes.iterator();
 
             }
-            if (!isParameterizedImplementation) {
+            List<Type> implementations = ClassInspector.getInterfaceOrSuperclassImplementations(argClass, aux);
 
-               if (parameterizedTypes != null) {
-                  it = parameterizedTypes.iterator();
-               }
-               for (int i = 0; i < typeParams.length; i++) {
-                  SymbolType ref = null;
-                  if (it != null && it.hasNext()) {
-                     ref = it.next();
-                  }
-                  boolean isRecursiveThenOmit = false;
+            Iterator<Type> itTypes = implementations.iterator();
+            Type[] typeParamsAux = typeParams;
+            Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
+            while (itTypes.hasNext()) {
+               Type implementation = itTypes.next();
+               if (implementation instanceof ParameterizedType) {
+                  ParameterizedType ptype = (ParameterizedType) implementation;
+                  Map<String, SymbolType> typeMappingVars = arg.getTypeMappingVariables();
 
-                  if (typeParams[i] instanceof TypeVariable) {
-                     TypeVariable<?> tv = (TypeVariable<?>) typeParams[i];
-                     Type[] types = tv.getBounds();
-                     if (types.length == 1) {
-                        if (types[0] instanceof Class<?> && type instanceof Class<?>) {
-                           isRecursiveThenOmit = ((Class<?>) type).getName().equals(((Class<?>) types[0]).getName());
+                  Type[] targuments = ptype.getActualTypeArguments();
+                  for (int i = 0; i < targuments.length; i++) {
+
+                     SymbolType st = null;
+                     if (targuments[i] instanceof TypeVariable) {
+                        String name = ((TypeVariable<?>) targuments[i]).getName();
+                        if (typeMappingVars != null && typeMappingVars.containsKey(name)) {
+                           st = typeMappingVars.get(name);
+                        } else if (it != null && it.hasNext()) {
+                           st = it.next();
+                        } else {
+                           st = new SymbolType(Object.class);
                         }
+                     } else {
+
+                        st = SymbolType.valueOf(targuments[i], auxMap);
                      }
+                     if (st != null) {
+                        implParams.add(st);
+                     }
+                  }
+                  isParameterizedImplementation = true;
+                  it = implParams.iterator();
+                  params = implParams;
+                  implParams = new LinkedList<SymbolType>();
+                  parameterizedTypes = params;
+               } else if (implementation instanceof Class<?>) {
+                  Class<?> auxClass = (Class<?>) implementation;
+                  boolean isRecursiveThenOmit = false;
+                  if (type instanceof Class<?>) {
+                     isRecursiveThenOmit = ((Class<?>) type).getName().equals(auxClass.getName());
                   }
                   if (!isRecursiveThenOmit) {
-                     SymbolType tp = valueOf(typeParams[i], ref, updatedTypeMapping, typeMapping);
-                     if (tp != null) {
-                        params.add(tp);
-                     }
-                  } else {
-                     params.add(returnType);
+                     typeParamsAux = auxClass.getTypeParameters();
+                     loadTypeParams(it, typeParamsAux, parameterizedTypes, typeMapping, auxMap);
                   }
                }
+            }
 
-            }
-            if (!params.isEmpty()) {
-               returnType.setParameterizedTypes(params);
-            }
          }
+         if (!isParameterizedImplementation) {
 
-      } else if (type instanceof TypeVariable) {
-
-         String variableName = ((TypeVariable<?>) type).getName();
-         SymbolType aux = typeMapping.get(variableName);
-
-         if (aux == null) {
-
-            Type[] bounds = ((TypeVariable<?>) type).getBounds();
-
-            if (arg != null) {
-
-               returnType = arg.getParameterizedType(variableName, new HashSet<SymbolType>());
-
-               Class<?> argClazz = arg.getClazz();
-
-               if (returnType != null && argClazz != null
-                     && argClazz.getName().equals(returnType.getClazz().getName())) {
-
-                  arg = returnType;
+            if (parameterizedTypes != null) {
+               it = parameterizedTypes.iterator();
+            }
+            for (int i = 0; i < typeParams.length; i++) {
+               SymbolType ref = null;
+               if (it != null && it.hasNext()) {
+                  ref = it.next();
                }
-               returnType = new SymbolType(arg.getName(), arg.getBounds(), arg.getLowerBounds());
-               returnType.setArrayCount(arg.getArrayCount());
-               returnType.setTemplateVariable(variableName);
-               Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
-               auxMap.put(variableName, returnType);
+               boolean isRecursiveThenOmit = false;
 
-               for (Type bound : bounds) {
-                  valueOf(bound, arg, updatedTypeMapping, auxMap);
-               }
-
-               returnType.setParameterizedTypes(arg.getParameterizedTypes());
-
-            } else {
-               if (bounds.length == 0) {
-                  returnType = new SymbolType("java.lang.Object");
-                  returnType.setTemplateVariable(variableName);
-               } else {
-                  List<SymbolType> boundsList = new LinkedList<SymbolType>();
-                  SymbolType initReturnType = new SymbolType(boundsList);
-                  initReturnType.setTemplateVariable(variableName);
-                  Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
-                  auxMap.put(variableName, initReturnType);
-                  for (Type bound : bounds) {
-                     SymbolType st = valueOf(bound, null, updatedTypeMapping, auxMap);
-                     if (st != null) {
-                        boundsList.add(st);
+               if (typeParams[i] instanceof TypeVariable) {
+                  TypeVariable<?> tv = (TypeVariable<?>) typeParams[i];
+                  Type[] types = tv.getBounds();
+                  if (types.length == 1) {
+                     if (types[0] instanceof Class<?> && type instanceof Class<?>) {
+                        isRecursiveThenOmit = ((Class<?>) type).getName().equals(((Class<?>) types[0]).getName());
                      }
                   }
-                  if (boundsList.isEmpty()) {
-                     returnType = new SymbolType("java.lang.Object");
-                  } else if (bounds.length == 1) {
-                     returnType = boundsList.get(0);
-                     returnType.setTemplateVariable(variableName);
-                  } else {
-                     returnType = new SymbolType(boundsList);
+               }
+               if (!isRecursiveThenOmit) {
+                  SymbolType tp = valueOf(typeParams[i], ref, updatedTypeMapping, typeMapping);
+                  if (tp != null) {
+                     params.add(tp);
                   }
-                  returnType.setTemplateVariable(variableName);
+               } else {
+                  params.add(returnType);
                }
             }
-            if (!updatedTypeMapping.containsKey(variableName)) {
 
-               updatedTypeMapping.put(variableName, returnType);
-               return returnType;
-            } else {
-               SymbolType previousSymbol = updatedTypeMapping.get(variableName);
-               String returnTypeName = returnType.getName();
-               if (!"java.lang.Object".equals(returnTypeName)) {
-                  returnType = (SymbolType) previousSymbol.merge(returnType);
-                  if (returnType != null) {
-                     previousSymbol.setClazz(returnType.getClazz());
-                  }
-                  updatedTypeMapping.put(variableName, previousSymbol);
-               }
-               return updatedTypeMapping.get(variableName);
+         }
+         if (!params.isEmpty()) {
+            returnType.setParameterizedTypes(params);
+         }
+      }
+      return returnType;
+   }
+
+   private static SymbolType valueOfTypeVariable(TypeVariable<?> type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping, Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+      SymbolType returnType;
+      String variableName = type.getName();
+      SymbolType aux = typeMapping.get(variableName);
+
+      if (aux == null) {
+
+         Type[] bounds = type.getBounds();
+
+         if (arg != null) {
+
+            returnType = arg.getParameterizedType(variableName, new HashSet<SymbolType>());
+
+            Class<?> argClazz = arg.getClazz();
+
+            if (returnType != null && argClazz != null
+                  && argClazz.getName().equals(returnType.getClazz().getName())) {
+
+               arg = returnType;
             }
+            returnType = new SymbolType(arg.getName(), arg.getBounds(), arg.getLowerBounds());
+            returnType.setArrayCount(arg.getArrayCount());
+            returnType.setTemplateVariable(variableName);
+            Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
+            auxMap.put(variableName, returnType);
+
+            for (Type bound : bounds) {
+               valueOf(bound, arg, updatedTypeMapping, auxMap);
+            }
+
+            returnType.setParameterizedTypes(arg.getParameterizedTypes());
 
          } else {
-            return aux;
+            if (bounds.length == 0) {
+               returnType = new SymbolType("java.lang.Object");
+               returnType.setTemplateVariable(variableName);
+            } else {
+               List<SymbolType> boundsList = new LinkedList<SymbolType>();
+               SymbolType initReturnType = new SymbolType(boundsList);
+               initReturnType.setTemplateVariable(variableName);
+               Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
+               auxMap.put(variableName, initReturnType);
+               for (Type bound : bounds) {
+                  SymbolType st = valueOf(bound, null, updatedTypeMapping, auxMap);
+                  if (st != null) {
+                     boundsList.add(st);
+                  }
+               }
+               if (boundsList.isEmpty()) {
+                  returnType = new SymbolType("java.lang.Object");
+               } else if (bounds.length == 1) {
+                  returnType = boundsList.get(0);
+                  returnType.setTemplateVariable(variableName);
+               } else {
+                  returnType = new SymbolType(boundsList);
+               }
+               returnType.setTemplateVariable(variableName);
+            }
+         }
+         if (!updatedTypeMapping.containsKey(variableName)) {
+
+            updatedTypeMapping.put(variableName, returnType);
+            return returnType;
+         } else {
+            SymbolType previousSymbol = updatedTypeMapping.get(variableName);
+            String returnTypeName = returnType.getName();
+            if (!"java.lang.Object".equals(returnTypeName)) {
+               returnType = (SymbolType) previousSymbol.merge(returnType);
+               if (returnType != null) {
+                  previousSymbol.setClazz(returnType.getClazz());
+               }
+               updatedTypeMapping.put(variableName, previousSymbol);
+            }
+            return updatedTypeMapping.get(variableName);
          }
 
-      } else if (type instanceof ParameterizedType) {
-         Class<?> auxClass = (Class<?>) ((ParameterizedType) type).getRawType();
+      } else {
+         return aux;
+      }
+   }
 
-         Type[] types = ((ParameterizedType) type).getActualTypeArguments();
+   private static SymbolType valueOfParameterizedType(ParameterizedType type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping, Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+      SymbolType returnType;
+      Class<?> auxClass = (Class<?>) type.getRawType();
 
-         returnType = new SymbolType(auxClass.getName());
+      Type[] types = type.getActualTypeArguments();
 
-         if (types != null) {
+      returnType = new SymbolType(auxClass.getName());
 
-            List<SymbolType> params = new LinkedList<SymbolType>();
-            returnType.setParameterizedTypes(params);
-            List<SymbolType> paramTypes = null;
-            if (arg != null) {
-               paramTypes = arg.getParameterizedTypes();
-            }
-            int i = 0;
-            TypeVariable<?>[] tvs = auxClass.getTypeParameters();
-            for (Type t : types) {
+      if (types != null) {
 
-               String label = t.toString();
+         List<SymbolType> params = new LinkedList<SymbolType>();
+         returnType.setParameterizedTypes(params);
+         List<SymbolType> paramTypes = null;
+         if (arg != null) {
+            paramTypes = arg.getParameterizedTypes();
+         }
+         int i = 0;
+         TypeVariable<?>[] tvs = auxClass.getTypeParameters();
+         for (Type t : types) {
 
-               SymbolType param = typeMapping.get(label);
-               if (param != null) {
-                  String name = param.getName();
-                  if (name != null) {
-                     Class<?> aux = Types.getWrapperClass(name);
-                     if (aux != null) {
-                        param.setName(aux.getName());
-                        param.setClazz(aux);
-                     }
+            String label = t.toString();
+
+            SymbolType param = typeMapping.get(label);
+            if (param != null) {
+               String name = param.getName();
+               if (name != null) {
+                  Class<?> aux = Types.getWrapperClass(name);
+                  if (aux != null) {
+                     param.setName(aux.getName());
+                     param.setClazz(aux);
                   }
-                  params.add(param);
-               } else {
-                  SymbolType argToAnalyze = null;
-                  if (paramTypes != null && paramTypes.size() > i) {
-                     argToAnalyze = paramTypes.get(i);
-                  }
-                  boolean validParameterizedType = true;
-                  if (t instanceof TypeVariable<?>) {
-                     Type[] bounds = ((TypeVariable<?>) t).getBounds();
-                     validParameterizedType = !(bounds.length == 1 && bounds[0] == type);
-                  }
+               }
+               params.add(param);
+            } else {
+               SymbolType argToAnalyze = null;
+               if (paramTypes != null && paramTypes.size() > i) {
+                  argToAnalyze = paramTypes.get(i);
+               }
+               boolean validParameterizedType = true;
+               if (t instanceof TypeVariable<?>) {
+                  Type[] bounds = ((TypeVariable<?>) t).getBounds();
+                  validParameterizedType = !(bounds.length == 1 && bounds[0] == type);
+               }
 
-                  SymbolType st = null;
-                  if (validParameterizedType) {
+               SymbolType st = null;
+               if (validParameterizedType) {
 
-                     st = valueOf(t, argToAnalyze, updatedTypeMapping, typeMapping);
-                     if (st != null) {
-                        if (st.isTemplateVariable() && st.getTemplateVariable().equals("?")) {
-                           List<SymbolType> bounds = st.getBounds();
-                           if (bounds != null && bounds.size() == 1) {
-                              if ("java.lang.Object".equals(bounds.get(0).getName())) {
-                                 if (tvs.length > i) {
-                                    SymbolType templateVarType = valueOf(tvs[i], null, updatedTypeMapping, typeMapping);
-                                    bounds = new LinkedList<SymbolType>();
-                                    bounds.add(templateVarType);
-                                    st = new SymbolType(bounds);
-                                    st.setTemplateVariable("?");
-                                 }
+                  st = valueOf(t, argToAnalyze, updatedTypeMapping, typeMapping);
+                  if (st != null) {
+                     if (st.isTemplateVariable() && st.getTemplateVariable().equals("?")) {
+                        List<SymbolType> bounds = st.getBounds();
+                        if (bounds != null && bounds.size() == 1) {
+                           if ("java.lang.Object".equals(bounds.get(0).getName())) {
+                              if (tvs.length > i) {
+                                 SymbolType templateVarType = valueOf(tvs[i], null, updatedTypeMapping, typeMapping);
+                                 bounds = new LinkedList<SymbolType>();
+                                 bounds.add(templateVarType);
+                                 st = new SymbolType(bounds);
+                                 st.setTemplateVariable("?");
                               }
                            }
                         }
                      }
                   }
-                  if (st != null) {
-                     String name = st.getName();
-                     if (name != null) {
-                        Class<?> aux = Types.getWrapperClass(name);
-                        if (aux != null) {
-                           st.setName(aux.getName());
-                           st.setClazz(aux);
-                        }
+               }
+               if (st != null) {
+                  String name = st.getName();
+                  if (name != null) {
+                     Class<?> aux = Types.getWrapperClass(name);
+                     if (aux != null) {
+                        st.setName(aux.getName());
+                        st.setClazz(aux);
                      }
                   }
-                  if (st == null) {
-                     st = new SymbolType("java.lang.Object");
-                  }
-
-                  params.add(st);
-
+               }
+               if (st == null) {
+                  st = new SymbolType("java.lang.Object");
                }
 
-               i++;
+               params.add(st);
+
             }
-            if (params.isEmpty()) {
-               returnType.setParameterizedTypes(null);
-            }
+
+            i++;
          }
-
-      } else if (type instanceof GenericArrayType)
-
-      {
-         if (arg != null) {
-            if (arg.getArrayCount() > 0) {
-               arg = arg.clone();
-               arg.setArrayCount(arg.getArrayCount() - 1);
-            } else {
-               arg = null;
-            }
-         }
-         SymbolType st = valueOf(((GenericArrayType) type).getGenericComponentType(), arg, updatedTypeMapping,
-               typeMapping);
-
-         returnType = st.clone();
-         returnType.setArrayCount(returnType.getArrayCount() + 1);
-      } else if (type instanceof WildcardType)
-
-      {
-         WildcardType wt = (WildcardType) type;
-         Type[] types = wt.getUpperBounds();
-
-         List<SymbolType> upperBounds = null;
-         List<SymbolType> lowerBounds = null;
-         if (types != null && types.length > 0) {
-            upperBounds = new LinkedList<SymbolType>();
-            for (int i = 0; i < types.length; i++) {
-               SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
-               if (st != null) {
-                  upperBounds.add(st);
-               }
-            }
-            if (upperBounds.isEmpty()) {
-               upperBounds = null;
-            }
-
-         }
-         types = wt.getLowerBounds();
-         if (types != null && types.length > 0) {
-            lowerBounds = new LinkedList<SymbolType>();
-            for (int i = 0; i < types.length; i++) {
-
-               SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
-               if (st != null) {
-                  lowerBounds.add(st);
-               }
-
-            }
-            if (lowerBounds.isEmpty()) {
-               lowerBounds = null;
-            }
-         }
-         if (upperBounds != null || lowerBounds != null) {
-            returnType = new SymbolType(upperBounds, lowerBounds);
-            returnType.setTemplateVariable(wt.toString());
+         if (params.isEmpty()) {
+            returnType.setParameterizedTypes(null);
          }
       }
       return returnType;
+   }
 
+   private static SymbolType valueOfGenericArrayType(GenericArrayType type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping, Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+      SymbolType returnType;
+      if (arg != null) {
+         if (arg.getArrayCount() > 0) {
+            arg = arg.clone();
+            arg.setArrayCount(arg.getArrayCount() - 1);
+         } else {
+            arg = null;
+         }
+      }
+      SymbolType st = valueOf(type.getGenericComponentType(), arg, updatedTypeMapping,
+            typeMapping);
+
+      returnType = st.clone();
+      returnType.setArrayCount(returnType.getArrayCount() + 1);
+      return returnType;
+   }
+
+   private static SymbolType valueOfWildcardType(final WildcardType wt, SymbolType arg, Map<String, SymbolType> updatedTypeMapping, Map<String, SymbolType> typeMapping) throws InvalidTypeException {
+      Type[] types = wt.getUpperBounds();
+
+      List<SymbolType> upperBounds = null;
+      List<SymbolType> lowerBounds = null;
+      if (types != null && types.length > 0) {
+         upperBounds = new LinkedList<SymbolType>();
+         for (int i = 0; i < types.length; i++) {
+            SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
+            if (st != null) {
+               upperBounds.add(st);
+            }
+         }
+         if (upperBounds.isEmpty()) {
+            upperBounds = null;
+         }
+
+      }
+      types = wt.getLowerBounds();
+      if (types != null && types.length > 0) {
+         lowerBounds = new LinkedList<SymbolType>();
+         for (int i = 0; i < types.length; i++) {
+
+            SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
+            if (st != null) {
+               lowerBounds.add(st);
+            }
+
+         }
+         if (lowerBounds.isEmpty()) {
+            lowerBounds = null;
+         }
+      }
+      SymbolType returnType = null;
+      if (upperBounds != null || lowerBounds != null) {
+         returnType = new SymbolType(upperBounds, lowerBounds);
+         returnType.setTemplateVariable(wt.toString());
+      }
+      return returnType;
    }
 
    public static SymbolType valueOf(Type type, Map<String, SymbolType> typeMapping) throws InvalidTypeException {
