@@ -212,6 +212,13 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
    public void setParameterizedTypes(List<SymbolType> parameterizedTypes) {
       this.parameterizedTypes = parameterizedTypes;
+      /*
+      this does not work, a lot of tests in SymbolVisitorAdapterTest fail if activated.
+      Difficult flow of control.
+      this.parameterizedTypes = parameterizedTypes != null
+              ? Collections.unmodifiableList(new ArrayList<SymbolType>(parameterizedTypes))
+              : null;
+      */
    }
 
    public int getArrayCount() {
@@ -972,6 +979,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
       if (upperBounds != null || lowerBounds != null) {
          returnType = new SymbolType(upperBounds, lowerBounds);
          returnType.setTemplateVariable(wt.toString());
+         if (arg != null) {
+            returnType.setArrayCount(arg.getArrayCount());
+         }
       }
       return returnType;
    }
