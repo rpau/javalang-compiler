@@ -843,6 +843,22 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
+	public void testArrayOfArrayResolution() throws Exception {
+		run("public class StackedArrayParam {\n" +
+				"    private int[][] rowGroups;\n" +
+				"\n" +
+				"    void f() {\n" +
+				"        setRowGroups(new int[][] {{2, 4, 6, 8, 10, 12, 14}});\n" +
+				"    }\n" +
+				"\n" +
+				"    public void setRowGroups(int[][] rowGroups) {\n" +
+				"        this.rowGroups = rowGroups;\n" +
+				"    }\n" +
+				"}\n");
+		Assert.assertTrue(true);
+	}
+
+	@Test
 	public void testGenericsInsideAnonymousClasses() throws Exception {
 		run("import java.util.Iterator; public class A { class C<T> {  Iterator<T> get() { return null; } } void bar() { C aux = new C<String>() { void test(String s) { get().next().concat(s).length(); }}; }}");
 		Assert.assertTrue(true);

@@ -152,7 +152,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
    @Override
    public void visit(ArrayCreationExpr n, A arg) {
       SymbolType arrayType = ASTSymbolTypeResolver.getInstance().valueOf(n.getType());
-      arrayType.setArrayCount(1);
+      arrayType.setArrayCount(n.getArrayCount() > 0 ? n.getArrayCount() : 1);
       n.setSymbolData(arrayType);
       ArrayInitializerExpr expr = n.getInitializer();
       if (expr != null) {
