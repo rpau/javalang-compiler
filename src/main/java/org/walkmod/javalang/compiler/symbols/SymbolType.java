@@ -24,6 +24,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -211,14 +212,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
    }
 
    public void setParameterizedTypes(List<SymbolType> parameterizedTypes) {
-      this.parameterizedTypes = parameterizedTypes;
-      /*
-      this does not work, a lot of tests in SymbolVisitorAdapterTest fail if activated.
-      Difficult flow of control.
       this.parameterizedTypes = parameterizedTypes != null
               ? Collections.unmodifiableList(new ArrayList<SymbolType>(parameterizedTypes))
               : null;
-      */
    }
 
    public int getArrayCount() {
@@ -843,7 +839,6 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
       if (types != null) {
 
          List<SymbolType> params = new LinkedList<SymbolType>();
-         returnType.setParameterizedTypes(params);
          List<SymbolType> paramTypes = null;
          if (arg != null) {
             paramTypes = arg.getParameterizedTypes();
@@ -917,9 +912,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
             i++;
          }
-         if (params.isEmpty()) {
-            returnType.setParameterizedTypes(null);
-         }
+         returnType.setParameterizedTypes(!params.isEmpty() ? params : null);
+
       }
       return returnType;
    }
