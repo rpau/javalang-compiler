@@ -526,6 +526,17 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
+	public void testGenericsWithArrayClassParameter() throws Exception {
+		run("public class A {\n"
+				+ "  void setContent(byte[] bytes) {}\n"
+				+ "  <T> T getBody(Class<T> type) { return null; }\n"
+				+ "  void f() { setContent(getBody(byte[].class)); }\n"
+				+ "}\n"
+		);
+		Assert.assertTrue(true);
+	}
+
+	@Test
 	public void testGenericMethodResultType2() throws Exception {
 		CompilationUnit cu = run(
 				"import java.util.List;import java.util.LinkedList; public class A { public class B {} public class C {public List<? extends B> foo(){ return new LinkedList<B>();} public void bar() { foo().get(0);} }}");

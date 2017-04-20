@@ -87,24 +87,29 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
    }
 
    private SymbolType getType(ClassExpr classExpr) {
-      String name = classExpr.getType().toString();
-      SymbolType type = symTable.getType(name, ReferenceType.TYPE);
-      if (type == null) {
-         Class<?> clazz = null;
-         try {
-            clazz = TypesLoaderVisitor.getClassLoader().loadClass(name);
+      final SymbolData symbolData = classExpr.getType().getSymbolData();
+      if (symbolData instanceof SymbolType) {
+         return (SymbolType) symbolData;
+      } else {
+         String name = classExpr.getType().toString();
+         SymbolType type = symTable.getType(name, ReferenceType.TYPE);
+         if (type == null) {
+            Class<?> clazz;
+            try {
+               clazz = TypesLoaderVisitor.getClassLoader().loadClass(name);
 
-            String className = clazz.getName();
-            type = new SymbolType();
-            type.setName(className);
+               String className = clazz.getName();
+               type = new SymbolType();
+               type.setName(className);
 
-         } catch (ClassNotFoundException e) {
-            // a name expression could be "org.walkmod.A" and this node
-            // could be "org.walkmod"
+            } catch (ClassNotFoundException e) {
+               // a name expression could be "org.walkmod.A" and this node
+               // could be "org.walkmod"
 
+            }
          }
+         return type;
       }
-      return type;
    }
 
    public SymbolTable getTypeParamsSymbolTable() {
