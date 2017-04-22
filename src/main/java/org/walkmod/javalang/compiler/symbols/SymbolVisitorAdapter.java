@@ -89,6 +89,9 @@ import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
+/**
+ * Resolve all the symbols and store them into the symbol table.
+ */
 public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVisitorAdapter<A>
       implements SymbolActionProviderAware {
 
