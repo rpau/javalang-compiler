@@ -27,10 +27,7 @@ import javax.lang.model.SourceVersion;
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
-import org.walkmod.javalang.ast.CompilationUnit;
-import org.walkmod.javalang.ast.ImportDeclaration;
-import org.walkmod.javalang.ast.SymbolData;
-import org.walkmod.javalang.ast.SymbolReference;
+import org.walkmod.javalang.ast.*;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
@@ -532,6 +529,43 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 				+ "  <T> T getBody(Class<T> type) { return null; }\n"
 				+ "  void f() { setContent(getBody(byte[].class)); }\n"
 				+ "}\n"
+		);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testRawAndGenericSymbolsDiffer() throws Exception {
+		CompilationUnit cu = run(
+				"import java.util.Collection;" +
+						"public class A {" +
+						"  Collection raw() { return null; }" +
+						"  Collection<java.io.Serializable> col() { return null; }" +
+						"}");
+		MethodDeclaration mdRaw = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		final MethodSymbolData sdRaw = mdRaw.getSymbolData();
+		Assert.assertEquals("raw", sdRaw.getMethod().getName());
+		MethodDeclaration mdCol = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
+		final MethodSymbolData sdCol = mdCol.getSymbolData();
+		Assert.assertEquals("col", sdCol.getMethod().getName());
+
+		Assert.assertNull(sdRaw.getParameterizedTypes());
+		Assert.assertNotNull(sdCol.getParameterizedTypes());
+	}
+
+	@Test
+	public void testGenericMethodWithRawArgument() throws Exception {
+		run("import java.util.Collection;\n" +
+						"    public class U {\n" +
+						"        void print(Collection<java.io.Serializable> list) { }\n" +
+						"        void m() {\n" +
+						"            Raw raw = new Raw();\n" +
+						"            print(raw.rawList());\n" +
+						"        }\n" +
+						"    }\n",
+				"import java.util.Collection;\n" +
+						"    public class Raw {\n" +
+						"        public Collection rawList() {return null;} \n" +
+						"    }\n"
 		);
 		Assert.assertTrue(true);
 	}

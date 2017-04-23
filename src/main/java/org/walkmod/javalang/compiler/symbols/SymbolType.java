@@ -728,8 +728,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                }
                if (!isRecursiveThenOmit) {
                   SymbolType tp = valueOf(typeParams[i], ref, updatedTypeMapping, typeMapping);
-                  if (tp != null) {
-                     params.add(tp);
+                  if (arg != null || !Object.class.getName().equals(tp.getName())) {
+                     if (tp != null) {
+                        params.add(tp);
+                     }
                   }
                } else {
                   params.add(returnType);
