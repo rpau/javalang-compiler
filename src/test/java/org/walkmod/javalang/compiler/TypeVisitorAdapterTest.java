@@ -20,6 +20,7 @@ import static org.junit.Assert.fail;
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
+import org.walkmod.javalang.ParseException;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.expr.*;
 import org.walkmod.javalang.compiler.symbols.*;
@@ -337,23 +338,39 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		}
 	}
 
+	/**
+	 * A raw type differs from a type qualified with "Object" because
+	 * the former can be assigned to a type qualified with something
+	 * other than "Object". (see SymbolVisitorAdapterTest#testGenericMethodWithRawArgument)
+	 */
 	@Test
 	public void testRawTypes() throws Exception {
-		compile("import java.util.List; import java.util.LinkedList; public class A { List bar = new LinkedList(); }");
+		compile("import java.util.List; import java.util.LinkedList;" +
+				" public class A { List bar = new LinkedList(); List<Object> foo = new LinkedList<Object>();}");
 		SymbolTable symTable = getSymbolTable();
 		symTable.pushScope();
 		SymbolType st = new SymbolType(getClassLoader().loadClass("A"));
 		symTable.pushSymbol("a", ReferenceType.VARIABLE, st, null);
-		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(
-				Expression.class, "a.bar");
-		HashMap<String, Object> ctx = new HashMap<String, Object>();
-		expressionAnalyzer.visit(expr, ctx);
-		SymbolType type = (SymbolType) expr.getSymbolData();
+
+		// the qualified
+		SymbolType qualified = getSymbolType("a.foo");
+		Assert.assertNotNull(qualified);
+		Assert.assertEquals("java.util.List", qualified.getName());
+		Assert.assertNotNull(qualified.getParameterizedTypes());
+		Assert.assertEquals("java.lang.Object", qualified.getParameterizedTypes().get(0).getName());
+
+		// the raw
+		SymbolType type = getSymbolType("a.bar");
 		Assert.assertNotNull(type);
 		Assert.assertEquals("java.util.List", type.getName());
-		Assert.assertNotNull(type.getParameterizedTypes());
-		Assert.assertEquals("java.lang.Object",type.getParameterizedTypes().get(0).getName());
+		Assert.assertNull(type.getParameterizedTypes());
+	}
 
+	private SymbolType getSymbolType(final String name) throws ParseException {
+		FieldAccessExpr expr = (FieldAccessExpr) ASTManager.parse(Expression.class, name);
+		HashMap<String, Object> ctx = new HashMap<String, Object>();
+		expressionAnalyzer.visit(expr, ctx);
+		return (SymbolType) expr.getSymbolData();
 	}
 
 	@Test
