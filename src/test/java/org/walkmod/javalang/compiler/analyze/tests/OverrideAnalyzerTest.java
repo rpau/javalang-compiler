@@ -99,6 +99,23 @@ public class OverrideAnalyzerTest extends SemanticTest {
 	}
 
 	@Test
+	public void testInterfaceOverridesInterfaces() throws Exception {
+
+		String fooCode = "public interface Foo extends Bar{ "
+				+ "public void doSomething();" + " }";
+
+		String barCode = "public interface Bar{ "
+				+ "public void doSomething();" + " }";
+
+		CompilationUnit cu = compile(fooCode, barCode);
+		final TypeDeclaration type = cu.getTypes().get(0);
+		final MethodDeclaration method = (MethodDeclaration) type.getMembers().get(0);
+		Class<?> override = ((ClassOrInterfaceDeclaration) type).getExtends().get(0).getSymbolData().getClazz();
+
+		assertMethods(method, methods(override.getMethod("doSomething")));
+	}
+
+	@Test
 	public void testOverrideWithGenerics() throws Exception {
 
 		String fooCode = "import java.util.List; public class Foo implements Bar<List>{ "

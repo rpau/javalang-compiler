@@ -48,13 +48,15 @@ public class OverrideAnalyzer {
 
          final Class<?> declaringClass = sdata.getMethod().getDeclaringClass();
          final Class<?> parentClass = declaringClass.getSuperclass();
+         final Class<?>[] interfaces = declaringClass.getInterfaces();
 
-         if (parentClass != null) {
+         if (parentClass != null || interfaces.length > 0) {
             final SymbolData[] args = getParameterSymbolData(md);
 
             List<Class<?>> scopesToCheck = new LinkedList<Class<?>>();
-            scopesToCheck.add(parentClass);
-            Class<?>[] interfaces = declaringClass.getInterfaces();
+            if (parentClass != null) {
+               scopesToCheck.add(parentClass);
+            }
             for (int i = 0; i < interfaces.length; i++) {
                scopesToCheck.add(interfaces[i]);
             }
