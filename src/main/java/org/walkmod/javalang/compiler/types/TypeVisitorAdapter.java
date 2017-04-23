@@ -116,6 +116,11 @@ import org.walkmod.javalang.exceptions.InvalidTypeException;
 import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
 import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
+/**
+ * Resolve the type of a node (symbol or expression) using the symbol table.
+ * See SymbolVisitorAdapter for symbol resolution.
+ * The original idea is separating the type resolution from the symbol resolution. 
+ */
 public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisitorAdapter<A> {
 
    public static final String IMPLICIT_PARAM_TYPE = "implicit_param_type";
