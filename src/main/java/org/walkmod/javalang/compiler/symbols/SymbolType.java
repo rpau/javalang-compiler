@@ -728,6 +728,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                }
                if (!isRecursiveThenOmit) {
                   SymbolType tp = valueOf(typeParams[i], ref, updatedTypeMapping, typeMapping);
+
                   /*
                      if we are resolving a raw class here, it may have type variables,
                      but if we don't have any values do not use Object but treat it as a raw type!
@@ -741,7 +742,6 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                   params.add(returnType);
                }
             }
-
          }
          if (!params.isEmpty()) {
             returnType.setParameterizedTypes(params);
