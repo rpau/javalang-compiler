@@ -23,17 +23,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
-import java.util.ArrayDeque;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 
 import org.walkmod.javalang.ast.ConstructorSymbolData;
 import org.walkmod.javalang.ast.FieldSymbolData;
@@ -211,7 +201,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
    }
 
    public void setParameterizedTypes(List<SymbolType> parameterizedTypes) {
-      this.parameterizedTypes = parameterizedTypes;
+      this.parameterizedTypes = parameterizedTypes != null
+              ? Collections.unmodifiableList(new ArrayList<SymbolType>(parameterizedTypes))
+              : null;
    }
 
    public int getArrayCount() {
@@ -593,7 +585,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
    /**
     * Builds a symbol type from a Java type.
-    * 
+    *
     * @param type
     *           type to convert
     * @param arg
@@ -838,7 +830,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
       if (types != null) {
 
          List<SymbolType> params = new LinkedList<SymbolType>();
-         returnType.setParameterizedTypes(params);
+
          List<SymbolType> paramTypes = null;
          if (arg != null) {
             paramTypes = arg.getParameterizedTypes();
@@ -912,9 +904,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
             i++;
          }
-         if (params.isEmpty()) {
-            returnType.setParameterizedTypes(null);
-         }
+         returnType.setParameterizedTypes(!params.isEmpty() ? params : null);
       }
       return returnType;
    }
@@ -974,6 +964,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
       if (upperBounds != null || lowerBounds != null) {
          returnType = new SymbolType(upperBounds, lowerBounds);
          returnType.setTemplateVariable(wt.toString());
+         if (arg != null) {
+            returnType.setArrayCount(arg.getArrayCount());
+         }
       }
       return returnType;
    }

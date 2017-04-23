@@ -585,6 +585,27 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 	}
 
+
+	@Test
+	public void testGenericMethodWithArrays() throws Exception {
+		CompilationUnit cu = run("import java.util.Collections;\n"
+				+ "import java.util.Map;\n"
+				+ "import java.util.HashMap;\n"
+				+ " public class A {\n"
+				+ "  private final Map<String, Integer[]> params;\n"
+				+ "  public A(Map<String,Integer[]> p) {\n"
+				+ "    Map<String,Integer[]> m = new HashMap<String,Integer[]>(p);\n"
+				+ "    this.params = Collections.unmodifiableMap(m);\n"
+				+ "  }\n"
+				+ "}");
+
+		ClassOrInterfaceDeclaration type = (ClassOrInterfaceDeclaration) cu.getTypes().get(0);
+
+		ConstructorDeclaration md = (ConstructorDeclaration) type.getMembers().get(1);
+		Assert.assertNotNull(md.getSymbolData());
+	}
+
+
 	@Test
 	public void testInnerClassAttributesReferences() throws Exception {
 		CompilationUnit cu = run(
@@ -885,6 +906,22 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	@Test
 	public void testWrappingTypes() throws Exception {
 		run("public class A { private static int indexOf(short[] array, short target, int start, int end) { return 0; } void bar(short[] array, Short target,int start, int end) { int aux = A.indexOf(array,target,start, end) + 1; }}");
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testArrayOfArrayResolution() throws Exception {
+		run("public class StackedArrayParam {\n" +
+				"    private int[][] rowGroups;\n" +
+				"\n" +
+				"    void f() {\n" +
+				"        setRowGroups(new int[][] {{2, 4, 6, 8, 10, 12, 14}});\n" +
+				"    }\n" +
+				"\n" +
+				"    public void setRowGroups(int[][] rowGroups) {\n" +
+				"        this.rowGroups = rowGroups;\n" +
+				"    }\n" +
+				"}\n");
 		Assert.assertTrue(true);
 	}
 
