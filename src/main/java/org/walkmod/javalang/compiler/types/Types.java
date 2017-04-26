@@ -35,6 +35,7 @@ public class Types {
 
 	private static Map<String, Integer> matrixTypePosition;
 
+	/** indexed by matrixTypePosition, [from][to] */
 	private static boolean[][] compatibilityMatrix;
 
 	static {
@@ -106,7 +107,9 @@ public class Types {
 						true },
 				{ false, false, false, false, false, false, false, false, true,
 						true },
-				{ true, true, true, true, true, true, true, true, true, true } };
+				{ false, false, false, false, false, false, false, false, false, true }
+				//{ true, true, true, true, true, true, true, true, true, true }
+		};
 
 	}
 
@@ -131,13 +134,10 @@ public class Types {
 		if (fromClass == null || toClass == null) {
 			return true;
 		}
-		if (fromClass.equals(Object.class) && toClass.equals(String.class)) {
-			return false;
-		}
-		if (matrixTypePosition.containsKey(fromClass.getName())
-				&& matrixTypePosition.containsKey(toClass.getName())) {
-			return compatibilityMatrix[matrixTypePosition.get(fromClass
-					.getName())][matrixTypePosition.get(toClass.getName())];
+		final Integer fromKey = matrixTypePosition.get(fromClass.getName());
+		final Integer toKey = matrixTypePosition.get(toClass.getName());
+		if (fromKey != null && toKey != null) {
+			return compatibilityMatrix[fromKey][toKey];
 		} else {
 			if(fromClass.isPrimitive() && !toClass.isPrimitive()){
 				fromClass = inverseWrapperClasses.get(fromClass.getName());
