@@ -849,24 +849,34 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
-	public void testObjecMethodsInBasicArrays() throws Exception {
+	public void testObjectMethodsInBasicArrays() throws Exception {
 		String code = "public class A { void foo() { int[] c = null; c.toString().toString(); }}";
 		run(code);
 		Assert.assertTrue(true);
 	}
 
 	@Test
-	public void testObjecMethodsInBasicArrays2() throws Exception {
+	public void testObjectMethodsInBasicArrays2() throws Exception {
 		String code = "public class A { void foo() { int[] c = null; int i = c.clone()[0]; }}";
 		run(code);
 		Assert.assertTrue(true);
 	}
 
 	@Test
-	public void testObjecMethodsInBasicArrays3() throws Exception {
+	public void testObjectMethodsInBasicArrays3() throws Exception {
 		String code = "public class A { void bar(int aux){} void foo() { int[] c = null; bar(c.clone().length); }}";
 		run(code);
 		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testCloneMethodOfStringArray() throws Exception {
+		// JLS 10.7 - The return type of the clone method of an array type T[] is T[].
+		String code = "public class A { void f() { String[] c = null; c.clone(); }}";
+		CompilationUnit cu = run(code);
+		final MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+		final ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(1);
+		Assert.assertEquals("java.lang.String[]", stmt.getExpression().getSymbolData().toString());
 	}
 
 	@Test
