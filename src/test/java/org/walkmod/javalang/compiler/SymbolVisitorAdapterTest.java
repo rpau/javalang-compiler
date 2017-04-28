@@ -1177,19 +1177,70 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
         Assert.assertNotNull(sd);
     }
 
-    @Test
-    public void testTemplateResults() throws Exception {
-        CompilationUnit cu = run(
-                "public class A<X> { public static <C extends Comparable<?>> A<C> all(){ return null;} void foo() { A.<Integer>all(); } }");
-        MethodDeclaration md = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
-        ExpressionStmt stmt = (ExpressionStmt) md.getBody().getStmts().get(0);
-        MethodCallExpr mce = (MethodCallExpr) stmt.getExpression();
-        SymbolData sd = mce.getSymbolData();
-        Assert.assertNotNull(sd);
-        Assert.assertEquals("A", sd.getName());
-        Assert.assertNotNull(sd.getParameterizedTypes());
-        Assert.assertEquals("java.lang.Integer", sd.getParameterizedTypes().get(0).getName());
+	@Test
+	public void testGenericResultForParameterizedTypeWithInterfaceWitness() throws Exception {
+		checkTypeParameterWithWitness("<C extends Comparable<?>>",
+				"A<C>",
+				"Comparable<java.io.Serializable>",
+				"A<Comparable<java.io.Serializable>>",
+				"A<java.lang.Comparable<java.io.Serializable>>");
+	}
 
+	@Test
+	public void testGenericResultForParameterizedTypeWithClassWitness() throws Exception {
+		checkTypeParameterWithWitness("<C extends Comparable<?>>",
+				"A<C>",
+				"Integer",
+				"A<Integer>",
+				"A<java.lang.Integer>");
+	}
+
+	@Test
+	public void testGenericResultForTypeVariableWithInterfaceWitness() throws Exception {
+		checkTypeParameterWithWitness("<C>",
+				"C",
+				"Comparable<java.io.Serializable>",
+				"Comparable<java.io.Serializable>",
+				"java.lang.Comparable<java.io.Serializable>");
+	}
+
+	@Test
+	public void testGenericResultForTypeVariableWithClassWitness() throws Exception {
+		checkTypeParameterWithWitness("<C>",
+				"C",
+				"Integer",
+				"Integer",
+				// root for improvement
+				"java.lang.Integer");
+	}
+
+	private void checkTypeParameterWithWitness(String typeParam, final String returnType, final String witnessType, final String effectiveType, String expectedType) throws Exception {
+		CompilationUnit cu = run(
+				"public class A<X> {"
+						+ " public static " + typeParam + " " + returnType + " all(){ return null;}\n"
+						+ " void foo() {\n"
+						// expression only
+						+ " A.<" + witnessType + ">all(); \n"
+						// variable
+						+ " " + effectiveType + " v = A.<" + witnessType + ">all();\n"
+						// method parameter
+						+ "  bar(A.<" + witnessType + ">all());\n"
+						+ " }\n"
+						+ " void bar(" + effectiveType + " p) {}\n"
+						+ " }");
+        final ClassOrInterfaceDeclarationAssert type
+                = assertThat(cu).types().item(0).asClassOrInterfaceDeclaration();
+        final ExtListAssert<StatementAssert, Statement> stmts2
+                = type.members().item(1).asMethodDeclaration().body().stmts();
+		stmts2.item(0)
+                .asExpressionStmt().expression().asMethodCallExpr().symbolData()
+                .hasToString(expectedType);
+        stmts2.item(1).asExpressionStmt().expression()
+                .asVariableDeclarationExpr().vars().item(0).expression().symbolData()
+                .hasToString(expectedType);
+        stmts2.item(2).asExpressionStmt().expression()
+                .asMethodCallExpr().args().item(0).symbolData()
+                .hasToString(expectedType);
     }
 
     @Test
