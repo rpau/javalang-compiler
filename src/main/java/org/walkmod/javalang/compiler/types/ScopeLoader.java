@@ -55,7 +55,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 	private Scope process(TypeDeclaration declaration, SymbolTable symbolTable) {
 		Symbol<?> sym = symbolTable.findSymbol(declaration.getName(), ReferenceType.TYPE);
-		Scope scope = null;
+		Scope scope;
 		if (sym == null) {
 			// it is a type declaration inside a TypeStmt
 			sym = symbolTable.pushSymbol(declaration.getName(), ReferenceType.TYPE,
@@ -78,12 +78,11 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 		if (declaration instanceof ClassOrInterfaceDeclaration) {
 			if (!((ClassOrInterfaceDeclaration) declaration).isInterface()) {
 				Symbol superSymbol = symbolTable.pushSymbol("super", ReferenceType.VARIABLE,
-						new SymbolType(sym.getType().getClazz().getSuperclass()), null, (List<SymbolAction>) null);
+						new SymbolType(sym.getType().getClazz().getSuperclass()), declaration, (List<SymbolAction>) null);
 				Symbol<?> superType = symbolTable.findSymbol(superSymbol.getType().getClazz().getCanonicalName(),
 						ReferenceType.TYPE);
 				if (superType != null) {
 					superSymbol.setInnerScope(superType.getInnerScope());
-					superSymbol.setLocation(superType.getLocation());
 				}
 			} else {
 				// Java 8: it references to itself because is could be
@@ -140,8 +139,6 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 			boolean anonymousClass = members != null;
 			if (anonymousClass) {
 
-				String className = symbolTable.findSymbol("this", ReferenceType.VARIABLE).getType().getName();
-
 				List<SymbolAction> actions = new LinkedList<SymbolAction>();
 				actions.add(new LoadTypeParamsAction());
 				actions.add(new LoadTypeDeclarationsAction(typeTable));
@@ -154,8 +151,6 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 					actions.addAll(actionProvider.getActions(n));
 				}
 
-				SymbolType type = null;
-				type = new SymbolType(className);
 				Symbol<?> superSymbol = symbolTable.pushSymbol("super", ReferenceType.VARIABLE, st, n,
 						(List<SymbolAction>) null);
 
@@ -170,7 +165,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				}
 				String name = symbolTable.generateAnonymousClass();
 				
-				type = new SymbolType(name);
+				final SymbolType type = new SymbolType(name);
 				Symbol<?> anonymousType = symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n);
 				anonymousType.setInnerScope(scope);
 
@@ -196,13 +191,11 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 
 	@Override
 	public Scope visit(EnumConstantDeclaration n, SymbolTable symbolTable) {
-		Symbol<?> s = symbolTable.findSymbol(n.getName(), ReferenceType.ENUM_LITERAL);
+		final Symbol<?> s = symbolTable.findSymbol(n.getName(), ReferenceType.ENUM_LITERAL);
 		s.setInnerScope(new Scope(s));
 		symbolTable.pushScope(s.getInnerScope());
 
 		SymbolType parentType = symbolTable.getType("this", ReferenceType.VARIABLE);
-
-		SymbolType type = symbolTable.getType(n.getName(), ReferenceType.ENUM_LITERAL);
 
 		List<SymbolAction> actions = new LinkedList<SymbolAction>();
 		actions.add(new LoadTypeParamsAction());
@@ -217,7 +210,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
 				(List<SymbolAction>) null);
 
 		String name = symbolTable.generateAnonymousClass();
-		type = new SymbolType(name);
+		final SymbolType type = new SymbolType(name);
 		symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n, actions);
 
 		symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);
