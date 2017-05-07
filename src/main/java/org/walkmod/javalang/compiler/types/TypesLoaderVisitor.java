@@ -122,8 +122,8 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       for (String defaultType : defaultJavaLangClasses) {
 
          SymbolType st = new SymbolType(defaultType);
-         symbolTable.pushSymbol(getSymbolName(defaultType, false),
-               org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE, st, null, actions);
+         symbolTable.pushSymbol(resolveSymbolName(defaultType, false, false),
+               ReferenceType.TYPE, st, null, actions);
       }
    }
 
@@ -135,22 +135,25 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
     * @param imported
     *           if it appears as an import declaration. It is important, because the simple name is
     *           the part after the $ symbol if it is an inner class.
+    * @param importedInner
+    *           resolve name of nested inner class of import
     * @return the simple name to be pushed into the symbol table
     */
-   private String getSymbolName(String name, boolean imported) {
-      int index = name.lastIndexOf(".");
-      String simpleName = name;
-      if (index != -1) {
-         simpleName = name.substring(index + 1);
-      }
-      if (imported) {
-         index = simpleName.lastIndexOf("$");
-         if (index != -1) {
-            simpleName = simpleName.substring(index + 1);
+   //@VisibleForTesting
+   static String resolveSymbolName(final String name, final boolean imported, final boolean importedInner) {
+      final int dot = name.lastIndexOf(".");
+      String simpleName = dot != -1 ? name.substring(dot + 1) : name;
+
+      if (importedInner) {
+         simpleName = simpleName.replace("$", ".");
+      } else if (imported) {
+         final int dollar = simpleName.lastIndexOf("$");
+         if (dollar != -1) {
+            simpleName = simpleName.substring(dollar + 1);
          }
       } else {
-         String[] splittedString = simpleName.split("\\$\\d");
-         String aux = splittedString[splittedString.length - 1];
+         final String[] splittedString = simpleName.split("\\$\\d");
+         final String aux = splittedString[splittedString.length - 1];
 
          if (!aux.equals("")) {
             if (aux.charAt(0) == '$') {
@@ -159,7 +162,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
                simpleName = aux;
             }
          }
-         simpleName = simpleName.replace("$", ".");
+         simpleName = simpleName.replace('$', '.');
       }
       return simpleName;
    }
@@ -221,7 +224,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
    private String getInnerName(SymbolType st) {
       String preffix = ((SymbolDataAware<?>) startingNode).getSymbolData().getName();
-      return getSymbolName(st.getName().substring(preffix.length() + 1), false);
+      return resolveSymbolName(st.getName().substring(preffix.length() + 1), false, false);
    }
 
    @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -234,7 +237,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       }
 
       SymbolType st = buildSymbolType(type);
-      String keyName = getSymbolName(st.getName(), false);
+      String keyName = resolveSymbolName(st.getName(), false, false);
 
       Symbol oldSymbol = symbolTable.findSymbol(keyName, ReferenceType.TYPE);
       Symbol added = null;
@@ -421,22 +424,25 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
    }
 
-   private void loadNestedClasses(Class<?> clazz, boolean imported, Node node) {
+   /**
+    * @param importedInner {@link @see #resolveSymbolName}
+    */
+   private void loadNestedClasses(Class<?> clazz, boolean imported, Node node, final boolean importedInner) {
       Class<?>[] innerClasses = clazz.getDeclaredClasses();
       if (innerClasses != null) {
          for (int i = 0; i < innerClasses.length; i++) {
             if (!Modifier.isPrivate(innerClasses[i].getModifiers())) {
                String fullName = innerClasses[i].getName();
                SymbolType st = new SymbolType(innerClasses[i]);
-               symbolTable.pushSymbol(getSymbolName(fullName, imported),
-                     org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE, st, node, true);
+               symbolTable.pushSymbol(resolveSymbolName(fullName, imported, importedInner),
+                     ReferenceType.TYPE, st, node, true);
             }
          }
 
       }
    }
 
-   private void addType(String name, boolean imported, Node node, List<SymbolAction> actions) {
+   private void addType(final String name, boolean imported, Node node, List<SymbolAction> actions) {
       if (classLoader != null && name != null) {
          try {
             Class<?> clazz = Class.forName(name, false, classLoader);
@@ -452,8 +458,8 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
                      overrideSimpleName = false;
                   }
                }
-               symbolTable.pushSymbol(getSymbolName(name, imported),
-                     org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE, st, node, actions, overrideSimpleName);
+               symbolTable.pushSymbol(resolveSymbolName(name, imported, false),
+                     ReferenceType.TYPE, st, node, actions, overrideSimpleName);
 
                if (clazz.isMemberClass()) {
                   String cname = clazz.getCanonicalName();
@@ -466,15 +472,12 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
                         if (pkg.getName().equals(packageName) && node != null) {
 
                            symbolTable.pushSymbol(clazz.getSimpleName(),
-                                 org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE, st, node, actions, true);
+                                 ReferenceType.TYPE, st, node, actions, true);
                         }
                      }
                   }
-
-                  loadNestedClasses(clazz, imported, node);
-
                }
-
+               loadNestedClasses(clazz, imported, node, true);
             }
          } catch (ClassNotFoundException e) {
             loadInnerClass(name, imported, node, actions);
@@ -503,12 +506,12 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             Class<?> clazz = Class.forName(internalName, false, classLoader);
 
             if (!Modifier.isPrivate(clazz.getModifiers())) {
-               String keyName = getSymbolName(internalName, imported);
+               String keyName = resolveSymbolName(internalName, imported, false);
                SymbolType st = new SymbolType(clazz);
                Symbol<?> pushedSymbol = symbolTable.pushSymbol(keyName,
-                     org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE, st, node, actions, true);
+                     ReferenceType.TYPE, st, node, actions, true);
                if (pushedSymbol != null) {
-                  loadNestedClasses(clazz, imported, node);
+                  loadNestedClasses(clazz, imported, node, false);
                }
 
             }
@@ -757,7 +760,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
          name = ((TypeDeclaration) parentNode).getName() + "." + name;
          parentNode = parentNode.getParentNode();
       }
-      return symbolTable.findSymbol(name, org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE).getType().getName();
+      return symbolTable.findSymbol(name, ReferenceType.TYPE).getType().getName();
    }
 
    public void clear() {
