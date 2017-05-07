@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.walkmod.javalang.compiler;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import org.junit.Assert;
@@ -466,19 +467,48 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 				"public static void A.f1(java.util.Collection)");
 	}
 
-	/**
-	 * This kind of method is extensively used in test frameworks like e.g. EasyMock.
-	 */
 	@Test
-	public void testUnboundGenericMethodReturn() throws Exception {
-		compile(""
+	public void testUnboundGenericMethodReturnIsNotValid() throws Exception {
+		/**
+		 * javalang-compiler primary concern is providing symbol/type/semantic information for valid java code.
+		 * this test is different because it asserts how it fails for invalid code.
+		 * If the error messages do change the test needs to be adjusted.
+		 */
+		final String code = ""
 				+ " public class A {\n"
 				+ "    public static <T> T anyObject() {\n"
 				+ "        return null;\n"
 				+ "    }"
 				+ "    public static void fs(String s) {}\n"
 				+ "    public static void fi(Integer i) {}\n"
-				+ "}");
+				+ "    public static void usage() { /**/; } \n"
+				+ "}";
+		final String okstring = "A.fs(\"s\")";
+		final String okint = "A.fi(1)";
+		final String failstring = "A.fs(anyObject())";
+		final String failint = "A.fi(anyObject())";
+
+		// assert that expressions okstring/okint are valid
+		Assert.assertNotNull(populateSemantics(compile(code.replace("/**/", okstring))));
+		Assert.assertNotNull(populateSemantics(compile(code.replace("/**/", okint))));
+
+		// assert that expressions failstring/failint are not valid
+		try {
+			populateSemantics(compile(code.replace("/**/", failstring)));
+			fail();
+		} catch (Exception e) {
+			assertThat(e)
+					.hasMessageContaining("The method call A.fs(anyObject()) is not resolved.");
+		}
+		try {
+			populateSemantics(compile(code.replace("/**/", failint)));
+			fail();
+		} catch (Exception e) {
+			assertThat(e)
+					.hasMessageContaining("The method call A.fi(anyObject()) is not resolved.");
+		}
+
+		compile(code);
 		SymbolTable symTable = getSymbolTable();
 		ASTSymbolTypeResolver.getInstance().setSymbolTable(symTable);
 		symTable.pushScope();
@@ -486,18 +516,29 @@ public class TypeVisitorAdapterTest extends SemanticTest {
 		symTable.pushSymbol("A", ReferenceType.TYPE, st, null);
 		symTable.pushSymbol("this", ReferenceType.VARIABLE, st, null);
 
+		// now tests on expression level
+
 		// test non-generic cases as base line
-		assertResolvedToMethod(expressionAnalyzer, "A.fs(\"s\")",
+		assertResolvedToMethod(expressionAnalyzer, okstring,
 				"public static void A.fs(java.lang.String)");
-		assertResolvedToMethod(expressionAnalyzer, "A.fi(1)",
+		assertResolvedToMethod(expressionAnalyzer, okint,
 				"public static void A.fi(java.lang.Integer)");
 		// now the real test
-		assertResolvedToMethod(expressionAnalyzer, "A.fs(anyObject())",
-				"public static void A.fs(java.lang.String)");
-		assertResolvedToMethod(expressionAnalyzer, "A.fi(anyObject())",
-				"public static void A.fi(java.lang.Integer)");
+		try {
+			assertResolvedToMethod(expressionAnalyzer, failstring,"*unused*");
+			fail();
+		} catch (Exception e) {
+			assertThat(e)
+					.hasMessageContaining("The method call A.fs(anyObject()) is not resolved.");
+		}
+		try {
+			assertResolvedToMethod(expressionAnalyzer, failint,"*unused*");
+			fail();
+		} catch (Exception e) {
+			assertThat(e)
+					.hasMessageContaining("The method call A.fi(anyObject()) is not resolved.");
+		}
 	}
-
 
 	private static void assertResolvedToMethod(TypeVisitorAdapter<Map<String, Object>> expressionAnalyzer, final String expression,
 											   final String expectedMethod) throws Exception {
