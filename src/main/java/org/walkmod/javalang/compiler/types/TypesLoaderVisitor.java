@@ -115,7 +115,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
       this.actionProvider = actionProvider;
       for (String defaultType : primitiveClasses.keySet()) {
          SymbolType st = new SymbolType(primitiveClasses.get(defaultType));
-         symbolTable.pushSymbol(defaultType, org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE, st, null,
+         symbolTable.pushSymbol(defaultType, ReferenceType.TYPE, st, null,
                actions);
 
       }
@@ -159,7 +159,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
                simpleName = aux;
             }
          }
-         simpleName = simpleName.replaceAll("\\$", ".");
+         simpleName = simpleName.replace("$", ".");
       }
       return simpleName;
    }
@@ -458,7 +458,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
                if (clazz.isMemberClass()) {
                   String cname = clazz.getCanonicalName();
                   if (cname != null) {
-                     symbolTable.pushSymbol(cname, org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE, st, node,
+                     symbolTable.pushSymbol(cname, ReferenceType.TYPE, st, node,
                            actions, true);
 
                      Package pkg = clazz.getPackage();
