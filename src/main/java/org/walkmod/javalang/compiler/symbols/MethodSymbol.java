@@ -77,14 +77,6 @@ public class MethodSymbol extends Symbol {
 			args = new SymbolType[0];
 		}
 	}
-	
-	public void setReferencedMethod(Method method){
-		this.referencedMethod = method;
-	}
-	
-	public void setReferencedConstructor(Constructor referencedConstructor){
-		this.referencedConstructor = referencedConstructor;
-	}
 
 	public MethodSymbol(String name, SymbolType type, Node location,
 			SymbolType scope, SymbolType[] args, boolean staticallyImported,
@@ -99,6 +91,14 @@ public class MethodSymbol extends Symbol {
 		if (args == null) {
 			args = new SymbolType[0];
 		}
+	}
+
+	public void setReferencedMethod(Method method){
+		this.referencedMethod = method;
+	}
+	
+	public void setReferencedConstructor(Constructor referencedConstructor){
+		this.referencedConstructor = referencedConstructor;
 	}
 
 	public MethodSymbol buildTypeParameters(Map<String, SymbolType> typeParams) {

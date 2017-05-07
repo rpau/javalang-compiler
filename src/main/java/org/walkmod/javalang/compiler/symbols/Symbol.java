@@ -26,7 +26,9 @@ import org.walkmod.javalang.ast.SymbolReference;
 
 public class Symbol<T extends Node & SymbolDefinition> {
 
-	private String name;
+	private final ReferenceType referenceType;
+
+	private final String name;
 
 	private SymbolType type;
 
@@ -35,8 +37,6 @@ public class Symbol<T extends Node & SymbolDefinition> {
 	private List<SymbolAction> actions;
 
 	private Map<String, Object> attributes = new HashMap<String, Object>();
-
-	private ReferenceType referenceType = ReferenceType.VARIABLE;
 
 	private Scope scopes;
 	
@@ -55,10 +55,10 @@ public class Symbol<T extends Node & SymbolDefinition> {
 
 	public Symbol(String name, SymbolType type, T location,
 			ReferenceType referenceType, SymbolAction action) {
-		setName(name);
+		this.referenceType = referenceType;
+		this.name = name;
 		setType(type);
 		setLocation(location);
-		setReferenceType(referenceType);
 		actions = new LinkedList<SymbolAction>();
 		actions.add(action);
 	}
@@ -74,10 +74,10 @@ public class Symbol<T extends Node & SymbolDefinition> {
 
 	public Symbol(String name, SymbolType type, T location,
 			ReferenceType referenceType,boolean staticallyImported, List<SymbolAction> actions) {
-		setName(name);
+		this.referenceType = referenceType;
+		this.name = name;
 		setType(type);
 		setLocation(location);
-		setReferenceType(referenceType);
 		this.actions = actions;
 		this.staticallyImported = staticallyImported;
 	}
@@ -91,20 +91,12 @@ public class Symbol<T extends Node & SymbolDefinition> {
 		return referenceType;
 	}
 
-	public void setReferenceType(ReferenceType referenceType) {
-		this.referenceType = referenceType;
-	}
-
 	public Map<String, Object> getAttributes() {
 		return attributes;
 	}
 
 	public String getName() {
 		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
 	}
 
 	public SymbolType getType() {

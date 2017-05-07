@@ -630,6 +630,111 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 	}
 
 	@Test
+	public void testScopeOfSuperClassOfInnerBeforeStaticImport() throws Exception {
+		CompilationUnit cu = run(
+				""
+						+ "import static java.util.Locale.getDefault;\n"
+						+ " public class A {\n"
+						+ "  public void trans(String p) { }"
+						+ "  public class Derived extends Base {\n"
+						+ "   private void foo() { trans(getDefault());}\n"
+						+ "  }\n"
+						+ " }",
+				"public abstract class Base { public String getDefault() { return null; } }"
+				);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testScopeOfSuperClassOfInnerStaticBeforeStaticImport() throws Exception {
+		CompilationUnit cu = run(
+				""
+						+ "import static java.util.Locale.getDefault;\n"
+						+ " public class A {\n"
+						+ "  public static void trans(String p) { }"
+						+ "  public static class Derived extends Base {\n"
+						+ "   private void foo() { trans(getDefault());}\n"
+						+ "  }\n"
+						+ " }",
+				"public abstract class Base { public String getDefault() { return null; } }"
+				);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testScopeOfSuperClassOfInnerStaticConstructorBeforeStaticImport() throws Exception {
+		CompilationUnit cu = run(
+				""
+						+ "import static java.util.Locale.getDefault;\n"
+						+ " public class A {\n"
+						+ "  public static void trans(String p) { }"
+						+ "  public class B {"
+						+ "   public class Derived extends Base {\n"
+						+ "    private Derived() { trans(getDefault());}\n"
+						+ "   }\n"
+						+ "  }\n"
+						+ " }",
+				"public abstract class Base { public String getDefault() { return null; } }"
+				);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testScopeOfSuperClassOfLocalConstructorBeforeStaticImport() throws Exception {
+		// TODO
+		CompilationUnit cu = run(
+				""
+						+ "import stat"
+						+ "ic java.util.Locale.getDefault;\n"
+						+ " public class A {\n"
+						+ "  public static void trans(String p) { }"
+						+ "  public static class B {"
+						+ "   public B() {"
+						+ "    class Derived extends Base {\n"
+						+ "     private void foo() { trans(getDefault());}\n"
+						+ "    }\n"
+						+ "   }\n"
+						+ "  }\n"
+						+ " }",
+				"public abstract class Base { public String getDefault() { return null; } }"
+				);
+	}
+
+	@Test
+	public void testScopeOfSuperOfAnonymousClassBeforeStaticImport() throws Exception {
+		CompilationUnit cu = run(
+				""
+						+ "import static java.util.Locale.getDefault;\n"
+						+ " public class A {\n"
+						+ "  public void trans(String p) { }"
+						+ "  private Base base = new Base() {\n"
+						+ "   private void foo() { trans(getDefault());}\n"
+						+ "  };\n"
+						+ " }",
+				"public abstract class Base { public String getDefault() { return null; } }"
+				);
+		Assert.assertTrue(true);
+	}
+
+	@Test
+	public void testScopeOfSuperOfAnonymousClass2BeforeStaticImport() throws Exception {
+		CompilationUnit cu = run(
+				""
+						+ "import static java.util.Locale.getDefault;\n"
+						+ " public class A {\n"
+						+ "  public void trans(String p) { }"
+						+ "  private void bar() {\n"
+						+ "   Base base = new Base() {\n"
+						+ "    public void foo() { trans(getDefault());}\n"
+						+ "   };\n"
+						+ "  };\n"
+						+ " }",
+						"public abstract class Base { public String getDefault() { return null; } }"
+				);
+		Assert.assertTrue(true);
+	}
+
+	@Test
 	public void testTypeDeclarationStmts() throws Exception {
 		run("public class A { public Object foo() { class B { int c = 0; int x = c;} return new B(); }}");
 		Assert.assertTrue(true);
@@ -1808,7 +1913,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 		MethodDeclaration md = (MethodDeclaration) barType.getMembers().get(0);
 		ExpressionStmt exprStmt = (ExpressionStmt) md.getBody().getStmts().get(0);
 		MethodCallExpr mce = (MethodCallExpr) exprStmt.getExpression();
-		Assert.assertEquals("Container", mce.getSymbolData().getMethod().getDeclaringClass().getName());
+		Assert.assertEquals("Bar", mce.getSymbolData().getMethod().getDeclaringClass().getName());
 
 	}
 

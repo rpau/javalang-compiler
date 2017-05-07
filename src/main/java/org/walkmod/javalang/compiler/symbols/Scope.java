@@ -32,6 +32,7 @@ import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.SymbolDefinition;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
+import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.PreviousPredicateAware;
@@ -369,8 +370,10 @@ public class Scope {
 
 					Scope innerScope = superSymbol.getInnerScope();
 					if (innerScope != null) {
-						if (!local || superSymbol.getLocation() instanceof ClassOrInterfaceDeclaration) {
-							result = innerScope.findSymbol(name, local, scope, args, predicates, referenceType);
+						if (!local
+								|| superSymbol.getLocation() instanceof ObjectCreationExpr
+								|| superSymbol.getLocation() instanceof ClassOrInterfaceDeclaration) {
+							result = innerScope.findSymbol(name, false, scope, args, predicates, referenceType);
 						}
 
 					}
