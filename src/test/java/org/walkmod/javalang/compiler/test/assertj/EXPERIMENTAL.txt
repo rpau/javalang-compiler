@@ -1,0 +1,6 @@
+Experimental AssertJ alike assertions of javalang AST.
+
+If the experiment is successful the classes and methods
+may be generated from AST classes.
+
+Subject to change without notice.
