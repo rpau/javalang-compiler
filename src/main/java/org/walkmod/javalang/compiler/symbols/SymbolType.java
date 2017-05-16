@@ -58,8 +58,20 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public SymbolType() {}
 
+    private SymbolType(List<SymbolType> upperBounds, String typeVariable) {
+        this(upperBounds, (List<SymbolType>) null);
+        this.templateVariable = typeVariable;
+    }
+
     public SymbolType(List<SymbolType> upperBounds) {
-        this(upperBounds, null);
+        this(upperBounds, (List<SymbolType>) null);
+    }
+
+    private SymbolType(int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds,
+                       String typeVariable) {
+        this(upperBounds, lowerBounds);
+        this.templateVariable = typeVariable;
+        this.arrayCount = arrayCount;
     }
 
     public SymbolType(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
@@ -89,6 +101,12 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
+    private SymbolType(String name, int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds, String typeVariable) {
+        this(name, upperBounds, lowerBounds);
+        this.templateVariable = typeVariable;
+        this.arrayCount = arrayCount;
+    }
+
     public SymbolType(String name, List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
 
         this.name = name;
@@ -99,6 +117,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 clazz = upperBounds.get(0).getClazz();
             }
         }
+    }
+
+    private SymbolType(Class<?> clazz, String typeVariable) {
+        this(clazz);
+        this.templateVariable = typeVariable;
     }
 
     public SymbolType(Class<?> clazz) {
@@ -151,6 +174,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public void setClazz(Class<?> clazz) {
         this.clazz = clazz;
+    }
+
+    private SymbolType(String name, String typeVariable) {
+        this.name = name;
+        this.templateVariable = typeVariable;
     }
 
     public SymbolType(String name) {
@@ -590,27 +618,21 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      * Builds a symbol for a type variable from a (Java class) name.
      */
     public static SymbolType typeVariableOf(final String typeVariable, final String name) {
-        SymbolType st = new SymbolType(name);
-        st.setTemplateVariable(typeVariable);
-        return st;
+        return new SymbolType(name, typeVariable);
     }
 
     /**
      * Builds a symbol for a type variable from a Java class.
      */
     public static SymbolType typeVariableOf(final String typeVariable, final Class<Object> clazz) {
-        SymbolType st = new SymbolType(clazz);
-        st.setTemplateVariable(typeVariable);
-        return st;
+        return new SymbolType(clazz, typeVariable);
     }
 
     /**
      * Builds a symbol for a type variable from a list of upper bounds.
      */
     public static SymbolType typeVariableOf(final String typeVariable, List<SymbolType> upperBounds) {
-        SymbolType st = new SymbolType(upperBounds);
-        st.setTemplateVariable(typeVariable);
-        return st;
+        return new SymbolType(upperBounds, typeVariable);
     }
 
     /**
@@ -618,10 +640,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      */
     private static SymbolType typeVariableOf(String typeVariable, final String name, final int arrayCount,
                                              final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
-        SymbolType st = new SymbolType(name, upperBounds, lowerBounds);
-        st.setTemplateVariable(typeVariable);
-        st.setArrayCount(arrayCount);
-        return st;
+        return new SymbolType(name, arrayCount, upperBounds, lowerBounds, typeVariable);
     }
 
     /**
@@ -629,10 +648,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      */
     private static SymbolType typeVariableOf(final String typeVariable, final int arrayCount,
                                              List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
-        SymbolType st = new SymbolType(upperBounds, lowerBounds);
-        st.setTemplateVariable(typeVariable);
-        st.setArrayCount(arrayCount);
-        return st;
+        return new SymbolType(arrayCount, upperBounds, lowerBounds, typeVariable);
     }
 
     /**
