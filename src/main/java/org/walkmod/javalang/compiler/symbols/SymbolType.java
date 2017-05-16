@@ -655,9 +655,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      * Builds a symbol for a type variable from a TypeVariable.
      */
     public static SymbolType typeVariableOf(TypeVariable<?> typeVariable) throws InvalidTypeException {
-        SymbolType st = valueOf(typeVariable, null);
-        st.setTemplateVariable(typeVariable.getName());
-        return st;
+        return valueOf(typeVariable, null).cloneAsTypeVariable(typeVariable.getName());
     }
 
     /**
@@ -866,8 +864,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                     if (boundsList.isEmpty()) {
                         returnType = typeVariableOf(variableName, "java.lang.Object");
                     } else if (bounds.length == 1) {
-                        returnType = boundsList.get(0);
-                        returnType.setTemplateVariable(variableName);
+                        returnType = boundsList.get(0).cloneAsTypeVariable(variableName);
                     } else {
                         returnType = typeVariableOf(variableName, boundsList);
                     }

@@ -211,8 +211,7 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
                     for (int i = 0; i < tparams.length && it.hasNext(); i++) {
                         SymbolType st = it.next();
                         if (st != null) {
-                            st.setTemplateVariable(tparams[i].getName());
-                            updateTypeMapping(tparams[i], genericsSymbolTable, st, true, processed);
+                            updateTypeMapping(tparams[i], genericsSymbolTable, st.cloneAsTypeVariable(tparams[i].getName()), true, processed);
                         }
                     }
                 }
