@@ -58,8 +58,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public SymbolType() {}
 
-    public SymbolType(List<SymbolType> lowerBounds) {
-        this(lowerBounds, null);
+    public SymbolType(List<SymbolType> upperBounds) {
+        this(upperBounds, null);
     }
 
     public SymbolType(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
@@ -614,6 +614,28 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     /**
+     * Builds a symbol for a type variable.
+     */
+    private static SymbolType typeVariableOf(String typeVariable, final String name, final int arrayCount,
+                                             final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
+        SymbolType st = new SymbolType(name, upperBounds, lowerBounds);
+        st.setTemplateVariable(typeVariable);
+        st.setArrayCount(arrayCount);
+        return st;
+    }
+
+    /**
+     * Builds a symbol for a type variable.
+     */
+    private static SymbolType typeVariableOf(final String typeVariable, final int arrayCount,
+                                             List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
+        SymbolType st = new SymbolType(upperBounds, lowerBounds);
+        st.setTemplateVariable(typeVariable);
+        st.setArrayCount(arrayCount);
+        return st;
+    }
+
+    /**
      * Builds a symbol for a type variable from a TypeVariable.
      */
     public static SymbolType typeVariableOf(TypeVariable<?> typeVariable) throws InvalidTypeException {
@@ -801,9 +823,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
                     arg = returnType;
                 }
-                returnType = new SymbolType(arg.getName(), arg.getBounds(), arg.getLowerBounds());
-                returnType.setArrayCount(arg.getArrayCount());
-                returnType.setTemplateVariable(variableName);
+                returnType = typeVariableOf(variableName, arg.getName(), arg.getArrayCount(), arg.getBounds(), arg.getLowerBounds());
                 Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
                 auxMap.put(variableName, returnType);
 
@@ -815,12 +835,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
             } else {
                 if (bounds.length == 0) {
-                    returnType = new SymbolType("java.lang.Object");
-                    returnType.setTemplateVariable(variableName);
+                    returnType = typeVariableOf(variableName, "java.lang.Object");
                 } else {
                     List<SymbolType> boundsList = new LinkedList<SymbolType>();
-                    SymbolType initReturnType = new SymbolType(boundsList);
-                    initReturnType.setTemplateVariable(variableName);
+                    SymbolType initReturnType = typeVariableOf(variableName, boundsList);
                     Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
                     auxMap.put(variableName, initReturnType);
                     for (Type bound : bounds) {
@@ -830,14 +848,13 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         }
                     }
                     if (boundsList.isEmpty()) {
-                        returnType = new SymbolType("java.lang.Object");
+                        returnType = typeVariableOf(variableName, "java.lang.Object");
                     } else if (bounds.length == 1) {
                         returnType = boundsList.get(0);
                         returnType.setTemplateVariable(variableName);
                     } else {
-                        returnType = new SymbolType(boundsList);
+                        returnType = typeVariableOf(variableName, boundsList);
                     }
-                    returnType.setTemplateVariable(variableName);
                 }
             }
             if (!updatedTypeMapping.containsKey(variableName)) {
@@ -922,8 +939,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                                                     valueOf(tvs[i], null, updatedTypeMapping, typeMapping);
                                             bounds = new LinkedList<SymbolType>();
                                             bounds.add(templateVarType);
-                                            st = new SymbolType(bounds);
-                                            st.setTemplateVariable("?");
+                                            st = typeVariableOf("?", bounds);
                                         }
                                     }
                                 }
@@ -1011,11 +1027,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
         SymbolType returnType = null;
         if (upperBounds != null || lowerBounds != null) {
-            returnType = new SymbolType(upperBounds, lowerBounds);
-            returnType.setTemplateVariable(wt.toString());
-            if (arg != null) {
-                returnType.setArrayCount(arg.getArrayCount());
-            }
+            returnType = typeVariableOf(wt.toString(), arg != null ? arg.getArrayCount() : 0, upperBounds, lowerBounds);
         }
         return returnType;
     }
