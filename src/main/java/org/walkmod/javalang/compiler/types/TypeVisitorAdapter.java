@@ -144,8 +144,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
         n.getName().accept(this, arg);
         n.getIndex().accept(this, arg);
         SymbolType arrayType = (SymbolType) n.getName().getSymbolData();
-        SymbolType newType = new SymbolType();
-        newType.setName(arrayType.getName());
+        SymbolType newType = new SymbolType(arrayType.getName());
         newType.setParameterizedTypes(arrayType.getParameterizedTypes());
         newType.setArrayCount(arrayType.getArrayCount() - 1);
 
@@ -581,8 +580,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
                 clazz = TypesLoaderVisitor.getClassLoader().loadClass(n.getName());
 
                 String className = clazz.getName();
-                type = new SymbolType();
-                type.setName(className);
+                type = new SymbolType(className);
 
             } catch (ClassNotFoundException e) {
                 // a name expression could be "org.walkmod.A" and this node
@@ -678,16 +676,17 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
 
     @Override
     public void visit(QualifiedNameExpr n, A arg) {
-        SymbolType type = new SymbolType(n.getName());
+        StringBuilder name = new StringBuilder(n.getName());
         NameExpr aux = n.getQualifier();
         while (aux != null) {
-            type.setName(type.getName() + "." + aux.getName());
+            name.append(".").append(aux.getName());
             if (aux instanceof QualifiedNameExpr) {
                 aux = ((QualifiedNameExpr) aux).getQualifier();
             } else {
                 aux = null;
             }
         }
+        SymbolType type = new SymbolType(name.toString());
         n.setSymbolData(type);
         if (semanticVisitor != null) {
             n.accept(semanticVisitor, arg);

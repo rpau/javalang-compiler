@@ -65,25 +65,26 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
 
     @Override
     public SymbolType visit(PrimitiveType n, List<TypeParameter> arg) {
-        SymbolType result = new SymbolType();
+        final SymbolType result;
         Primitive pt = n.getType();
         if (pt.equals(Primitive.Boolean)) {
-            result.setName(boolean.class.getName());
-
+            result = new SymbolType(boolean.class.getName());
         } else if (pt.equals(Primitive.Char)) {
-            result.setName(char.class.getName());
+            result = new SymbolType(char.class.getName());
         } else if (pt.equals(Primitive.Double)) {
-            result.setName(double.class.getName());
+            result = new SymbolType(double.class.getName());
         } else if (pt.equals(Primitive.Float)) {
-            result.setName(float.class.getName());
+            result = new SymbolType(float.class.getName());
         } else if (pt.equals(Primitive.Int)) {
-            result.setName(int.class.getName());
+            result = new SymbolType(int.class.getName());
         } else if (pt.equals(Primitive.Long)) {
-            result.setName(long.class.getName());
+            result = new SymbolType(long.class.getName());
         } else if (pt.equals(Primitive.Short)) {
-            result.setName(short.class.getName());
+            result = new SymbolType(short.class.getName());
         } else if (pt.equals(Primitive.Byte)) {
-            result.setName(byte.class.getName());
+            result = new SymbolType(byte.class.getName());
+        } else {
+            throw new IllegalArgumentException("unexpected primitive type: " + pt);
         }
         return result;
     }
@@ -208,15 +209,14 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
                         result = symbolTable.getType(scopeType.getClazz().getCanonicalName() + "." + name,
                                 org.walkmod.javalang.compiler.symbols.ReferenceType.TYPE);
                         if (result == null) {
-                            result = new SymbolType();
                             SymbolType thisType = symbolTable.getType("this");
                             if (thisType != null) {
                                 Class<?> resolvedClass = ClassInspector
                                         .findClassMember(thisType.getClazz().getPackage(), name, scopeType.getClazz());
-                                result.setName(resolvedClass.getName());
+                                result = new SymbolType(resolvedClass.getName());
                                 result.setClazz(resolvedClass);
                             } else {
-                                result.setName(scopeType.getName() + "$" + name);
+                                result = new SymbolType(scopeType.getName() + "$" + name);
                             }
                         }
                     } else {
@@ -226,10 +226,8 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
                         } catch (ClassNotFoundException e) {
                             return null;
                         }
-                        result = new SymbolType();
                         // it is a type that has not previously imported
-                        result.setName(fullName);
-
+                        result = new SymbolType(fullName);
                     }
                 }
             }

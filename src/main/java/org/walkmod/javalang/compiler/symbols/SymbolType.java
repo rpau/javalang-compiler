@@ -501,8 +501,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created, final String typeVariable) {
-        SymbolType result = new SymbolType();
-        result.setName(name);
+        SymbolType result = new SymbolType(name);
         result.setClazz(clazz);
         result.setArrayCount(arrayCount);
         result.setField(field);
@@ -696,16 +695,14 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private static SymbolType valueOfClass(Class<?> type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping,
             Map<String, SymbolType> typeMapping) throws InvalidTypeException {
-        SymbolType returnType;
         Class<?> aux = type;
-        returnType = new SymbolType();
         int arrayCount = 0;
         while (aux.isArray()) {
             arrayCount++;
             aux = aux.getComponentType();
         }
+        final SymbolType returnType = new SymbolType(aux.getName());
         returnType.setArrayCount(arrayCount);
-        returnType.setName(aux.getName());
         Type[] typeParams = aux.getTypeParameters();
         if (typeParams.length > 0) {
 
