@@ -46,7 +46,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private int arrayCount = 0;
 
-    private String templateVariable = null;
+    private String typeVariable = null;
 
     private Class<?> clazz;
 
@@ -60,7 +60,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private SymbolType(List<SymbolType> upperBounds, String typeVariable) {
         this(upperBounds, (List<SymbolType>) null);
-        this.templateVariable = typeVariable;
+        this.typeVariable = typeVariable;
     }
 
     public SymbolType(List<SymbolType> upperBounds) {
@@ -70,7 +70,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     private SymbolType(int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds,
                        String typeVariable) {
         this(upperBounds, lowerBounds);
-        this.templateVariable = typeVariable;
+        this.typeVariable = typeVariable;
         this.arrayCount = arrayCount;
     }
 
@@ -103,7 +103,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private SymbolType(String name, int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds, String typeVariable) {
         this(name, upperBounds, lowerBounds);
-        this.templateVariable = typeVariable;
+        this.typeVariable = typeVariable;
         this.arrayCount = arrayCount;
     }
 
@@ -121,7 +121,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private SymbolType(Class<?> clazz, String typeVariable) {
         this(clazz);
-        this.templateVariable = typeVariable;
+        this.typeVariable = typeVariable;
     }
 
     public SymbolType(Class<?> clazz) {
@@ -178,7 +178,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private SymbolType(String name, String typeVariable) {
         this.name = name;
-        this.templateVariable = typeVariable;
+        this.typeVariable = typeVariable;
     }
 
     public SymbolType(String name) {
@@ -241,16 +241,16 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public boolean isTemplateVariable() {
-        return templateVariable != null;
+        return typeVariable != null;
     }
 
     /** @deprecated use factory methods "templateVariableOf" instead */
     public void setTemplateVariable(String templateVariable) {
-        this.templateVariable = templateVariable;
+        this.typeVariable = templateVariable;
     }
 
     public String getTemplateVariable() {
-        return templateVariable;
+        return typeVariable;
     }
 
     @Override
@@ -260,7 +260,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             String auxName = aux.getName();
             boolean equalName = name != null && auxName != null && name.equals(auxName);
             equalName = equalName || (isTemplateVariable() && aux.isTemplateVariable()
-                    && templateVariable.equals(aux.templateVariable));
+                    && typeVariable.equals(aux.typeVariable));
             return equalName && arrayCount == aux.getArrayCount();
         }
         return false;
@@ -497,7 +497,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     private SymbolType clone(final Stack<SymbolType> parent, final Stack<SymbolType> created) {
-        return clone(parent, created, templateVariable);
+        return clone(parent, created, typeVariable);
     }
 
     private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created, final String typeVariable) {
@@ -507,7 +507,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         result.setArrayCount(arrayCount);
         result.setField(field);
         result.setMethod(method);
-        result.templateVariable = typeVariable;
+        result.typeVariable = typeVariable;
         if (parent == null) {
             parent = new Stack<SymbolType>();
             created = new Stack<SymbolType>();
@@ -578,7 +578,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         if (method != null) {
             return null;
         }
-        if (variableName.equals(templateVariable)) {
+        if (variableName.equals(typeVariable)) {
             return this;
         } else {
 
@@ -1182,7 +1182,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     private SymbolType refactor_rec(String variable, SymbolType st, boolean dynamicVar) {
-        if (variable.equals(templateVariable) && dynamicVar) {
+        if (variable.equals(typeVariable) && dynamicVar) {
             return st;
         } else {
             SymbolType aux;
@@ -1209,7 +1209,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType refactor(String variable, SymbolType st, boolean dynamicVar) {
-        if (variable.equals(templateVariable) && dynamicVar) {
+        if (variable.equals(typeVariable) && dynamicVar) {
             return st;
         } else {
             SymbolType aux;
