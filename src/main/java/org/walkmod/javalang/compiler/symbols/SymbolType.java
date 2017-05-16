@@ -216,6 +216,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return templateVariable != null;
     }
 
+    /** @deprecated use factory methods "templateVariableOf" instead */
     public void setTemplateVariable(String templateVariable) {
         this.templateVariable = templateVariable;
     }
@@ -463,14 +464,22 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return clone(null, null);
     }
 
-    private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created) {
+    public SymbolType cloneAsTypeVariable(String typeVariable) {
+        return clone(null, null, typeVariable);
+    }
+
+    private SymbolType clone(final Stack<SymbolType> parent, final Stack<SymbolType> created) {
+        return clone(parent, created, templateVariable);
+    }
+
+    private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created, final String typeVariable) {
         SymbolType result = new SymbolType();
         result.setName(name);
         result.setClazz(clazz);
         result.setArrayCount(arrayCount);
         result.setField(field);
         result.setMethod(method);
-        result.templateVariable = templateVariable;
+        result.templateVariable = typeVariable;
         if (parent == null) {
             parent = new Stack<SymbolType>();
             created = new Stack<SymbolType>();
@@ -575,6 +584,42 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             }
             return null;
         }
+    }
+
+    /**
+     * Builds a symbol for a type variable from a (Java class) name.
+     */
+    public static SymbolType typeVariableOf(final String typeVariable, final String name) {
+        SymbolType st = new SymbolType(name);
+        st.setTemplateVariable(typeVariable);
+        return st;
+    }
+
+    /**
+     * Builds a symbol for a type variable from a Java class.
+     */
+    public static SymbolType typeVariableOf(final String typeVariable, final Class<Object> clazz) {
+        SymbolType st = new SymbolType(clazz);
+        st.setTemplateVariable(typeVariable);
+        return st;
+    }
+
+    /**
+     * Builds a symbol for a type variable from a list of upper bounds.
+     */
+    public static SymbolType typeVariableOf(final String typeVariable, List<SymbolType> upperBounds) {
+        SymbolType st = new SymbolType(upperBounds);
+        st.setTemplateVariable(typeVariable);
+        return st;
+    }
+
+    /**
+     * Builds a symbol for a type variable from a TypeVariable.
+     */
+    public static SymbolType typeVariableOf(TypeVariable<?> typeVariable) throws InvalidTypeException {
+        SymbolType st = valueOf(typeVariable, null);
+        st.setTemplateVariable(typeVariable.getName());
+        return st;
     }
 
     /**
@@ -1127,6 +1172,12 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             }
             return aux;
         }
+    }
+
+    public SymbolType refactorToTypeVariable(String typeVariable, SymbolType st, boolean dynamicVar) {
+        SymbolType refactor = refactor(typeVariable, st, dynamicVar);
+        refactor.setTemplateVariable(typeVariable);
+        return refactor;
     }
 
     public SymbolType refactor(String variable, SymbolType st, boolean dynamicVar) {

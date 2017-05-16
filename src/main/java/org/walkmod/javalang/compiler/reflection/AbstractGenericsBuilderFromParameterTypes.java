@@ -121,8 +121,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
             if (typeMapping != null) {
                 Set<String> parameterizedTypeNames = typeMapping.keySet();
                 for (String typeName : parameterizedTypeNames) {
-                    SymbolType st = typeMapping.get(typeName).clone();
-                    st.setTemplateVariable(typeName);
+                    SymbolType st = typeMapping.get(typeName).cloneAsTypeVariable(typeName);
                     typeParamsSymbolTable.pushSymbol(typeName, ReferenceType.TYPE, st, null);
                 }
             }

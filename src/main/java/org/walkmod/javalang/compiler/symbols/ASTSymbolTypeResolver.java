@@ -106,15 +106,14 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
                     if (next.getName().equals(name)) {
                         List<ClassOrInterfaceType> bounds = next.getTypeBound();
                         if (bounds == null || bounds.isEmpty()) {
-                            result = new SymbolType(Object.class);
+                            result = SymbolType.typeVariableOf(name, Object.class);
                         } else {
                             List<SymbolType> params = new LinkedList<SymbolType>();
                             for (ClassOrInterfaceType bound : bounds) {
                                 params.add(bound.accept(this, arg));
                             }
-                            result = new SymbolType(params);
+                            result = SymbolType.typeVariableOf(name, params);
                         }
-                        result.setTemplateVariable(name);
                     }
                 }
             }
@@ -246,7 +245,8 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
             for (Type typeArg : type.getTypeArgs()) {
                 SymbolType aux = valueOf(typeArg);
                 if (aux == null) {
-                    aux = new SymbolType(Object.class);
+                    aux = SymbolType.typeVariableOf(typeArg.toString(), Object.class);
+                } else {
                     aux.setTemplateVariable(typeArg.toString());
                 }
                 typeArgs.add(aux);
