@@ -892,12 +892,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     private static SymbolType valueOfParameterizedType(ParameterizedType type, SymbolType arg,
             Map<String, SymbolType> updatedTypeMapping, Map<String, SymbolType> typeMapping)
             throws InvalidTypeException {
-        SymbolType returnType;
-        Class<?> auxClass = (Class<?>) type.getRawType();
+        final Class<?> auxClass = (Class<?>) type.getRawType();
 
-        Type[] types = type.getActualTypeArguments();
+        final Type[] types = type.getActualTypeArguments();
 
-        returnType = new SymbolType(auxClass.getName());
+        final SymbolType returnType = new SymbolType(auxClass.getName());
 
         if (types != null) {
 
