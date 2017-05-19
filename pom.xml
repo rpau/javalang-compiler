@@ -53,6 +53,16 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- 
+                https://mvnrepository.com/artifact/com.marvinformatics.formatter/formatter-maven-plugin 
+                formatting rules: src/config/eclipse/formatter/java.xml
+                format with: mvn formatter:format
+            -->
+            <plugin>
+                <groupId>com.marvinformatics.formatter</groupId>
+                <artifactId>formatter-maven-plugin</artifactId>
+                <version>1.9.1.RC2</version>
+            </plugin>
         </plugins>
     </build>
     <dependencies>

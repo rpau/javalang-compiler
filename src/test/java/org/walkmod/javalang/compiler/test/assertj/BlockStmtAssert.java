@@ -3,8 +3,7 @@ package org.walkmod.javalang.compiler.test.assertj;
 import org.walkmod.javalang.ast.stmt.BlockStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
 
-public class BlockStmtAssert
-        extends AbstractNodeAssert<BlockStmtAssert, BlockStmt> {
+public class BlockStmtAssert extends AbstractNodeAssert<BlockStmtAssert, BlockStmt> {
     public BlockStmtAssert(BlockStmt actual) {
         super(actual, BlockStmtAssert.class);
     }

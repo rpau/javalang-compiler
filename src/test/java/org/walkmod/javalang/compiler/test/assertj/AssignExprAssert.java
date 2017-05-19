@@ -8,17 +8,15 @@ public class AssignExprAssert extends AbstractExpressionAssert<AssignExprAssert,
         super(actual, AssignExprAssert.class);
     }
 
-    public SymbolDataAssert<?,?> symbolData() {
+    public SymbolDataAssert<?, ?> symbolData() {
         return symbolData(actual);
     }
 
     public ExpressionAssert target() {
-        return AstAssertions.assertThat(actual.getTarget())
-                .as(navigationDescription("target"));
+        return AstAssertions.assertThat(actual.getTarget()).as(navigationDescription("target"));
     }
 
     public ExpressionAssert value() {
-        return AstAssertions.assertThat(actual.getValue())
-                .as(navigationDescription("value"));
+        return AstAssertions.assertThat(actual.getValue()).as(navigationDescription("value"));
     }
 }

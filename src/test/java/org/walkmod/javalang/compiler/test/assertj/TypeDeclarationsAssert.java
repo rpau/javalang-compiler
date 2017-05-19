@@ -11,7 +11,7 @@ public class TypeDeclarationsAssert extends ListAssert<TypeDeclaration> {
         super(actual);
     }
 
-    public AbstractTypeDeclarationAssert<?,?> item(int index) {
+    public AbstractTypeDeclarationAssert<?, ?> item(int index) {
         return AstAssertions.assertThat(actual.get(index)).as(navigationDescription("types"));
     }
 }

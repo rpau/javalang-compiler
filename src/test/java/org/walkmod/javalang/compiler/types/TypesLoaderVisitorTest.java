@@ -15,9 +15,10 @@ public class TypesLoaderVisitorTest {
         assertName("a.A.B", "B");
         assertName("bar.Foo$Bar", "Foo.Bar");
 
-        assertName("bar.ExtensionPoint$LegacyInstancesAreScopedToHudson" ,"ExtensionPoint.LegacyInstancesAreScopedToHudson");
+        assertName("bar.ExtensionPoint$LegacyInstancesAreScopedToHudson",
+                "ExtensionPoint.LegacyInstancesAreScopedToHudson");
         // import bar.ExtensionPoint.LegacyInstancesAreScopedToHudson
-        assertImportName("bar.ExtensionPoint$LegacyInstancesAreScopedToHudson" , "LegacyInstancesAreScopedToHudson");
+        assertImportName("bar.ExtensionPoint$LegacyInstancesAreScopedToHudson", "LegacyInstancesAreScopedToHudson");
 
         // import java.util.Arrays, inner class
         assertImportName("java.util.Arrays$LegacyMergeSort", "Arrays.LegacyMergeSort", true);
@@ -25,19 +26,16 @@ public class TypesLoaderVisitorTest {
 
     private void assertName(String name, String expectedRegistrationName) {
         assertThat(TypesLoaderVisitor.resolveSymbolName(name, false, false))
-                .describedAs("registrationSymbolName(%s, false)", name)
-                .isEqualTo(expectedRegistrationName);
+                .describedAs("registrationSymbolName(%s, false)", name).isEqualTo(expectedRegistrationName);
     }
 
     private void assertImportName(String name, String expectedRegistrationName) {
         assertThat(TypesLoaderVisitor.resolveSymbolName(name, true, false))
-                .describedAs("registrationSymbolName(%s, false)", name)
-                .isEqualTo(expectedRegistrationName);
+                .describedAs("registrationSymbolName(%s, false)", name).isEqualTo(expectedRegistrationName);
     }
 
     private void assertImportName(String name, String expectedRegistrationName, final boolean importedInner) {
         assertThat(TypesLoaderVisitor.resolveSymbolName(name, true, importedInner))
-                .describedAs("registrationSymbolName(%s, false)", name)
-                .isEqualTo(expectedRegistrationName);
+                .describedAs("registrationSymbolName(%s, false)", name).isEqualTo(expectedRegistrationName);
     }
 }

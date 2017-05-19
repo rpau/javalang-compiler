@@ -1,18 +1,17 @@
 /*
- Copyright (C) 2015 Raquel Pau and Albert Coroleu.
- 
-Walkmod is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Walkmod is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
+ * Copyright (C) 2015 Raquel Pau and Albert Coroleu.
+ * 
+ * Walkmod is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version.
+ * 
+ * Walkmod is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+ * General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License along with Walkmod. If
+ * not, see <http://www.gnu.org/licenses/>.
+ */
 package org.walkmod.javalang.compiler.reflection;
 
 import java.lang.reflect.Method;
@@ -38,85 +37,73 @@ import org.walkmod.javalang.exceptions.NoSuchExpressionTypeException;
  * @author rpau
  *
  */
-public class GenericsBuilderFromArgs implements
-		Builder<Map<String, SymbolType>> {
+public class GenericsBuilderFromArgs implements Builder<Map<String, SymbolType>> {
 
-	private Method method;
+    private Method method;
 
-	private List<Expression> argumentValues;
+    private List<Expression> argumentValues;
 
-	
+    public GenericsBuilderFromArgs() {}
 
-	public GenericsBuilderFromArgs() {
-	}
+    public GenericsBuilderFromArgs(Method method, List<Expression> argumentValues) {
+        this.method = method;
+        this.argumentValues = argumentValues;
 
-	public GenericsBuilderFromArgs(Method method,
-			List<Expression> argumentValues) {
-		this.method = method;
-		this.argumentValues = argumentValues;
-	
-	}
+    }
 
-	public void setMethod(Method method) {
-		this.method = method;
-	}
+    public void setMethod(Method method) {
+        this.method = method;
+    }
 
-	public void setArgumentValues(List<Expression> argumentValues) {
-		this.argumentValues = argumentValues;
-	}
-	
+    public void setArgumentValues(List<Expression> argumentValues) {
+        this.argumentValues = argumentValues;
+    }
 
+    @Override
+    public Map<String, SymbolType> build(Map<String, SymbolType> obj) {
+        if (obj == null) {
+            obj = new HashMap<String, SymbolType>();
+        }
+        TypeVariable<?>[] typeVariables = method.getTypeParameters();
 
-	@Override
-	public Map<String, SymbolType> build(Map<String, SymbolType> obj) {
-		if (obj == null) {
-			obj = new HashMap<String, SymbolType>();
-		}
-		TypeVariable<?>[] typeVariables = method.getTypeParameters();
+        if (typeVariables != null) {
 
-		if (typeVariables != null) {
+            for (int i = 0; i < typeVariables.length; i++) {
 
-			for (int i = 0; i < typeVariables.length; i++) {
+                Type[] parameterTypes = method.getGenericParameterTypes();
 
-				Type[] parameterTypes = method.getGenericParameterTypes();
+                if (parameterTypes != null && argumentValues != null) {
 
-				if (parameterTypes != null && argumentValues != null) {
+                    for (int j = 0; j < parameterTypes.length && j < argumentValues.size(); j++) {
 
-					for (int j = 0; j < parameterTypes.length
-							&& j < argumentValues.size(); j++) {
+                        if (parameterTypes[j] instanceof ParameterizedType) {
 
-						if (parameterTypes[j] instanceof ParameterizedType) {
+                            String variableName =
+                                    ((ParameterizedType) parameterTypes[j]).getActualTypeArguments()[0].toString();
 
-							String variableName = ((ParameterizedType) parameterTypes[j])
-									.getActualTypeArguments()[0].toString();
+                            if (variableName.length() == 1) {
+                                if (argumentValues.get(j) instanceof ClassExpr) {
+                                    Class<?> paramClass;
+                                    try {
+                                        paramClass = TypesLoaderVisitor.getClassLoader()
+                                                .loadClass(((ClassExpr) argumentValues.get(j)).getType());
+                                    } catch (ClassNotFoundException e) {
+                                        throw new NoSuchExpressionTypeException(
+                                                "Invalid class into the generics resolution", e);
+                                    }
 
-							if (variableName.length() == 1) {
-								if (argumentValues.get(j) instanceof ClassExpr) {
-									Class<?> paramClass;
-									try {
-										paramClass = TypesLoaderVisitor.getClassLoader()
-												.loadClass(
-														((ClassExpr) argumentValues
-																.get(j))
-																.getType());
-									} catch (ClassNotFoundException e) {
-										throw new NoSuchExpressionTypeException(
-												"Invalid class into the generics resolution",
-												e);
-									}
+                                    SymbolType auxType = new SymbolType();
+                                    auxType.setName(paramClass.getName());
+                                    obj.put(variableName, auxType);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-									SymbolType auxType = new SymbolType();
-									auxType.setName(paramClass.getName());
-									obj.put(variableName, auxType);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return obj;
-	}
+        return obj;
+    }
 
 }

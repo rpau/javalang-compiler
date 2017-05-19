@@ -15,8 +15,7 @@ public class NameExprAssert extends AbstractExpressionAssert<NameExprAssert, Nam
     }
 
     public AbstractCharSequenceAssert<?, String> name() {
-        return Assertions.assertThat(actual.getName())
-                .as(navigationDescription("name"));
+        return Assertions.assertThat(actual.getName()).as(navigationDescription("name"));
     }
 
     public SymbolDataAssert symbolData() {

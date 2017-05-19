@@ -11,8 +11,7 @@ import java.lang.reflect.Modifier;
 /**
  *
  */
-public class FieldDeclarationAssert
-        extends AbstractNodeAssert<FieldDeclarationAssert, FieldDeclaration> {
+public class FieldDeclarationAssert extends AbstractNodeAssert<FieldDeclarationAssert, FieldDeclaration> {
     public FieldDeclarationAssert(FieldDeclaration actual) {
         super(actual, FieldDeclarationAssert.class);
     }
@@ -36,30 +35,22 @@ public class FieldDeclarationAssert
     }
 
     public FieldDeclarationAssert hasSymbolName(String name) {
-        Assertions.assertThat(actual.getSymbolName())
-                .describedAs("symbolName")
-                .isEqualTo(name);
+        Assertions.assertThat(actual.getSymbolName()).describedAs("symbolName").isEqualTo(name);
         return this;
     }
 
     public FieldDeclarationAssert isFinal(boolean value) {
-        Assertions.assertThat(Modifier.isFinal(actual.getModifiers()))
-                .describedAs("isFinal")
-                .isEqualTo(value);
+        Assertions.assertThat(Modifier.isFinal(actual.getModifiers())).describedAs("isFinal").isEqualTo(value);
         return this;
     }
 
     public FieldDeclarationAssert isStatic(boolean value) {
-        Assertions.assertThat(Modifier.isStatic(actual.getModifiers()))
-                .describedAs("isStatic")
-                .isEqualTo(value);
+        Assertions.assertThat(Modifier.isStatic(actual.getModifiers())).describedAs("isStatic").isEqualTo(value);
         return this;
     }
 
     public FieldDeclarationAssert isPublic(boolean value) {
-        Assertions.assertThat(Modifier.isPublic(actual.getModifiers()))
-                .describedAs("isPublic")
-                .isEqualTo(value);
+        Assertions.assertThat(Modifier.isPublic(actual.getModifiers())).describedAs("isPublic").isEqualTo(value);
         return this;
     }
 }

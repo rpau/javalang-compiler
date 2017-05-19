@@ -17,8 +17,7 @@ class AbstractNodeAssert<S extends AbstractAssert<S, A>, A extends Node> extends
     }
 
     protected SymbolDataAssert symbolData(SymbolDataAware n) {
-        return AstAssertions.assertThat(n.getSymbolData())
-                .as(navigationDescription("symbolData"));
+        return AstAssertions.assertThat(n.getSymbolData()).as(navigationDescription("symbolData"));
     }
 
     /** delegating helper */

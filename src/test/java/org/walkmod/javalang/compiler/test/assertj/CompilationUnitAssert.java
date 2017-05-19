@@ -4,7 +4,7 @@ import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 
-public class CompilationUnitAssert extends AbstractNodeAssert <CompilationUnitAssert, CompilationUnit> {
+public class CompilationUnitAssert extends AbstractNodeAssert<CompilationUnitAssert, CompilationUnit> {
     CompilationUnitAssert(CompilationUnit actual) {
         super(actual, CompilationUnitAssert.class);
     }
@@ -15,11 +15,10 @@ public class CompilationUnitAssert extends AbstractNodeAssert <CompilationUnitAs
     }
 
     public ExtListAssert<TypeDeclarationAssert, TypeDeclaration> types() {
-        return AssertUtil.assertThat(actual.getTypes(), TypeDeclarationAssert.class,
-                navigationDescription("types"));
+        return AssertUtil.assertThat(actual.getTypes(), TypeDeclarationAssert.class, navigationDescription("types"));
     }
 
-    public AbstractTypeDeclarationAssert<?,?> getType(int index) {
+    public AbstractTypeDeclarationAssert<?, ?> getType(int index) {
         return types().item(index);
     }
 }

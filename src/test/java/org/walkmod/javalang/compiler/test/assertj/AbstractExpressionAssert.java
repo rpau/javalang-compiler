@@ -39,13 +39,11 @@ public class AbstractExpressionAssert<S extends AbstractExpressionAssert<S, A>, 
     }
 
     public AssignExprAssert asAssignExpr() {
-        return AstAssertions.assertThat(asInstanceOf(AssignExpr.class))
-                .as(navigationDescription("(AssignExpr)"));
+        return AstAssertions.assertThat(asInstanceOf(AssignExpr.class)).as(navigationDescription("(AssignExpr)"));
     }
 
     public NameExprAssert asNameExpr() {
-        return AstAssertions.assertThat(asInstanceOf(NameExpr.class))
-                .as(navigationDescription("(NameExpr)"));
+        return AstAssertions.assertThat(asInstanceOf(NameExpr.class)).as(navigationDescription("(NameExpr)"));
     }
 
     public ObjectCreationExprAssert asObjectCreationExpr() {

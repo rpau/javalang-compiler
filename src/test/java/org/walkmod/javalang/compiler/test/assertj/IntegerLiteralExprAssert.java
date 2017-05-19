@@ -9,8 +9,7 @@ public class IntegerLiteralExprAssert extends AbstractExpressionAssert<IntegerLi
     }
 
     public IntegerLiteralExprAssert hasValue(int value) {
-        Assertions.assertThat(Integer.valueOf(actual.getValue()))
-                .as(navigationDescription("value"));
+        Assertions.assertThat(Integer.valueOf(actual.getValue())).as(navigationDescription("value"));
         return this;
     }
 }

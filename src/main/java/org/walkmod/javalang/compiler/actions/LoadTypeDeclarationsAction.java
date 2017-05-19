@@ -1,18 +1,17 @@
 /*
- Copyright (C) 2015 Raquel Pau and Albert Coroleu.
- 
-Walkmod is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Walkmod is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
+ * Copyright (C) 2015 Raquel Pau and Albert Coroleu.
+ * 
+ * Walkmod is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version.
+ * 
+ * Walkmod is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+ * General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License along with Walkmod. If
+ * not, see <http://www.gnu.org/licenses/>.
+ */
 package org.walkmod.javalang.compiler.actions;
 
 import java.util.LinkedList;
@@ -40,111 +39,111 @@ import org.walkmod.javalang.visitors.VoidVisitorAdapter;
 
 public class LoadTypeDeclarationsAction extends SymbolAction {
 
-	private TypesLoaderVisitor typeTable;
+    private TypesLoaderVisitor typeTable;
 
-	public LoadTypeDeclarationsAction(TypesLoaderVisitor typeTable) {
-		this.typeTable = typeTable;
-	}
+    public LoadTypeDeclarationsAction(TypesLoaderVisitor typeTable) {
+        this.typeTable = typeTable;
+    }
 
-	@Override
-	public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
-		Node node = symbol.getLocation();
+    @Override
+    public void doPush(Symbol<?> symbol, SymbolTable table) throws Exception {
+        Node node = symbol.getLocation();
 
-		if (node instanceof TypeDeclaration || node instanceof ObjectCreationExpr) {
-			if (symbol.getName().equals("this")) {
-				LoadInheritedNestedClasses<?> vis = new LoadInheritedNestedClasses<Object>(table);
-				node.accept(vis, null);
-			}
-		}
+        if (node instanceof TypeDeclaration || node instanceof ObjectCreationExpr) {
+            if (symbol.getName().equals("this")) {
+                LoadInheritedNestedClasses<?> vis = new LoadInheritedNestedClasses<Object>(table);
+                node.accept(vis, null);
+            }
+        }
 
-	}
+    }
 
-	private class LoadInheritedNestedClasses<A> extends VoidVisitorAdapter<A> {
+    private class LoadInheritedNestedClasses<A> extends VoidVisitorAdapter<A> {
 
-		private SymbolTable symbolTable;
+        private SymbolTable symbolTable;
 
-		public LoadInheritedNestedClasses(SymbolTable symbolTable) {
-			this.symbolTable = symbolTable;
-		}
+        public LoadInheritedNestedClasses(SymbolTable symbolTable) {
+            this.symbolTable = symbolTable;
+        }
 
-		@Override
-		public void visit(ClassOrInterfaceDeclaration n, A ctx) {
-			loadExtendsOrImplements(n.getExtends());
-			loadExtendsOrImplements(n.getImplements());
-			n.accept(typeTable, null);
+        @Override
+        public void visit(ClassOrInterfaceDeclaration n, A ctx) {
+            loadExtendsOrImplements(n.getExtends());
+            loadExtendsOrImplements(n.getImplements());
+            n.accept(typeTable, null);
 
-		}
+        }
 
-		@Override
-		public void visit(AnnotationDeclaration n, A ctx) {
-			n.accept(typeTable, null);
-		}
+        @Override
+        public void visit(AnnotationDeclaration n, A ctx) {
+            n.accept(typeTable, null);
+        }
 
-		@Override
-		public void visit(EnumDeclaration n, A ctx) {
-			n.accept(typeTable, null);
-			loadExtendsOrImplements(n.getImplements());
-		}
+        @Override
+        public void visit(EnumDeclaration n, A ctx) {
+            n.accept(typeTable, null);
+            loadExtendsOrImplements(n.getImplements());
+        }
 
-		@Override
-		public void visit(EmptyTypeDeclaration n, A ctx) {
-			n.accept(typeTable, null);
-		}
+        @Override
+        public void visit(EmptyTypeDeclaration n, A ctx) {
+            n.accept(typeTable, null);
+        }
 
-		@Override
-		public void visit(ObjectCreationExpr n, A ctx) {
-			n.accept(typeTable, null);
-			ClassOrInterfaceType type = n.getType();
-			List<ClassOrInterfaceType> extendsList = new LinkedList<ClassOrInterfaceType>();
-			extendsList.add(type);
-			loadExtendsOrImplements(extendsList);
-		}
+        @Override
+        public void visit(ObjectCreationExpr n, A ctx) {
+            n.accept(typeTable, null);
+            ClassOrInterfaceType type = n.getType();
+            List<ClassOrInterfaceType> extendsList = new LinkedList<ClassOrInterfaceType>();
+            extendsList.add(type);
+            loadExtendsOrImplements(extendsList);
+        }
 
-		private void loadExtendsOrImplements(List<ClassOrInterfaceType> extendsList) {
-			if (extendsList != null) {
-				for (ClassOrInterfaceType type : extendsList) {
-					String name = type.getName();
-					ClassOrInterfaceType scope = type.getScope();
-					if (scope != null) {
-						name = scope.toString() + "." + name;
-					}
-					Symbol<?> s = symbolTable.findSymbol(name, ReferenceType.TYPE, ReferenceType.TYPE_PARAM);
-					if (s != null) {
-						Object location = s.getLocation();
-						if (location != null && location instanceof TypeDeclaration) {
+        private void loadExtendsOrImplements(List<ClassOrInterfaceType> extendsList) {
+            if (extendsList != null) {
+                for (ClassOrInterfaceType type : extendsList) {
+                    String name = type.getName();
+                    ClassOrInterfaceType scope = type.getScope();
+                    if (scope != null) {
+                        name = scope.toString() + "." + name;
+                    }
+                    Symbol<?> s = symbolTable.findSymbol(name, ReferenceType.TYPE, ReferenceType.TYPE_PARAM);
+                    if (s != null) {
+                        Object location = s.getLocation();
+                        if (location != null && location instanceof TypeDeclaration) {
 
-							((TypeDeclaration) location).accept(this, null);
+                            ((TypeDeclaration) location).accept(this, null);
 
-						} else {
-							Class<?> clazz = s.getType().getClazz();
-							Set<Class<?>> innerClasses = ClassInspector.getNonPrivateClassMembers(clazz);
-							innerClasses.remove(clazz);
-							for (Class<?> innerClass : innerClasses) {
-								try {
-									Symbol<?> aux = symbolTable.findSymbol(innerClass.getSimpleName(),
-											ReferenceType.TYPE);
-									boolean add = aux == null;
-									if (!add) {
-										Node oldLoc = aux.getLocation();
-										add = (oldLoc == null || !(oldLoc instanceof TypeDeclaration
-												|| oldLoc instanceof ImportDeclaration));
-									}
+                        } else {
+                            Class<?> clazz = s.getType().getClazz();
+                            Set<Class<?>> innerClasses = ClassInspector.getNonPrivateClassMembers(clazz);
+                            innerClasses.remove(clazz);
+                            for (Class<?> innerClass : innerClasses) {
+                                try {
+                                    Symbol<?> aux =
+                                            symbolTable.findSymbol(innerClass.getSimpleName(), ReferenceType.TYPE);
+                                    boolean add = aux == null;
+                                    if (!add) {
+                                        Node oldLoc = aux.getLocation();
+                                        add = (oldLoc == null || !(oldLoc instanceof TypeDeclaration
+                                                || oldLoc instanceof ImportDeclaration));
+                                    }
 
-									if (add) {
+                                    if (add) {
 
-										symbolTable.pushSymbol(innerClass.getSimpleName(), ReferenceType.TYPE,
-												SymbolType.valueOf(innerClass, null), null);
+                                        symbolTable.pushSymbol(innerClass.getSimpleName(), ReferenceType.TYPE,
+                                                SymbolType.valueOf(innerClass, null), null);
 
-									}
-								} catch (InvalidTypeException e) {
-									throw new RuntimeException(e);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+                                    }
+                                } catch (InvalidTypeException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-	}
+    }
 }

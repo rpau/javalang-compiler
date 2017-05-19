@@ -12,7 +12,7 @@ import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
-public class SymbolDataAssert<S extends SymbolDataAssert<S,A>, A extends SymbolData>
+public class SymbolDataAssert<S extends SymbolDataAssert<S, A>, A extends SymbolData>
         extends AbstractObjectAssert<S, A> {
     SymbolDataAssert(A actual, Class<?> selfType) {
         super(actual, selfType);
@@ -46,8 +46,7 @@ public class SymbolDataAssert<S extends SymbolDataAssert<S,A>, A extends SymbolD
     }
 
     public SymbolTypeAssert asSymbolType() {
-        return AstAssertions.assertThat(asInstanceOf(SymbolType.class))
-                .as(navigationDescription("(SymbolType)"));
+        return AstAssertions.assertThat(asInstanceOf(SymbolType.class)).as(navigationDescription("(SymbolType)"));
     }
 
     public AbstractCharSequenceAssert<?, String> name() {

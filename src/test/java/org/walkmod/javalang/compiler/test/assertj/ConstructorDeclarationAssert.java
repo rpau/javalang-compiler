@@ -9,7 +9,6 @@ public class ConstructorDeclarationAssert
     }
 
     public BlockStmtAssert block() {
-        return AstAssertions.assertThat(actual.getBlock())
-                .as(navigationDescription("block"));
+        return AstAssertions.assertThat(actual.getBlock()).as(navigationDescription("block"));
     }
 }

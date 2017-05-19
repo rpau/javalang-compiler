@@ -24,9 +24,7 @@ public class ExtListAssert<ELEMENT_ASSERT extends AbstractAssert, ELEMENT> exten
         final String description = navigationDescription("[" + index + "]");
 
         final List<?> l = actual;
-        assertThat(l.size())
-                .as(navigationDescription("size"))
-                .isGreaterThan(index);
+        assertThat(l.size()).as(navigationDescription("size")).isGreaterThan(index);
         return (ELEMENT_ASSERT) assertion.toAssert(l.get(index), description);
     }
 }

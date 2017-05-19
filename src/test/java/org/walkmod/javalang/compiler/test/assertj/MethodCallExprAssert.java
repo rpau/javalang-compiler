@@ -3,19 +3,17 @@ package org.walkmod.javalang.compiler.test.assertj;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
 
-public class MethodCallExprAssert
-        extends AbstractExpressionAssert<MethodCallExprAssert, MethodCallExpr> {
+public class MethodCallExprAssert extends AbstractExpressionAssert<MethodCallExprAssert, MethodCallExpr> {
     public MethodCallExprAssert(MethodCallExpr actual) {
         super(actual, MethodCallExprAssert.class);
     }
 
-    public AbstractExpressionAssert<?,?> arg(int index) {
+    public AbstractExpressionAssert<?, ?> arg(int index) {
         return args().item(index);
     }
 
     public ExtListAssert<AbstractExpressionAssert, Expression> args() {
-        return AssertUtil.assertThat(actual.getArgs(), AbstractExpressionAssert.class,
-                navigationDescription("args"));
+        return AssertUtil.assertThat(actual.getArgs(), AbstractExpressionAssert.class, navigationDescription("args"));
     }
 
     public SymbolDataAssert symbolData() {
@@ -23,7 +21,6 @@ public class MethodCallExprAssert
     }
 
     public ExpressionAssert scope() {
-        return AstAssertions.assertThat(actual.getScope())
-                .as(navigationDescription("scope"));
+        return AstAssertions.assertThat(actual.getScope()).as(navigationDescription("scope"));
     }
 }

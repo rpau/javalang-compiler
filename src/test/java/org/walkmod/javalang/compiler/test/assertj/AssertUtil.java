@@ -26,11 +26,9 @@ class AssertUtil {
     /**
      * Helper for list assertions.
      */
-    static <ELEMENT, ELEMENT_ASSERT extends AbstractAssert<ELEMENT_ASSERT, ELEMENT>>
-    ExtListAssert<ELEMENT_ASSERT, ELEMENT> assertThat(List<? extends ELEMENT> actual,
-                                                      Class<ELEMENT_ASSERT> assertClass,
-                                                      String description) {
-        return (ExtListAssert<ELEMENT_ASSERT, ELEMENT>)
-                new ExtListAssert<ELEMENT_ASSERT, ELEMENT>(actual, assertClass).as(description);
+    static <ELEMENT, ELEMENT_ASSERT extends AbstractAssert<ELEMENT_ASSERT, ELEMENT>> ExtListAssert<ELEMENT_ASSERT, ELEMENT> assertThat(
+            List<? extends ELEMENT> actual, Class<ELEMENT_ASSERT> assertClass, String description) {
+        return (ExtListAssert<ELEMENT_ASSERT, ELEMENT>) new ExtListAssert<ELEMENT_ASSERT, ELEMENT>(actual, assertClass)
+                .as(description);
     }
 }

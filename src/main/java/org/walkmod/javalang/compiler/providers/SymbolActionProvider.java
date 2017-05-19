@@ -1,18 +1,17 @@
 /*
- Copyright (C) 2015 Raquel Pau and Albert Coroleu.
- 
-Walkmod is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Walkmod is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with Walkmod.  If not, see <http://www.gnu.org/licenses/>.*/
+ * Copyright (C) 2015 Raquel Pau and Albert Coroleu.
+ * 
+ * Walkmod is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version.
+ * 
+ * Walkmod is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+ * General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License along with Walkmod. If
+ * not, see <http://www.gnu.org/licenses/>.
+ */
 package org.walkmod.javalang.compiler.providers;
 
 import java.util.List;
@@ -48,41 +47,41 @@ import org.walkmod.javalang.compiler.symbols.SymbolAction;
  */
 public interface SymbolActionProvider {
 
-	public List<SymbolAction> getActions(ClassOrInterfaceDeclaration n);
+    public List<SymbolAction> getActions(ClassOrInterfaceDeclaration n);
 
-	public List<SymbolAction> getActions(Parameter n);
+    public List<SymbolAction> getActions(Parameter n);
 
-	public List<SymbolAction> getActions(ClassOrInterfaceType n);
+    public List<SymbolAction> getActions(ClassOrInterfaceType n);
 
-	public List<SymbolAction> getActions(MultiTypeParameter n);
+    public List<SymbolAction> getActions(MultiTypeParameter n);
 
-	public List<SymbolAction> getActions(VariableDeclarator n);
+    public List<SymbolAction> getActions(VariableDeclarator n);
 
-	public List<SymbolAction> getActions(ImportDeclaration n);
+    public List<SymbolAction> getActions(ImportDeclaration n);
 
-	public List<SymbolAction> getActions(MethodDeclaration n);
+    public List<SymbolAction> getActions(MethodDeclaration n);
 
-	public List<SymbolAction> getActions(FieldDeclaration n);
+    public List<SymbolAction> getActions(FieldDeclaration n);
 
-	public List<SymbolAction> getActions(EnumDeclaration n);
+    public List<SymbolAction> getActions(EnumDeclaration n);
 
-	public List<SymbolAction> getActions(EnumConstantDeclaration n);
+    public List<SymbolAction> getActions(EnumConstantDeclaration n);
 
-	public List<SymbolAction> getActions(AnnotationDeclaration n);
+    public List<SymbolAction> getActions(AnnotationDeclaration n);
 
-	public List<SymbolAction> getActions(AnnotationMemberDeclaration n);
+    public List<SymbolAction> getActions(AnnotationMemberDeclaration n);
 
-	public List<SymbolAction> getActions(ConstructorDeclaration n);
+    public List<SymbolAction> getActions(ConstructorDeclaration n);
 
-	public List<SymbolAction> getActions(CompilationUnit n);
+    public List<SymbolAction> getActions(CompilationUnit n);
 
-	public List<SymbolAction> getActions(EmptyTypeDeclaration n);
+    public List<SymbolAction> getActions(EmptyTypeDeclaration n);
 
-	public List<SymbolAction> getActions(TypeDeclaration n);
+    public List<SymbolAction> getActions(TypeDeclaration n);
 
-	public List<SymbolAction> getActions(BlockStmt n);
+    public List<SymbolAction> getActions(BlockStmt n);
 
-	public List<SymbolAction> getActions(VariableDeclarationExpr n);
+    public List<SymbolAction> getActions(VariableDeclarationExpr n);
 
-	public List<SymbolAction> getActions(ObjectCreationExpr n);
+    public List<SymbolAction> getActions(ObjectCreationExpr n);
 }

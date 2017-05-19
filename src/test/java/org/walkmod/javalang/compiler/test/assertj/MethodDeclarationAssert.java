@@ -4,15 +4,13 @@ import org.assertj.core.api.AbstractCharSequenceAssert;
 import org.assertj.core.api.Assertions;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 
-public class MethodDeclarationAssert
-        extends AbstractNodeAssert<MethodDeclarationAssert, MethodDeclaration> {
+public class MethodDeclarationAssert extends AbstractNodeAssert<MethodDeclarationAssert, MethodDeclaration> {
     MethodDeclarationAssert(MethodDeclaration actual) {
         super(actual, MethodDeclarationAssert.class);
     }
 
     public BlockStmtAssert body() {
-        return AstAssertions.assertThat(actual.getBody())
-                .as(navigationDescription("body"));
+        return AstAssertions.assertThat(actual.getBody()).as(navigationDescription("body"));
     }
 
     public MethodDeclarationAssert hasName(String name) {

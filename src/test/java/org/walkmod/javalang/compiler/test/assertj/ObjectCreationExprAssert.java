@@ -15,13 +15,11 @@ public class ObjectCreationExprAssert extends AbstractExpressionAssert<ObjectCre
     }
 
     public AbstractCharSequenceAssert<?, String> symbolName() {
-        return Assertions.assertThat(actual.getSymbolName())
-                .as(navigationDescription("symbolName"));
+        return Assertions.assertThat(actual.getSymbolName()).as(navigationDescription("symbolName"));
     }
 
     public TypeAssert type() {
-        return AstAssertions.assertThat(actual.getType())
-                .as(navigationDescription("type"));
+        return AstAssertions.assertThat(actual.getType()).as(navigationDescription("type"));
     }
 
     public SymbolDataAssert symbolData() {

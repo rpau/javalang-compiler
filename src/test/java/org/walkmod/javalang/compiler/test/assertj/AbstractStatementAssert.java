@@ -31,7 +31,6 @@ public class AbstractStatementAssert<S extends AbstractStatementAssert<S, A>, A 
     }
 
     public ReturnStmtAssert asReturnStmt() {
-        return AstAssertions.assertThat(asInstanceOf(ReturnStmt.class))
-                .as(navigationDescription("(ReturnStmt)"));
+        return AstAssertions.assertThat(asInstanceOf(ReturnStmt.class)).as(navigationDescription("(ReturnStmt)"));
     }
 }
