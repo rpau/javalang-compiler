@@ -2140,7 +2140,28 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
 		Assert.assertNotNull(cu.getImports().get(0).getUsages());
 	}
-	
+
+	@Test
+	public void testImportsOfNestedClasses2() throws Exception {
+		String code = ""
+				+ "import bar.Arrays;\n"
+				+ "import bar.Arrays2.Leg;\n"
+				+ "public class Foo {\n"
+				+ "  Arrays.Leg leg1a = new bar.Arrays.Leg();\n"
+				+ "  bar.Arrays.Leg leg1b = new bar.Arrays.Leg();\n"
+				+ "  bar.Arrays.Leg leg1c = new Arrays.Leg();\n"
+
+				+ "  bar.Arrays2.Leg leg2a = new bar.Arrays2.Leg();\n"
+				+ "  Leg leg2b = new bar.Arrays2.Leg();\n"
+				+ "}";
+		String lib = "package bar; public class Arrays { public static class Leg {} }";
+		String lib2 = "package bar; public class Arrays2 { public static class Leg {} }";
+		CompilationUnit cu = run(code, lib, lib2);
+		Assert.assertNotNull(cu);
+
+		Assert.assertNotNull(cu.getImports().get(0).getUsages());
+	}
+
 	@Test
 	public void testStaticMethodsCalls() throws Exception{
 		String externalClass = "package foo; public class Bar { public String name; public static Bar hello() { return null; } }";
