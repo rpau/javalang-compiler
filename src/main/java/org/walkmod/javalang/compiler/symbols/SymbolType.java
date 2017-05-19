@@ -32,7 +32,10 @@ import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.types.TypeNotFoundException;
 import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
+import org.walkmod.javalang.Contracts;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
+
+import static java.util.Arrays.asList;
 
 public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData, ConstructorSymbolData {
 
@@ -199,6 +202,26 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public void setParameterizedTypes(List<SymbolType> parameterizedTypes) {
+        /*
+           this invariant is considered to be correct but some code needs to be fixed that
+           breaks the invariant before general use.
+         */
+        if (Contracts.CHECK_EXPERIMENTAL_INVARIANT_ENABLED) {
+            if (parameterizedTypes != null) {
+                final Class<?> clazz = getClazz();
+                if (clazz != null) {
+                    final TypeVariable<? extends Class<?>>[] tps = clazz.getTypeParameters();
+                    if (tps.length != parameterizedTypes.size()) {
+                        throw new IllegalArgumentException("[" + this + "]: symbol type invariant violation"
+                            + "\n    # of type arguments (" + parameterizedTypes.size() + ")"
+                                + " does not match # of type parameters (" + tps.length + ")"
+                                + "\n        args  : " + parameterizedTypes
+                                + "\n        params: " + asList(tps)
+                        );
+                    }
+                }
+            }
+        }
         this.parameterizedTypes = parameterizedTypes != null
                 ? Collections.unmodifiableList(new ArrayList<SymbolType>(parameterizedTypes))
                 : null;
