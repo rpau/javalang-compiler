@@ -1,18 +1,14 @@
-<!DOCTYPE walkmod PUBLIC "-//WALKMOD//DTD"  "http://www.walkmod.com/dtd/walkmod-1.0.dtd" >
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE walkmod PUBLIC "-//WALKMOD//DTD" "http://www.walkmod.com/dtd/walkmod-1.0.dtd">
 <walkmod>
-	<plugins>
-		<plugin groupId="org.walkmod" artifactId="walkmod-imports-cleaner-plugin"
-			version="2.0" />
-		<plugin groupId="org.walkmod" artifactId="walkmod-license-applier-plugin"
-			version="2.0" />
-		
-	</plugins>
-
-
-	<chain name="common">
-		<transformation type="walkmod:commons:import-cleaner" />
-		<transformation type="walkmod:commons:license-generator">
-			<param name="licenseFile">src/main/license-header.txt</param>
-		</transformation>
-	</chain>
+    <plugins>
+        <plugin groupId="org.walkmod" artifactId="walkmod-imports-cleaner-plugin" version="2.0"/>
+        <plugin groupId="org.walkmod" artifactId="walkmod-license-applier-plugin" version="2.0"/>
+    </plugins>
+    <chain name="common">
+        <transformation type="walkmod:commons:import-cleaner"/>
+        <transformation type="walkmod:commons:license-generator">
+            <param name="licenseFile">src/main/license-header.txt</param>
+        </transformation>
+    </chain>
 </walkmod>
