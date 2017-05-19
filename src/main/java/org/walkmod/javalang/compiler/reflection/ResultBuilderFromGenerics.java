@@ -131,8 +131,8 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
                         boolean isInTheTopScope = genericsSymbolTable.getScopes().peek().findSymbol(vname) != null;
                         SymbolType st = s.getType();
                         if (st != null) {
-                            SymbolType refactor =
-                                    s.getType().refactorToTypeVariable(vname, parameterizedType, genericArgs || isInTheTopScope);
+                            SymbolType refactor = s.getType().refactorToTypeVariable(vname, parameterizedType,
+                                    genericArgs || isInTheTopScope);
                             s.setType(refactor);
                         } else {
                             s.setType(parameterizedType);
@@ -211,7 +211,8 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
                     for (int i = 0; i < tparams.length && it.hasNext(); i++) {
                         SymbolType st = it.next();
                         if (st != null) {
-                            updateTypeMapping(tparams[i], genericsSymbolTable, st.cloneAsTypeVariable(tparams[i].getName()), true, processed);
+                            updateTypeMapping(tparams[i], genericsSymbolTable,
+                                    st.cloneAsTypeVariable(tparams[i].getName()), true, processed);
                         }
                     }
                 }

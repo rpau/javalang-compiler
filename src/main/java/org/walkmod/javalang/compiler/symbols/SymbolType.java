@@ -68,7 +68,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     private SymbolType(int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds,
-                       String typeVariable) {
+            String typeVariable) {
         this(upperBounds, lowerBounds);
         this.typeVariable = typeVariable;
         this.arrayCount = arrayCount;
@@ -101,7 +101,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
-    private SymbolType(String name, int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds, String typeVariable) {
+    private SymbolType(String name, int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds,
+            String typeVariable) {
         this(name, upperBounds, lowerBounds);
         this.typeVariable = typeVariable;
         this.arrayCount = arrayCount;
@@ -259,8 +260,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             SymbolType aux = (SymbolType) o;
             String auxName = aux.getName();
             boolean equalName = name != null && auxName != null && name.equals(auxName);
-            equalName = equalName || (isTemplateVariable() && aux.isTemplateVariable()
-                    && typeVariable.equals(aux.typeVariable));
+            equalName = equalName
+                    || (isTemplateVariable() && aux.isTemplateVariable() && typeVariable.equals(aux.typeVariable));
             return equalName && arrayCount == aux.getArrayCount();
         }
         return false;
@@ -638,7 +639,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      * Builds a symbol for a type variable.
      */
     private static SymbolType typeVariableOf(String typeVariable, final String name, final int arrayCount,
-                                             final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
+            final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
         return new SymbolType(name, arrayCount, upperBounds, lowerBounds, typeVariable);
     }
 
@@ -646,7 +647,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      * Builds a symbol for a type variable.
      */
     private static SymbolType typeVariableOf(final String typeVariable, final int arrayCount,
-                                             List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
+            List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
         return new SymbolType(arrayCount, upperBounds, lowerBounds, typeVariable);
     }
 
@@ -834,7 +835,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
                     arg = returnType;
                 }
-                returnType = typeVariableOf(variableName, arg.getName(), arg.getArrayCount(), arg.getBounds(), arg.getLowerBounds());
+                returnType = typeVariableOf(variableName, arg.getName(), arg.getArrayCount(), arg.getBounds(),
+                        arg.getLowerBounds());
                 Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
                 auxMap.put(variableName, returnType);
 
