@@ -79,9 +79,14 @@ public abstract class SemanticTest {
 	}
 
 	public void populateSemantics() throws Exception {
+		populateSemantics(cu);
+	}
+
+	protected CompilationUnit populateSemantics(final CompilationUnit cu) throws Exception {
 		SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
 		visitor.setClassLoader(getClassLoader());
 		visitor.visit(cu, new HashMap<String, Object>());
+		return cu;
 	}
 
 	public ClassLoader getClassLoader() throws Exception {
