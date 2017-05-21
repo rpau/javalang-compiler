@@ -1043,8 +1043,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         } else {
             if (other.getArrayCount() == getArrayCount()) {
 
-                List<Class<?>> bounds =
-                        ClassInspector.getTheNearestSuperClasses(getBoundClasses(), other.getBoundClasses());
+                List<? extends Class<?>> bounds =
+                        ClassInspector.intersectRawTypes(getBoundClasses(), other.getBoundClasses());
                 if (bounds.isEmpty()) {
                     result = null;
                 } else if (bounds.size() == 1) {
