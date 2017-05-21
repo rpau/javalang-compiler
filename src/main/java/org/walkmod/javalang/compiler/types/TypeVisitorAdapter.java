@@ -36,7 +36,6 @@ import org.walkmod.javalang.ast.body.ConstructorDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.Parameter;
-import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.body.VariableDeclaratorId;
 import org.walkmod.javalang.ast.expr.ArrayAccessExpr;
@@ -1155,13 +1154,15 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
         Map<String, SymbolType> typeMapping = symbolTable.getTypeParams();
 
         try {
-            SymbolType st = MethodInspector.findMethodType(symbolTable.getType("this", ReferenceType.VARIABLE),
-                    typeArgs, filter, null, typeMapping);
+            final SymbolType scope = symbolTable.getType("this", ReferenceType.VARIABLE);
+            SymbolType st = MethodInspector.findMethodType(scope, typeArgs, filter, null, typeMapping);
 
             if (st == null) {
                 throw new NoSuchExpressionTypeException("Error locating method " + n.getName() + " with type args "
                         + (typeArgs == null ? "[]" : Arrays.asList(typeArgs)) + " and type params " + typeMapping
-                        + " for parameters " + n.getParameters() + " in current class");
+                        + " for parameters " + n.getParameters() + " in current class scope "
+                        + scope
+                );
             }
             SymbolType typeData = (SymbolType) n.getType().getSymbolData();
             SymbolType methodType = typeData.clone();

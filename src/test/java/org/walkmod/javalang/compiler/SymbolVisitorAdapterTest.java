@@ -1837,7 +1837,7 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
         Assert.assertNotNull(cu);
 	}
 
-    @Test
+	@Test
     public void testNestedMultipleAnonymousClasses() throws Exception {
         String otherIteratorCode = "public interface OtherIterator{ public void expand(); } "; // $1$1
         String adaptedIteratorCode =
