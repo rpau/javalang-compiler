@@ -494,14 +494,19 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType cloneAsTypeVariable(String typeVariable) {
-        return clone(null, null, typeVariable);
+        return clone(name, arrayCount, typeVariable, null, null);
+    }
+
+    public SymbolType cloneAsArray(String name, int arrayCount) {
+        return clone(name, arrayCount, typeVariable, null, null);
     }
 
     private SymbolType clone(final Stack<SymbolType> parent, final Stack<SymbolType> created) {
-        return clone(parent, created, typeVariable);
+        return clone(name, arrayCount, typeVariable, parent, created);
     }
 
-    private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created, final String typeVariable) {
+    private SymbolType clone(final String name, final int arrayCount, final String typeVariable,
+                             Stack<SymbolType> parent, Stack<SymbolType> created) {
         SymbolType result = new SymbolType(name);
         result.setClazz(clazz);
         result.setArrayCount(arrayCount);
