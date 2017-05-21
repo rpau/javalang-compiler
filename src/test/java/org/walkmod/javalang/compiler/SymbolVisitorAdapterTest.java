@@ -1,32 +1,38 @@
 /*
  * Copyright (C) 2015 Raquel Pau and Albert Coroleu.
- * 
+ *
  * Walkmod is free software: you can redistribute it and/or modify it under the terms of the GNU
  * Lesser General Public License as published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
- * 
+ *
  * Walkmod is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License along with Walkmod. If
  * not, see <http://www.gnu.org/licenses/>.
  */
 package org.walkmod.javalang.compiler;
 
 import java.io.File;
+import java.io.Serializable;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import javax.lang.model.SourceVersion;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
-import org.walkmod.javalang.ast.*;
+import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.ast.ImportDeclaration;
+import org.walkmod.javalang.ast.MethodSymbolData;
+import org.walkmod.javalang.ast.SymbolData;
+import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
@@ -53,8 +59,12 @@ import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
+import org.walkmod.javalang.compiler.test.assertj.ExtListAssert;
+import org.walkmod.javalang.compiler.test.assertj.StatementAssert;
 import org.walkmod.javalang.test.SemanticTest;
 import org.walkmod.javalang.util.FileUtils;
+
+import static org.walkmod.javalang.compiler.test.assertj.AstAssertions.assertThat;
 
 public class SymbolVisitorAdapterTest extends SemanticTest {
 
@@ -1580,6 +1590,48 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
         vds = vdexpr.getVars();
         Assert.assertNull(vds.get(0).getUsages());
 
+    }
+
+    @Test
+    public void testSyntheticIntersectionTypes() throws Exception {
+	    /*
+	     The type of the ternary operator is the intersection type of the sub expression types.
+	     */
+        String mySet = ""
+                + "import java.io.Serializable;\n"
+                + "import java.util.Set;\n"
+                + "public abstract class MySet<A> implements Set<A>, Serializable, Cloneable {}\n";
+        String code = ""
+                + "import java.io.Serializable;\n"
+                + "import java.util.Set;\n"
+                + "import java.util.HashSet;\n"
+                + "public class A {\n"
+                + " void doSer(Serializable p) {}\n"
+                + " void doClone(Cloneable p) {}\n"
+                + " void doSet(Set p) {}\n"
+                + " void f(boolean b, HashSet<String> set1, MySet<String> set2) {\n"
+                + "  doSer(b ? set1 : set2);\n"
+                + "  doClone(b ? set1 : set2);\n"
+                + "  doSet(b ? set1 : set2);\n"
+                + " }\n"
+                + "}\n";
+        CompilationUnit cu = run(code, mySet);
+        final ExtListAssert<StatementAssert, Statement> fStmts =
+                assertThat(cu)
+                        .types().item(0).members().item(3).asMethodDeclaration()
+                        .body().stmts();
+        fStmts.item(0).asExpressionStmt().expression().asMethodCallExpr()
+                .hasName("doSer")
+                .args().item(0)
+                .symbolData().boundClasses().contains(Serializable.class);
+        fStmts.item(1).asExpressionStmt().expression().asMethodCallExpr()
+                .hasName("doClone")
+                .args().item(0)
+                .symbolData().boundClasses().contains(Cloneable.class);
+        fStmts.item(2).asExpressionStmt().expression().asMethodCallExpr()
+                .hasName("doSet")
+                .args().item(0)
+                .symbolData().boundClasses().contains(Set.class);
     }
 
     @Test
