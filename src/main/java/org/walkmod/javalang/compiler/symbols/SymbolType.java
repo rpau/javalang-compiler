@@ -190,6 +190,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return name;
     }
 
+    /** @deprecated do not use directly but via specialized constructors of factory methods */
+    @Deprecated
     public void setName(String name) {
         this.name = name;
     }
@@ -487,6 +489,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         for (int i = 0; i < arrayCount; i++) {
             result.append("[]");
         }
+    }
+
+    /** clone with name replaced */
+    public SymbolType withName(String name) {
+        return clone(name, arrayCount, typeVariable, null, null);
     }
 
     public SymbolType clone() {

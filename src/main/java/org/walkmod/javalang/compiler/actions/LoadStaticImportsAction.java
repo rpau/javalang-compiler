@@ -62,8 +62,9 @@ public class LoadStaticImportsAction extends SymbolAction {
                     if (clazz == null) {
                         throw e;
                     } else {
-                        symbol.getType().setName(nameExpr);
-                        symbol.getType().getClazz();
+                        final SymbolType type = symbol.getType().withName(nameExpr);
+                        symbol.setType(type);
+                        type.getClazz();
                     }
                 }
 
