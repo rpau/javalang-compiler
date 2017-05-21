@@ -1819,6 +1819,25 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
     }
 
     @Test
+    public void testAnonymousClassNameGenerationBug() throws Exception {
+	    // the bug incremented the anonymous counter twice, so the CompilationUnit could not be created
+        // because the class could not be resolved
+        String code = ""
+                + "public final class AProvider {\n"
+                + "    public final static class Factory {\n"
+                + "        protected Object[] create() {\n"
+                + "            return new Object[] {\n"
+                + "                    new java.io.Serializable() {\n"
+                + "                    }\n"
+                + "            };\n"
+                + "        }\n"
+                + "    }\n"
+                + "}\n";
+        CompilationUnit cu = run(code);
+        Assert.assertNotNull(cu);
+	}
+
+    @Test
     public void testNestedMultipleAnonymousClasses() throws Exception {
         String otherIteratorCode = "public interface OtherIterator{ public void expand(); } "; // $1$1
         String adaptedIteratorCode =
