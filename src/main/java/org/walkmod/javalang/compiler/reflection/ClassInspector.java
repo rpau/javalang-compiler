@@ -87,7 +87,7 @@ public class ClassInspector {
         }
     }
 
-    /** @returns intersection of raw types of classes and all super classes and interfaces */
+    /** @return intersection of raw types of classes and all super classes and interfaces */
 	public static List<? extends Class<?> > intersectRawTypes(List<Class<?> > classes1, List<Class<?>> classes2) {
         // most typical case
         if (classes1.size() == 1 && classes2.size() == 1) {
@@ -101,7 +101,7 @@ public class ClassInspector {
         return Collections.unmodifiableList(new ArrayList<>(coll));
     }
 
-    /** @returns intersection of raw types of classes and all super classes and interfaces */
+    /** @return intersection of raw types of classes and all super classes and interfaces */
     public static List<? extends Class<?>> intersectRawTypes(Class<?> clazz1,
 			Class<?> clazz2) {
 		if (clazz2 == null) {
