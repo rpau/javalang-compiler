@@ -20,7 +20,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,6 +35,8 @@ import java.util.Set;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
+
+import static java.util.Collections.singletonList;
 
 public class ClassInspector {
 
@@ -83,81 +87,112 @@ public class ClassInspector {
         }
     }
 
-    public static Class<?> getTheNearestSuperClass(Class<?> clazz1, Class<?> clazz2) {
-        if (clazz2 == null) {
-            clazz2 = Object.class;
+    /** @return intersection of raw types of classes and all super classes and interfaces */
+	public static List<? extends Class<?> > intersectRawTypes(List<Class<?> > classes1, List<Class<?>> classes2) {
+        // most typical case
+        if (classes1.size() == 1 && classes2.size() == 1) {
+            return intersectRawTypes(classes1.get(0), classes2.get(0));
+        } else {
+            return list(removeSubClasses(intersection(classesAndInterfaces(classes1), classesAndInterfaces(classes2))));
         }
-        if (clazz1 == null) {
-            clazz1 = Object.class;
-        }
+    }
 
-        if (clazz1.equals(clazz2)) {
-            return clazz1;
+    private static <T> List<T> list(final Collection<T> coll) {
+        return Collections.unmodifiableList(new ArrayList<>(coll));
+    }
+
+    /** @return intersection of raw types of classes and all super classes and interfaces */
+    public static List<? extends Class<?>> intersectRawTypes(Class<?> clazz1,
+			Class<?> clazz2) {
+		if (clazz2 == null) {
+			clazz2 = Object.class;
+		}
+		if (clazz1 == null) {
+			clazz1 = Object.class;
+		}
+
+		if (clazz1.equals(clazz2)) {
+            return singletonList(clazz1);
         }
         if (Types.isAssignable(clazz2, clazz1)) {
-            return clazz1;
+            return singletonList(clazz1);
         }
         if (Types.isAssignable(clazz1, clazz2)) {
-            return clazz2;
+            return singletonList(clazz2);
         }
-        Class<?> parent = getTheNearestSuperClass(clazz1, clazz2.getSuperclass());
-        if (parent.equals(Object.class)) {
-            Type[] interfaces = clazz2.getGenericInterfaces();
-            List<Type> types = new LinkedList<Type>(Arrays.<Type>asList(interfaces));
-            Class<?> common = null;
-            while (!types.isEmpty() && common == null) {
-                Type current = types.remove(0);
-                if (current instanceof Class<?>) {
-                    Class<?> clazz = (Class<?>) current;
-                    if (clazz.isAssignableFrom(clazz1)) {
-                        common = clazz;
-                    } else {
-                        interfaces = clazz.getGenericInterfaces();
-                        types.addAll(Arrays.<Type>asList(interfaces));
-                    }
-                }
-            }
-            if (common != null && Types.isAssignable(common, parent)) {
-                parent = common;
-            }
-        }
-        return parent;
+        final Set<Class<?>> common = commonClasses(clazz1, clazz2);
+        return list(removeSubClasses(common));
     }
 
-    public static Class<?> getTheNearestSuperClass(List<Class<?>> classes) {
-        if (classes != null && !classes.isEmpty()) {
-            if (classes.size() == 1) {
-                return classes.get(0);
-            } else {
-                Class<?> superClass = getTheNearestSuperClass(classes.get(0), classes.get(1));
-                if (classes.size() > 2) {
-                    List<Class<?>> sublist = classes.subList(2, classes.size());
-                    sublist.add(0, superClass);
-                    return getTheNearestSuperClass(sublist);
-                } else {
-                    return superClass;
-                }
-            }
-        }
-        return null;
+    private static Set<Class<?>> commonClasses(Class<?> clazz1, Class<?> clazz2) {
+        return intersection(classesAndInterfaces(clazz1), classesAndInterfaces(clazz2));
     }
 
-    public static List<Class<?>> getTheNearestSuperClasses(List<Class<?>> classes, List<Class<?>> otherClasses) {
-        List<Class<?>> result = new LinkedList<Class<?>>();
-        if (classes != null && otherClasses != null) {
-            Iterator<Class<?>> it = classes.iterator();
-            while (it.hasNext()) {
-                Class<?> current = it.next();
-                otherClasses.add(0, current);
-                Class<?> parent = getTheNearestSuperClass(otherClasses);
-                if (!result.contains(parent)) {
-                    result.add(parent);
-                }
-                otherClasses.remove(0);
+    private static Collection<Class<?>> removeSubClasses(Collection<Class<?>> common) {
+        if (common.size() < 2) {
+            return common;
+        }
+        final Set<Class<?>> reduced = new LinkedHashSet<>(common.size());
+        for (Class<?> clazz : common) {
+            if (!containsSuperClass(common, clazz)) {
+                reduced.add(clazz);
             }
+        }
+        return reduced;
+    }
+
+    private static boolean containsSuperClass(Collection<Class<?>> common, Class<?> clazz) {
+        for (Class<?> other : common) {
+            if (clazz != other && clazz.isAssignableFrom(other)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Set<Class<?>> classesAndInterfaces(Class<?> clazz) {
+        Set<Class<?>> result = new LinkedHashSet<>();
+        addSuperAndInterfaces(result, clazz);
+        return result;
+    }
+
+    private static Set<Class<?>> classesAndInterfaces(List<Class<?>> classes) {
+        Set<Class<?>> result = new LinkedHashSet<>();
+        for (Class<?> clazz : classes) {
+            addSuperAndInterfaces(result, clazz);
         }
         return result;
     }
+
+    // TODO: breadth first depth first. I guess depth first because of raw type rule selecting first bound.
+    private static void addSuperAndInterfaces(Set<Class<?>> classes, Class<?> clazz) {
+        if (clazz != null) {
+            classes.add(clazz);
+            addSuperAndInterfaces(classes, clazz.getSuperclass());
+            for (Class<?> aClass : clazz.getInterfaces()) {
+                addSuperAndInterfaces(classes, aClass);
+            }
+        }
+    }
+
+    private static <E> Set<E> intersection(Set<E> set1, Set<E> set2) {
+        final Set<E> set = new LinkedHashSet<>(set1);
+        set.retainAll(set2);
+        return set;
+    }
+
+    /** @deprecated use {@link #intersectRawTypes} */
+    @Deprecated
+    public static Class<?> getTheNearestSuperClass(Class<?> clazz1, Class<?> clazz2) {
+        return intersectRawTypes(clazz1, clazz2).get(0);
+	}
+
+    /** @deprecated use {@link #intersectRawTypes} */
+    @Deprecated
+	public static List<Class<?>> getTheNearestSuperClasses(
+			List<Class<?>> classes, List<Class<?>> otherClasses) {
+        return new ArrayList<>(intersectRawTypes(classes, otherClasses));
+	}
 
     public static Class<?> findClassMember(Package pkg, String name, Class<?> clazz) {
 

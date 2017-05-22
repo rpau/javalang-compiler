@@ -49,6 +49,10 @@ public class SymbolDataAssert<S extends SymbolDataAssert<S, A>, A extends Symbol
         return AstAssertions.assertThat(asInstanceOf(SymbolType.class)).as(navigationDescription("(SymbolType)"));
     }
 
+    public ExtListAssert<AbstractClassAssert, Class<?>> boundClasses() {
+        return AssertUtil.assertThat(actual.getBoundClasses(), AbstractClassAssert.class, "boundClasses");
+    }
+
     public AbstractCharSequenceAssert<?, String> name() {
         return Assertions.assertThat(actual.getName());
     }

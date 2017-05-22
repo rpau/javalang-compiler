@@ -22,7 +22,7 @@ class AbstractNodeAssert<S extends AbstractAssert<S, A>, A extends Node> extends
 
     /** delegating helper */
     protected String navigationDescription(final String description) {
-        return navigationDescription(description);
+        return AssertUtil.navigationDescription(this, description);
     }
 
     /** not part of assertions, just for easy access to class declaration while writing assertions */
