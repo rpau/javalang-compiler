@@ -21,8 +21,10 @@ import java.util.Map;
 
 import org.walkmod.javalang.JavadocManager;
 import org.walkmod.javalang.ast.CompilationUnit;
+import org.walkmod.javalang.ast.Node;
 import org.walkmod.javalang.ast.PackageDeclaration;
 import org.walkmod.javalang.ast.SymbolData;
+import org.walkmod.javalang.ast.SymbolDataAware;
 import org.walkmod.javalang.ast.SymbolReference;
 import org.walkmod.javalang.ast.TypeParameter;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
@@ -290,7 +292,7 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 
     private void loadThisSymbol(ObjectCreationExpr n, A arg) {
         boolean isAnnonymousClass = n.getAnonymousClassBody() != null;
-        if (isAnnonymousClass) {
+        if (isAnnonymousClass && needsSymbolData(n)) {
             ScopeLoader scopeLoader = new ScopeLoader(typeTable, expressionTypeAnalyzer, actionProvider);
             Scope scope = n.accept(scopeLoader, symbolTable);
             if (scope != null) {
@@ -306,6 +308,26 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
             }
         }
 
+    }
+
+    /**
+     * For anonymous creations the initial symbol data is symbol data of super class.
+     * That needs to be replaced with symbol data of anonymous class.
+     * If we don't have a super class we can't say and assume we need prope info.
+     */
+    private boolean needsSymbolData(ObjectCreationExpr n) {
+        final Class<?> typeRefClass = symbolDataClazz(n.getType());
+        final Class<?> clazz = symbolDataClazz(n);
+        return typeRefClass == null || clazz == null || clazz.equals(typeRefClass);
+    }
+
+    /* @Nullable */ private static Class<?> symbolDataClazz(Node n) {
+        final SymbolData sd = symbolData(n);
+        return sd != null ? sd.getClazz() : null;
+    }
+
+    /* @Nullable */ private static SymbolData symbolData(Node n) {
+        return n instanceof SymbolDataAware ? ((SymbolDataAware) n).getSymbolData() : null;
     }
 
     private void loadThisSymbol(EnumConstantDeclaration n, A arg) {
