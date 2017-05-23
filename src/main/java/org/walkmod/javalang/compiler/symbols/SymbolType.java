@@ -75,23 +75,29 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
+        this.name = name(upperBounds, lowerBounds);
         this.upperBounds = upperBounds;
         this.lowerBounds = lowerBounds;
         if (upperBounds != null) {
             if (!upperBounds.isEmpty()) {
-                name = upperBounds.get(0).getName();
                 clazz = upperBounds.get(0).getClazz();
             }
         } else if (lowerBounds != null) {
-
-            name = "java.lang.Object";
             clazz = Object.class;
-
         }
     }
 
-    public SymbolType(String name, List<SymbolType> upperBounds) {
+    private static String name(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
+        String name = null;
+        if (upperBounds != null && !upperBounds.isEmpty()) {
+            name = upperBounds.get(0).getName();
+        } else if (lowerBounds != null) {
+            name = "java.lang.Object";
+        }
+        return name;
+    }
 
+    public SymbolType(String name, List<SymbolType> upperBounds) {
         this.name = name;
         if (upperBounds != null) {
             this.upperBounds = upperBounds;
@@ -506,7 +512,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType cloneAsTypeVariable(String typeVariable) {
-        return clone(name, arrayCount, typeVariable, null, null);
+        return clone(name != null ? name : name(upperBounds, lowerBounds), arrayCount, typeVariable, null, null);
     }
 
     public static SymbolType cloneAsArrayOrNull(/* Nullable */ SymbolType type, final int arrayCount) {
