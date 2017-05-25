@@ -46,7 +46,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private int arrayCount = 0;
 
-    private String templateVariable = null;
+    private String typeVariable = null;
 
     private Class<?> clazz;
 
@@ -58,8 +58,20 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public SymbolType() {}
 
-    public SymbolType(List<SymbolType> lowerBounds) {
-        this(lowerBounds, null);
+    private SymbolType(List<SymbolType> upperBounds, String typeVariable) {
+        this(upperBounds, (List<SymbolType>) null);
+        this.typeVariable = typeVariable;
+    }
+
+    public SymbolType(List<SymbolType> upperBounds) {
+        this(upperBounds, (List<SymbolType>) null);
+    }
+
+    private SymbolType(int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds,
+                       String typeVariable) {
+        this(upperBounds, lowerBounds);
+        this.typeVariable = typeVariable;
+        this.arrayCount = arrayCount;
     }
 
     public SymbolType(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
@@ -89,6 +101,12 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
+    private SymbolType(String name, int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds, String typeVariable) {
+        this(name, upperBounds, lowerBounds);
+        this.typeVariable = typeVariable;
+        this.arrayCount = arrayCount;
+    }
+
     public SymbolType(String name, List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
 
         this.name = name;
@@ -99,6 +117,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 clazz = upperBounds.get(0).getClazz();
             }
         }
+    }
+
+    private SymbolType(Class<?> clazz, String typeVariable) {
+        this(clazz);
+        this.typeVariable = typeVariable;
     }
 
     public SymbolType(Class<?> clazz) {
@@ -151,6 +174,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public void setClazz(Class<?> clazz) {
         this.clazz = clazz;
+    }
+
+    private SymbolType(String name, String typeVariable) {
+        this.name = name;
+        this.typeVariable = typeVariable;
     }
 
     public SymbolType(String name) {
@@ -213,15 +241,16 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public boolean isTemplateVariable() {
-        return templateVariable != null;
+        return typeVariable != null;
     }
 
+    /** @deprecated use factory methods "templateVariableOf" instead */
     public void setTemplateVariable(String templateVariable) {
-        this.templateVariable = templateVariable;
+        this.typeVariable = templateVariable;
     }
 
     public String getTemplateVariable() {
-        return templateVariable;
+        return typeVariable;
     }
 
     @Override
@@ -231,7 +260,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             String auxName = aux.getName();
             boolean equalName = name != null && auxName != null && name.equals(auxName);
             equalName = equalName || (isTemplateVariable() && aux.isTemplateVariable()
-                    && templateVariable.equals(aux.templateVariable));
+                    && typeVariable.equals(aux.typeVariable));
             return equalName && arrayCount == aux.getArrayCount();
         }
         return false;
@@ -463,14 +492,22 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return clone(null, null);
     }
 
-    private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created) {
+    public SymbolType cloneAsTypeVariable(String typeVariable) {
+        return clone(null, null, typeVariable);
+    }
+
+    private SymbolType clone(final Stack<SymbolType> parent, final Stack<SymbolType> created) {
+        return clone(parent, created, typeVariable);
+    }
+
+    private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created, final String typeVariable) {
         SymbolType result = new SymbolType();
         result.setName(name);
         result.setClazz(clazz);
         result.setArrayCount(arrayCount);
         result.setField(field);
         result.setMethod(method);
-        result.templateVariable = templateVariable;
+        result.typeVariable = typeVariable;
         if (parent == null) {
             parent = new Stack<SymbolType>();
             created = new Stack<SymbolType>();
@@ -541,7 +578,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         if (method != null) {
             return null;
         }
-        if (variableName.equals(templateVariable)) {
+        if (variableName.equals(typeVariable)) {
             return this;
         } else {
 
@@ -575,6 +612,50 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             }
             return null;
         }
+    }
+
+    /**
+     * Builds a symbol for a type variable from a (Java class) name.
+     */
+    public static SymbolType typeVariableOf(final String typeVariable, final String name) {
+        return new SymbolType(name, typeVariable);
+    }
+
+    /**
+     * Builds a symbol for a type variable from a Java class.
+     */
+    public static SymbolType typeVariableOf(final String typeVariable, final Class<Object> clazz) {
+        return new SymbolType(clazz, typeVariable);
+    }
+
+    /**
+     * Builds a symbol for a type variable from a list of upper bounds.
+     */
+    public static SymbolType typeVariableOf(final String typeVariable, List<SymbolType> upperBounds) {
+        return new SymbolType(upperBounds, typeVariable);
+    }
+
+    /**
+     * Builds a symbol for a type variable.
+     */
+    private static SymbolType typeVariableOf(String typeVariable, final String name, final int arrayCount,
+                                             final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
+        return new SymbolType(name, arrayCount, upperBounds, lowerBounds, typeVariable);
+    }
+
+    /**
+     * Builds a symbol for a type variable.
+     */
+    private static SymbolType typeVariableOf(final String typeVariable, final int arrayCount,
+                                             List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
+        return new SymbolType(arrayCount, upperBounds, lowerBounds, typeVariable);
+    }
+
+    /**
+     * Builds a symbol for a type variable from a TypeVariable.
+     */
+    public static SymbolType typeVariableOf(TypeVariable<?> typeVariable) throws InvalidTypeException {
+        return valueOf(typeVariable, null).cloneAsTypeVariable(typeVariable.getName());
     }
 
     /**
@@ -756,9 +837,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
                     arg = returnType;
                 }
-                returnType = new SymbolType(arg.getName(), arg.getBounds(), arg.getLowerBounds());
-                returnType.setArrayCount(arg.getArrayCount());
-                returnType.setTemplateVariable(variableName);
+                returnType = typeVariableOf(variableName, arg.getName(), arg.getArrayCount(), arg.getBounds(), arg.getLowerBounds());
                 Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
                 auxMap.put(variableName, returnType);
 
@@ -770,12 +849,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
             } else {
                 if (bounds.length == 0) {
-                    returnType = new SymbolType("java.lang.Object");
-                    returnType.setTemplateVariable(variableName);
+                    returnType = typeVariableOf(variableName, "java.lang.Object");
                 } else {
                     List<SymbolType> boundsList = new LinkedList<SymbolType>();
-                    SymbolType initReturnType = new SymbolType(boundsList);
-                    initReturnType.setTemplateVariable(variableName);
+                    SymbolType initReturnType = typeVariableOf(variableName, boundsList);
                     Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
                     auxMap.put(variableName, initReturnType);
                     for (Type bound : bounds) {
@@ -785,14 +862,12 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         }
                     }
                     if (boundsList.isEmpty()) {
-                        returnType = new SymbolType("java.lang.Object");
+                        returnType = typeVariableOf(variableName, "java.lang.Object");
                     } else if (bounds.length == 1) {
-                        returnType = boundsList.get(0);
-                        returnType.setTemplateVariable(variableName);
+                        returnType = boundsList.get(0).cloneAsTypeVariable(variableName);
                     } else {
-                        returnType = new SymbolType(boundsList);
+                        returnType = typeVariableOf(variableName, boundsList);
                     }
-                    returnType.setTemplateVariable(variableName);
                 }
             }
             if (!updatedTypeMapping.containsKey(variableName)) {
@@ -877,8 +952,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                                                     valueOf(tvs[i], null, updatedTypeMapping, typeMapping);
                                             bounds = new LinkedList<SymbolType>();
                                             bounds.add(templateVarType);
-                                            st = new SymbolType(bounds);
-                                            st.setTemplateVariable("?");
+                                            st = typeVariableOf("?", bounds);
                                         }
                                     }
                                 }
@@ -966,11 +1040,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
         SymbolType returnType = null;
         if (upperBounds != null || lowerBounds != null) {
-            returnType = new SymbolType(upperBounds, lowerBounds);
-            returnType.setTemplateVariable(wt.toString());
-            if (arg != null) {
-                returnType.setArrayCount(arg.getArrayCount());
-            }
+            returnType = typeVariableOf(wt.toString(), arg != null ? arg.getArrayCount() : 0, upperBounds, lowerBounds);
         }
         return returnType;
     }
@@ -1109,7 +1179,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     private SymbolType refactor_rec(String variable, SymbolType st, boolean dynamicVar) {
-        if (variable.equals(templateVariable) && dynamicVar) {
+        if (variable.equals(typeVariable) && dynamicVar) {
             return st;
         } else {
             SymbolType aux;
@@ -1129,8 +1199,14 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
+    public SymbolType refactorToTypeVariable(String typeVariable, SymbolType st, boolean dynamicVar) {
+        SymbolType refactor = refactor(typeVariable, st, dynamicVar);
+        refactor.setTemplateVariable(typeVariable);
+        return refactor;
+    }
+
     public SymbolType refactor(String variable, SymbolType st, boolean dynamicVar) {
-        if (variable.equals(templateVariable) && dynamicVar) {
+        if (variable.equals(typeVariable) && dynamicVar) {
             return st;
         } else {
             SymbolType aux;

@@ -67,8 +67,7 @@ public class GenericBuilderFromGenericClasses implements Builder<Map<String, Sym
             for (int i = 0; i < typeParams.length; i++) {
                 if (parameterizedTypes != null) {
                     if (i >= parameterizedTypes.size()) {
-                        SymbolType st = new SymbolType("java.lang.Object");
-                        st.setTemplateVariable(typeParams[i].getName());
+                        SymbolType st = SymbolType.typeVariableOf(typeParams[i].getName(), "java.lang.Object");
                         obj.put(typeParams[i].getName(), st);
                     } else {
                         if (parameterizedTypes.get(i).getName() == null && parameterizedTypes.get(i).hasBounds()) {
@@ -77,8 +76,7 @@ public class GenericBuilderFromGenericClasses implements Builder<Map<String, Sym
                             if (!"java.lang.Object".equals(parameterizedTypes.get(i).getName())) {
                                 obj.put(typeParams[i].getName(), parameterizedTypes.get(i));
                             } else {
-                                SymbolType st = new SymbolType("java.lang.Object");
-                                st.setTemplateVariable(typeParams[i].getName());
+                                SymbolType st = SymbolType.typeVariableOf(typeParams[i].getName(), "java.lang.Object");
                                 obj.put(typeParams[i].getName(), st);
                             }
                         }

@@ -157,12 +157,10 @@ public class LoadTypeParamsAction extends SymbolAction {
                         }
                         bounds.add(paramType);
                     }
-                    st = new SymbolType(bounds);
-
+                    st = SymbolType.typeVariableOf(tp.getName(), bounds);
                 } else {
-                    st = new SymbolType(Object.class);
+                    st = SymbolType.typeVariableOf(tp.getName(), Object.class);
                 }
-                st.setTemplateVariable(tp.getName());
                 table.pushSymbol(tp.getName(), ReferenceType.TYPE_PARAM, st, tp);
 
                 parameterizedTypes.add(st);
