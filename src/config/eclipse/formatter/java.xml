@@ -6,21 +6,43 @@
 
      changes compared to original google java code style version 13:
      -->
+
 <!-- tab size is 4 chars instead of 2 chars -->
 <!-- maximum line length 120 chars instead of 100 -->
 <!-- allow to disable formatter via comment -->
 <!-- only preserve single empty line instead of up to 3 -->
+<!-- single blank line before first class body declaration -->
+<!-- single blank line before member type -->
+<!-- wrap binary expressions when needed on each sub expression -->
 <!-- use same wrapping for "?" and ":" of ?:-Operator. Either none or both.  -->
 <!-- do not format line comments -->
 
 <!--
-    alignments:
-    48: wrap all if necessary, default indent
-    50: when necessary on column
-    82: wrap all but first if necessary, column indent
-    18: wrap where necessary, indent on column
+   Constants:
+       https://github.com/eclipse/eclipse.jdt.core/blob/master/org.eclipse.jdt.core/formatter/org/eclipse/jdt/core/formatter/DefaultCodeFormatterConstants.java
+       https://github.com/eclipse/eclipse.jdt.core/blob/master/org.eclipse.jdt.core/formatter/org/eclipse/jdt/internal/formatter/DefaultCodeFormatterOptions.java
+
+    Alignment modes
+	M_FORCE = 1; // if bit set, then alignment will be non-optional (default is optional)
+	M_INDENT_ON_COLUMN = 2; // if bit set, broken fragments will be aligned on current location column (default is to break at current indentation level)
+	M_INDENT_BY_ONE = 4; // if bit set, broken fragments will be indented one level below current (not using continuation indentation)
+
+    // split modes can be combined either with M_FORCE or M_INDENT_ON_COLUMN
+
+    M_NO_ALIGNMENT = 0 - value to disable alignment
+    M_COMPACT_SPLIT = 16; // fill each line with all possible fragments
+    M_COMPACT_FIRST_BREAK_SPLIT = 32; //  compact mode, but will first try to break before first fragment
+    M_ONE_PER_LINE_SPLIT = 32+16; // one fragment per line
+    M_NEXT_SHIFTED_SPLIT = 64; // one fragment per line, subsequent are indented further
+    M_NEXT_PER_LINE_SPLIT = 64+16; // one per line, except first fragment (if possible)
+
     16: wrap where necessary, default indent
+    18: wrap where necessary, indent on column
     32: Wrap first element, others where necessary (useful for ternary op aka "conditional")
+    48: wrap all, default indent
+    50: when necessary on column
+    80: wrap all but first if necessary (?), default indent (64 + 16)
+    82: wrap all but first if necessary, column indent
     -->
 <setting id="org.eclipse.jdt.core.formatter.comment.insert_new_line_before_root_tags" value="insert"/>
 <setting id="org.eclipse.jdt.core.formatter.disabling_tag" value="@formatter:off"/>
@@ -57,7 +79,7 @@
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_expressions_in_array_initializer" value="16"/>
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_annotations_on_type.count_dependent" value="1585|-1|1585"/>
 <!-- use same wrapping for "?" and ":" of ?:-Operator. Either none or both. (48 instead of 80)  -->
-<!-- <setting id="org.eclipse.jdt.core.formatter.alignment_for_conditional_expression" value="80"/> --> 
+<!-- <setting id="org.eclipse.jdt.core.formatter.alignment_for_conditional_expression" value="80"/> -->
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_conditional_expression" value="48"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_paren_in_for" value="insert"/>
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_multiple_fields.count_dependent" value="16|-1|16"/>
@@ -98,7 +120,9 @@
 <setting id="org.eclipse.jdt.core.formatter.wrap_non_simple_local_variable_annotation" value="true"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_before_comma_in_method_invocation_arguments" value="do not insert"/>
 <setting id="org.eclipse.jdt.core.formatter.align_type_members_on_columns" value="false"/>
-<setting id="org.eclipse.jdt.core.formatter.blank_lines_before_member_type" value="0"/>
+<!-- single blank line before member type -->
+<!-- <setting id="org.eclipse.jdt.core.formatter.blank_lines_before_member_type" value="0"/> -->
+<setting id="org.eclipse.jdt.core.formatter.blank_lines_before_member_type" value="1"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_after_opening_paren_in_enum_constant" value="do not insert"/>
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_enum_constants.count_dependent" value="16|5|48"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_after_opening_paren_in_for" value="do not insert"/>
@@ -123,7 +147,9 @@
 <setting id="org.eclipse.jdt.core.formatter.insert_space_after_opening_paren_in_parenthesized_expression" value="do not insert"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_before_comma_in_explicitconstructorcall_arguments" value="do not insert"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_constructor_declaration" value="insert"/>
-<setting id="org.eclipse.jdt.core.formatter.blank_lines_before_first_class_body_declaration" value="0"/>
+<!-- single blank line before first class body declaration -->
+<!-- <setting id="org.eclipse.jdt.core.formatter.blank_lines_before_first_class_body_declaration" value="0"/> -->
+<setting id="org.eclipse.jdt.core.formatter.blank_lines_before_first_class_body_declaration" value="1"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_method" value="insert"/>
 <!-- tab size is 4 chars instead of 2 chars -->
 <!-- <setting id="org.eclipse.jdt.core.formatter.indentation.size" value="2"/> -->
@@ -260,7 +286,9 @@
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_parameters_in_constructor_declaration.count_dependent" value="16|5|80"/>
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_superinterfaces_in_type_declaration" value="16"/>
 <setting id="org.eclipse.jdt.core.formatter.brace_position_for_enum_declaration" value="end_of_line"/>
-<setting id="org.eclipse.jdt.core.formatter.alignment_for_binary_expression" value="16"/>
+<!-- wrap binary expressions when needed on each sub expression -->
+<!--<setting id="org.eclipse.jdt.core.formatter.alignment_for_binary_expression" value="16"/> -->
+<setting id="org.eclipse.jdt.core.formatter.alignment_for_binary_expression" value="48"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_before_closing_paren_in_while" value="do not insert"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_type" value="insert"/>
 <setting id="org.eclipse.jdt.core.compiler.codegen.inlineJsrBytecode" value="enabled"/>
@@ -342,7 +370,7 @@
 <setting id="org.eclipse.jdt.core.formatter.brace_position_for_type_declaration" value="end_of_line"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_array_initializer" value="insert"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_between_empty_braces_in_array_initializer" value="do not insert"/>
-<setting id="org.eclipse.jdt.core.formatter.alignment_for_binary_expression.count_dependent" value="16|-1|16"/>
+<setting id="org.eclipse.jdt.core.formatter.alignment_for_binary_expression.count_dependent" value="16|4|48"/>
 <setting id="org.eclipse.jdt.core.formatter.wrap_non_simple_member_annotation" value="true"/>
 <setting id="org.eclipse.jdt.core.formatter.alignment_for_annotations_on_local_variable" value="1585"/>
 <setting id="org.eclipse.jdt.core.formatter.insert_space_after_opening_paren_in_method_declaration" value="do not insert"/>

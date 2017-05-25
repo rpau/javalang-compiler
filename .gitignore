@@ -1,6 +1,7 @@
 *.classpath
 *.project
 /target/
+.gradle
 .idea
 *.iml
 src/main/*.iml

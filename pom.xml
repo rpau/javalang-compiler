@@ -54,14 +54,36 @@
                 </executions>
             </plugin>
             <!-- 
-                https://mvnrepository.com/artifact/com.marvinformatics.formatter/formatter-maven-plugin 
-                formatting rules: src/config/eclipse/formatter/java.xml
-                format with: mvn formatter:format
-            -->
+                https://github.com/LendingClub/gradle-maven-plugin
+                plugin is used for integration of spotless java formatter
+                (https://github.com/diffplug/spotless)
+                formatting rules: src/config/eclipse/formatter/java.xml, formatting.gradle
+                format with: mvn org.fortasoft:gradle-maven-plugin:invoke
+             -->
             <plugin>
-                <groupId>com.marvinformatics.formatter</groupId>
-                <artifactId>formatter-maven-plugin</artifactId>
-                <version>1.9.1.RC2</version>
+                <groupId>org.fortasoft</groupId>
+                <artifactId>gradle-maven-plugin</artifactId>
+                <version>1.0.8</version>
+                <configuration>
+                    <tasks>
+                        <task>spotlessJavaApply</task>
+                    </tasks>
+                    <gradleVersion>3.5</gradleVersion>
+                    <args>
+                        <arg>-b</arg>
+                        <arg>formatter.gradle</arg>
+                    </args>
+                </configuration>
+                <executions>
+                    <execution>
+                        <!-- You can bind this to any phase you like -->
+                        <phase>spotless</phase>
+                        <goals>
+                            <!-- goal must be "invoke" -->
+                            <goal>invoke</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
