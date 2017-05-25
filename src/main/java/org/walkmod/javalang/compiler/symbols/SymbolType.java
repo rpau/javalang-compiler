@@ -32,7 +32,7 @@ import org.walkmod.javalang.compiler.reflection.ClassInspector;
 import org.walkmod.javalang.compiler.types.TypeNotFoundException;
 import org.walkmod.javalang.compiler.types.Types;
 import org.walkmod.javalang.compiler.types.TypesLoaderVisitor;
-import org.walkmod.javalang.Contracts;
+import org.walkmod.javalang.compiler.JavaLangCompilerContracts;
 import org.walkmod.javalang.exceptions.InvalidTypeException;
 
 import static java.util.Arrays.asList;
@@ -206,7 +206,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
            this invariant is considered to be correct but some code needs to be fixed that
            breaks the invariant before general use.
          */
-        if (Contracts.CHECK_EXPERIMENTAL_INVARIANT_ENABLED) {
+        if (JavaLangCompilerContracts.CHECK_EXPERIMENTAL_INVARIANT_ENABLED) {
             if (parameterizedTypes != null) {
                 final Class<?> clazz = getClazz();
                 if (clazz != null) {
