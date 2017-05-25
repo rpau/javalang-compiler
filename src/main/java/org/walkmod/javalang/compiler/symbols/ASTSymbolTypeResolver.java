@@ -246,8 +246,6 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
                 SymbolType aux = valueOf(typeArg);
                 if (aux == null) {
                     aux = SymbolType.typeVariableOf(typeArg.toString(), Object.class);
-                } else {
-                    aux = aux.cloneAsTypeVariable(typeArg.toString());
                 }
                 typeArgs.add(aux);
             }
