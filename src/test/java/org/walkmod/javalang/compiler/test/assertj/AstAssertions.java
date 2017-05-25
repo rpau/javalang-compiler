@@ -4,6 +4,7 @@ import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.FieldSymbolData;
 import org.walkmod.javalang.ast.MethodSymbolData;
 import org.walkmod.javalang.ast.SymbolData;
+import org.walkmod.javalang.ast.body.BodyDeclaration;
 import org.walkmod.javalang.ast.body.ClassOrInterfaceDeclaration;
 import org.walkmod.javalang.ast.body.ConstructorDeclaration;
 import org.walkmod.javalang.ast.body.FieldDeclaration;
@@ -19,6 +20,7 @@ import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
 import org.walkmod.javalang.ast.stmt.BlockStmt;
 import org.walkmod.javalang.ast.stmt.ExpressionStmt;
+import org.walkmod.javalang.ast.stmt.IfStmt;
 import org.walkmod.javalang.ast.stmt.ReturnStmt;
 import org.walkmod.javalang.ast.stmt.Statement;
 import org.walkmod.javalang.ast.stmt.TypeDeclarationStmt;
@@ -37,6 +39,10 @@ import org.walkmod.javalang.compiler.symbols.SymbolType;
 public class AstAssertions {
     public static CompilationUnitAssert assertThat(CompilationUnit cu) {
         return new CompilationUnitAssert(cu);
+    }
+
+    public static BodyDeclarationAssert assertThat(BodyDeclaration actual) {
+        return new BodyDeclarationAssert(actual);
     }
 
     public static ClassOrInterfaceDeclarationAssert assertThat(ClassOrInterfaceDeclaration actual) {
@@ -73,6 +79,10 @@ public class AstAssertions {
 
     public static ExpressionStmtAssert assertThat(ExpressionStmt actual) {
         return new ExpressionStmtAssert(actual);
+    }
+
+    public static IfStmtAssert assertThat(IfStmt actual) {
+        return new IfStmtAssert(actual);
     }
 
     public static ReturnStmtAssert assertThat(ReturnStmt actual) {
