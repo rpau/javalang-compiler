@@ -10,6 +10,7 @@ import org.walkmod.javalang.ast.body.FieldDeclaration;
 import org.walkmod.javalang.ast.body.MethodDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.AssignExpr;
+import org.walkmod.javalang.ast.expr.BinaryExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.IntegerLiteralExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
@@ -80,6 +81,10 @@ public class AstAssertions {
 
     public static ExpressionAssert assertThat(Expression actual) {
         return new ExpressionAssert(actual);
+    }
+
+    public static BinaryExprAssert assertThat(BinaryExpr actual) {
+        return new BinaryExprAssert(actual);
     }
 
     public static IntegerLiteralExprAssert assertThat(IntegerLiteralExpr actual) {
