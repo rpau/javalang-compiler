@@ -62,9 +62,13 @@ import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
 import org.walkmod.javalang.compiler.test.assertj.AstAssertions;
+import org.walkmod.javalang.compiler.test.assertj.BlockStmtAssert;
 import org.walkmod.javalang.compiler.test.assertj.ClassOrInterfaceDeclarationAssert;
 import org.walkmod.javalang.compiler.test.assertj.ExtListAssert;
+import org.walkmod.javalang.compiler.test.assertj.FieldDeclarationAssert;
+import org.walkmod.javalang.compiler.test.assertj.MethodCallExprAssert;
 import org.walkmod.javalang.compiler.test.assertj.StatementAssert;
+import org.walkmod.javalang.compiler.test.assertj.VariableDeclarationExprAssert;
 import org.walkmod.javalang.test.SemanticTest;
 import org.walkmod.javalang.util.FileUtils;
 
@@ -2470,5 +2474,75 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
                 .members().item(0).asMethodDeclaration()
                 .symbolData().asMethodSymbolData()
                 .method().hasToString("public abstract java.lang.Object A$Stringifier.stringify(java.lang.Object)");
+    }
+
+    private final String genericColumnAccessor = ""
+            + "package apkg;\n"
+            + " public class Column<T> {\n"
+            + "  public static final Column<Long> Maxtime = new Column<Long>();\n"
+            + " }\n";
+
+    @Test
+    public void testTypeOfGenericConstant() throws Exception {
+        CompilationUnit cu = run(genericColumnAccessor);
+
+        final FieldDeclarationAssert field =
+                assertThat(cu).types().item(0).members().item(0).asFieldDeclaration();
+
+        field.fieldsSymbolData().item(0).hasToString("apkg.Column<java.lang.Long>");
+        field.type().hasToString("Column<Long>");
+
+        field.variables().item(0).expression().asObjectCreationExpr()
+                .type().hasToString("Column<Long>")
+                .symbolData().asSymbolType().parameterizedTypes().item(0).hasToString("java.lang.Long");
+
+        field.isFinal(true).isStatic(true).isPublic(true)
+                .fieldsSymbolData().item(0).parameterizedTypes().item(0)
+                .asSymbolType().hasToString("java.lang.Long");
+    }
+
+    @Test
+    public void testTypeOfAssignmentOfGenericConstant() throws Exception {
+        final String code = ""
+                + "import static apkg.Column.*;\n"
+                + "public class A {\n"
+                + " public void foo() {\n"
+                + "  long maxtime = getValue(Maxtime);\n"
+                + " }\n"
+                + " public <T> T getValue(apkg.Column<T> col) { return null; }\n"
+                + "}\n";
+        CompilationUnit cu = run(code, genericColumnAccessor);
+
+        final MethodCallExprAssert call = assertThat(cu).types().item(0).members().item(0)
+                .asMethodDeclaration().body().stmts().item(0).asExpressionStmt().expression()
+                .asVariableDeclarationExpr().vars().item(0).expression().asMethodCallExpr();
+
+        call.args().item(0).asNameExpr().symbolData().asSymbolType().hasToString("apkg.Column<java.lang.Long>");
+        call.symbolData().asSymbolType().hasToString("java.lang.Long");
+    }
+
+    @Test
+    public void testMethodResolveWithBoxingWithGenerics() throws Exception {
+        final String code = ""
+                + "import static apkg.Column.*;\n"
+                + "public class A {\n"
+                + " public void foo() {\n"
+                + "  long maxtime = 0;\n"
+                + "  maxtime = Math.max(maxtime, getValue(Maxtime));\n"
+                + " }\n"
+                + " public <T> T getValue(apkg.Column<T> col) { return null; }\n"
+                + "}\n";
+        CompilationUnit cu = run(code, genericColumnAccessor);
+
+        final BlockStmtAssert body =
+                assertThat(cu).types().item(0).members().item(0).asMethodDeclaration().body();
+        final VariableDeclarationExprAssert varDecl =
+                body.stmts().item(0).asExpressionStmt().expression().asVariableDeclarationExpr();
+        varDecl.type().symbolData().hasToString("long");
+        varDecl.vars().item(0).expression().asIntegerLiteralExpr().hasValue(0);
+
+        body.stmts().item(1).asExpressionStmt().expression()
+                .asAssignExpr().value().asMethodCallExpr().symbolData().asMethodSymbolData()
+                .method().hasToString("public static long java.lang.Math.max(long,long)");
     }
 }
