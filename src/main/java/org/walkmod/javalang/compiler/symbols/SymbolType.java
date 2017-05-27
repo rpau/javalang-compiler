@@ -186,6 +186,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         this.name = name;
     }
 
+    private SymbolType(String name, int arrayCount) {
+        this.name = name;
+        this.arrayCount = arrayCount;
+    }
+
     public String getName() {
         return name;
     }
@@ -504,6 +509,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return clone(name, arrayCount, typeVariable, null, null);
     }
 
+    public SymbolType cloneAsArray(int arrayCount) {
+        return clone(name, arrayCount, typeVariable, null, null);
+    }
+
     public SymbolType cloneAsArray(String name, int arrayCount) {
         return clone(name, arrayCount, typeVariable, null, null);
     }
@@ -624,6 +633,13 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             }
             return null;
         }
+    }
+
+    /**
+     * Build a simple class based symbol probably as an array.
+     */
+    public static SymbolType classValueOf(final String className, final int arrayCount) {
+        return new SymbolType(className, arrayCount);
     }
 
     /**
