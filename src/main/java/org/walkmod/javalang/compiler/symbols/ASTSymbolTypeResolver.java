@@ -311,7 +311,7 @@ public class ASTSymbolTypeResolver extends GenericVisitorAdapter<SymbolType, Lis
         if (containerType instanceof PrimitiveType) {
             result = SymbolType.classValueOf(containerType.accept(this, arg).getName(), n.getArrayCount());
         } else if (containerType instanceof ClassOrInterfaceType) {
-            result = containerType.accept(this, arg).cloneAsArray(n.getArrayCount());
+            result = SymbolType.cloneAsArrayOrNull(containerType.accept(this, arg), n.getArrayCount());
         }
         return result;
     }

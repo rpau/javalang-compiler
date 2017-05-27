@@ -509,6 +509,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return clone(name, arrayCount, typeVariable, null, null);
     }
 
+    public static SymbolType cloneAsArrayOrNull(/* Nullable */ SymbolType type, final int arrayCount) {
+        return type != null ? type.cloneAsArray(arrayCount) : null;
+    }
+
     public SymbolType cloneAsArray(int arrayCount) {
         return clone(name, arrayCount, typeVariable, null, null);
     }
@@ -1288,5 +1292,4 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
         return argClasses;
     }
-
 }
