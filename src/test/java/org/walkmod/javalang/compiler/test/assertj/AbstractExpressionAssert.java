@@ -1,6 +1,7 @@
 package org.walkmod.javalang.compiler.test.assertj;
 
 import org.walkmod.javalang.ast.expr.AssignExpr;
+import org.walkmod.javalang.ast.expr.BinaryExpr;
 import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.IntegerLiteralExpr;
 import org.walkmod.javalang.ast.expr.MethodCallExpr;
@@ -49,5 +50,10 @@ public class AbstractExpressionAssert<S extends AbstractExpressionAssert<S, A>, 
     public ObjectCreationExprAssert asObjectCreationExpr() {
         return AstAssertions.assertThat(asInstanceOf(ObjectCreationExpr.class))
                 .as(navigationDescription("(ObjectCreationExpr)"));
+    }
+
+    public BinaryExprAssert asBinaryExpr() {
+        return AstAssertions.assertThat(asInstanceOf(BinaryExpr.class))
+                .as(navigationDescription("(BinaryExpr)"));
     }
 }

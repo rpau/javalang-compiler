@@ -1635,6 +1635,45 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
     }
 
     @Test
+    public void testSyntheticIntersectionTypeWithPrimitives() throws Exception {
+        String code = ""
+                + "public class A {\n"
+                + " void doSer(java.io.Serializable s) {}\n"
+                + " void doComp(Comparable s) {}\n"
+                + " void foo(int value) {\n"
+                + "  Object o = (value < 10 ? \"0\" + value : value) + \" %\";\n"
+                + "  doSer(value < 10 ? \"0\" + value : value);\n"
+                + "  doComp(value < 10 ? \"0\" + value : value);\n"
+                + "  doSer(value < 10 ? 0.0 : value);\n"
+                + "  doComp(value < 10 ? 0.0 : value);\n"
+                + "  doSer(value < 10 ? false : value);\n"
+                + "  doComp(value < 10 ? false : value);\n"
+                + " }\n"
+                +"}\n";
+        CompilationUnit cu = run(code);
+        final ExtListAssert<StatementAssert, Statement> fooStmts = assertThat(cu)
+                .types().item(0).asClassOrInterfaceDeclaration().members().item(2).asMethodDeclaration()
+                .body().stmts();
+        fooStmts.item(0).asExpressionStmt().expression().asVariableDeclarationExpr()
+                .vars().item(0).expression().asBinaryExpr()
+                .left().symbolData()
+                .boundClasses()
+                .hasSize(2)
+                .extracting("name")
+                .containsOnly("java.io.Serializable", "java.lang.Comparable");
+        fooStmts.item(1).asExpressionStmt().expression().asMethodCallExpr()
+                .hasName("doSer")
+                .symbolData().asMethodSymbolData()
+                .method()
+                .isNotNull();
+        fooStmts.item(2).asExpressionStmt().expression().asMethodCallExpr()
+                .hasName("doComp")
+                .symbolData().asMethodSymbolData()
+                .method()
+                .isNotNull();
+    }
+
+    @Test
     public void testMethodReferencesWithSuperAsContext() throws Exception {
         if (SourceVersion.latestSupported().ordinal() >= 8) {
             String codeA = "public class A extends B{ void bar2(C c){} void bar() { bar2(super::foo);} }";

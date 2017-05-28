@@ -40,6 +40,8 @@ import static java.util.Collections.singletonList;
 
 public class ClassInspector {
 
+    private static final List<Class<Object>> LIST_OF_OBJECT_CLASS = singletonList(Object.class);
+
     public static List<Type> getInterfaceOrSuperclassImplementations(Type implementation, Class<?> interf) {
         List<Type> result = new LinkedList<Type>();
 
@@ -110,6 +112,12 @@ public class ClassInspector {
 		if (clazz1 == null) {
 			clazz1 = Object.class;
 		}
+        if (clazz1.isPrimitive()) {
+            clazz1 = Types.getWrapperClass(clazz1.getName());
+        }
+        if (clazz2.isPrimitive()) {
+            clazz2 = Types.getWrapperClass(clazz2.getName());
+        }
 
 		if (clazz1.equals(clazz2)) {
             return singletonList(clazz1);
@@ -121,7 +129,9 @@ public class ClassInspector {
             return singletonList(clazz2);
         }
         final Set<Class<?>> common = commonClasses(clazz1, clazz2);
-        return list(removeSubClasses(common));
+        final List<Class<?>> list = list(removeSubClasses(common));
+        return list.isEmpty() ? LIST_OF_OBJECT_CLASS : list;
+
     }
 
     private static Set<Class<?>> commonClasses(Class<?> clazz1, Class<?> clazz2) {
