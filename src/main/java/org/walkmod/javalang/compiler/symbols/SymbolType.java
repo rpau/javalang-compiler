@@ -1201,11 +1201,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         if (clazz == null || isObjectClass(clazz)) {
             return false;
         }
-        if (clazz.isAnonymousClass()) {
-            return true;
-        } else {
-            return belongsToAnonymous(clazz.getDeclaringClass());
-        }
+        return clazz.isAnonymousClass() || belongsToAnonymous(clazz.getDeclaringClass());
     }
 
     @Override
