@@ -300,9 +300,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private boolean isArrayCountCompatible(SymbolType other) {
         boolean isCompatible = true;
-        if (!getClazz().equals(Object.class) || getArrayCount() > 0) {
+        if (!isObjectClass(getClazz()) || getArrayCount() > 0) {
             isCompatible = getArrayCount() == other.getArrayCount()
-                    || (getArrayCount() < other.getArrayCount() && getClazz().equals(Object.class));
+                    || (getArrayCount() < other.getArrayCount() && isObjectClass(getClazz()));
         }
         return isCompatible;
     }
@@ -385,7 +385,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 Iterator<Class<?>> itBounds = boundClasses.iterator();
                 while (itBounds.hasNext() && !isCompatible) {
                     if (getArrayCount() < other.getArrayCount()) {
-                        if (!getClazz().equals(Object.class)) {
+                        if (!isObjectClass(getClazz())) {
                             isCompatible = Types.isCompatible(itBounds.next(), getClazz());
                         } else {
                             itBounds.next();
@@ -400,6 +400,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
         }
         return isCompatible;
+    }
+
+    private boolean isObjectClass(final Class<?> clazz) {
+        return Object.class.equals(clazz);
     }
 
     private boolean isUpperBoundsCompatible(SymbolType other) {
@@ -1197,7 +1201,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     private boolean belongsToAnonymous(Class<?> clazz) {
-        if (clazz == null || clazz.equals(Object.class)) {
+        if (clazz == null || isObjectClass(clazz)) {
             return false;
         }
         if (clazz.isAnonymousClass()) {
@@ -1260,7 +1264,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 }
                 aux.setParameterizedTypes(parameterizedTypes);
             } else {
-                if (Object.class.equals(getClazz())) {
+                if (isObjectClass(getClazz())) {
                     aux = st;
                 } else {
                     aux = this;
