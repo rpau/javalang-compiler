@@ -770,7 +770,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 List<Type> implementations = ClassInspector.getInterfaceOrSuperclassImplementations(argClass, aux);
 
                 Iterator<Type> itTypes = implementations.iterator();
-                Type[] typeParamsAux = typeParams;
+                Type[] typeParamsAux;
                 Map<String, SymbolType> auxMap = new HashMap<>(typeMapping);
                 while (itTypes.hasNext()) {
                     Type implementation = itTypes.next();
@@ -781,7 +781,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         Type[] targuments = ptype.getActualTypeArguments();
                         for (Type targument : targuments) {
 
-                            SymbolType st = null;
+                            SymbolType st;
                             if (targument instanceof TypeVariable) {
                                 String name = ((TypeVariable<?>) targument).getName();
                                 if (typeMappingVars != null && typeMappingVars.containsKey(name)) {
@@ -1106,7 +1106,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public static SymbolType valueOf(Method method, Map<String, SymbolType> typeMapping)
             throws ClassNotFoundException, InvalidTypeException {
-        java.lang.reflect.Type type = null;
+        java.lang.reflect.Type type;
         if (typeMapping == null) {
             typeMapping = new HashMap<>();
             type = method.getGenericReturnType();
@@ -1152,7 +1152,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     @Override
     public SymbolData merge(SymbolData other) {
-        SymbolType result = null;
+        SymbolType result;
         if (other == null || equals(other)) {
             result = this;
         } else {
@@ -1292,7 +1292,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public static <T extends SymbolData> Class<?>[] toClassArray(T[] args) {
 
-        Class<?>[] argClasses = null;
+        Class<?>[] argClasses;
         int params = 0;
         if (args != null) {
             params = args.length;
