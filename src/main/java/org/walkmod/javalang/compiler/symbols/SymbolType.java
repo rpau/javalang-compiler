@@ -375,10 +375,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             }
             isCompatible = found;
         } else {
-            String otherName = other.getName();
-
-            boolean isUndefinedTemplateVar = other.isTemplateVariable() && otherName == null;
-            isCompatible = isUndefinedTemplateVar;
+            isCompatible = other.isUndefinedTemplateVariable();
             if (!isCompatible) {
                 List<Class<?>> boundClasses = other.getBoundClasses();
 
@@ -404,6 +401,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private boolean isObjectClass(final Class<?> clazz) {
         return Object.class.equals(clazz);
+    }
+
+    private boolean isUndefinedTemplateVariable() {
+        return isTemplateVariable() && getName() == null;
     }
 
     private boolean isUpperBoundsCompatible(SymbolType other) {
