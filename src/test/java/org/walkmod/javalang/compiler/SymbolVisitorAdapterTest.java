@@ -2365,4 +2365,16 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
 
         Assert.assertNotNull(cu);
     }
+
+    @Test
+    public void testSymbolResolutionIndexBug() throws Exception {
+        // bug modified the symbol of class to "array" and CU could not be created
+        String code = "package x;"
+                + "public class A {\n"
+                + " private x.A[] children;\n"
+                + " public x.A[] getChildren() { return children; }\n"
+                + "}\n";
+        CompilationUnit cu = run(code);
+        Assert.assertNotNull(cu);
+    }
 }

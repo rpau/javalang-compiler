@@ -96,8 +96,7 @@ public class MethodInspector {
                 Method method = result.getMethod();
                 if (method != null && method.getName().equals("clone")) {
                     // JLS 10.7 - The return type of the clone method of an array type T[] is T[].
-                    result.setName(scope.getName());
-                    result.setArrayCount(scope.getArrayCount());
+                    result = result.cloneAsArray(scope.getName(), scope.getArrayCount());
                 }
             }
         }

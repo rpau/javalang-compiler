@@ -97,9 +97,7 @@ public abstract class AbstractGenericsBuilderFromParameterTypes {
                     clazz = TypesLoaderVisitor.getClassLoader().loadClass(name);
 
                     String className = clazz.getName();
-                    type = new SymbolType();
-                    type.setName(className);
-
+                    type = new SymbolType(className);
                 } catch (ClassNotFoundException e) {
                     // a name expression could be "org.walkmod.A" and this node
                     // could be "org.walkmod"

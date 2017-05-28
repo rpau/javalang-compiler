@@ -68,7 +68,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     private SymbolType(int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds,
-                       String typeVariable) {
+            String typeVariable) {
         this(upperBounds, lowerBounds);
         this.typeVariable = typeVariable;
         this.arrayCount = arrayCount;
@@ -101,7 +101,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
-    private SymbolType(String name, int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds, String typeVariable) {
+    private SymbolType(String name, int arrayCount, List<SymbolType> upperBounds, List<SymbolType> lowerBounds,
+            String typeVariable) {
         this(name, upperBounds, lowerBounds);
         this.typeVariable = typeVariable;
         this.arrayCount = arrayCount;
@@ -185,10 +186,17 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         this.name = name;
     }
 
+    private SymbolType(String name, int arrayCount) {
+        this.name = name;
+        this.arrayCount = arrayCount;
+    }
+
     public String getName() {
         return name;
     }
 
+    /** @deprecated do not use directly but via specialized constructors of factory methods */
+    @Deprecated
     public void setName(String name) {
         this.name = name;
     }
@@ -259,8 +267,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             SymbolType aux = (SymbolType) o;
             String auxName = aux.getName();
             boolean equalName = name != null && auxName != null && name.equals(auxName);
-            equalName = equalName || (isTemplateVariable() && aux.isTemplateVariable()
-                    && typeVariable.equals(aux.typeVariable));
+            equalName = equalName
+                    || (isTemplateVariable() && aux.isTemplateVariable() && typeVariable.equals(aux.typeVariable));
             return equalName && arrayCount == aux.getArrayCount();
         }
         return false;
@@ -488,21 +496,38 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
+    /** clone with name replaced */
+    public SymbolType withName(String name) {
+        return clone(name, arrayCount, typeVariable, null, null);
+    }
+
     public SymbolType clone() {
         return clone(null, null);
     }
 
     public SymbolType cloneAsTypeVariable(String typeVariable) {
-        return clone(null, null, typeVariable);
+        return clone(name, arrayCount, typeVariable, null, null);
+    }
+
+    public static SymbolType cloneAsArrayOrNull(/* Nullable */ SymbolType type, final int arrayCount) {
+        return type != null ? type.cloneAsArray(arrayCount) : null;
+    }
+
+    public SymbolType cloneAsArray(int arrayCount) {
+        return clone(name, arrayCount, typeVariable, null, null);
+    }
+
+    public SymbolType cloneAsArray(String name, int arrayCount) {
+        return clone(name, arrayCount, typeVariable, null, null);
     }
 
     private SymbolType clone(final Stack<SymbolType> parent, final Stack<SymbolType> created) {
-        return clone(parent, created, typeVariable);
+        return clone(name, arrayCount, typeVariable, parent, created);
     }
 
-    private SymbolType clone(Stack<SymbolType> parent, Stack<SymbolType> created, final String typeVariable) {
-        SymbolType result = new SymbolType();
-        result.setName(name);
+    private SymbolType clone(final String name, final int arrayCount, final String typeVariable,
+                             Stack<SymbolType> parent, Stack<SymbolType> created) {
+        SymbolType result = new SymbolType(name);
         result.setClazz(clazz);
         result.setArrayCount(arrayCount);
         result.setField(field);
@@ -615,6 +640,13 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     /**
+     * Build a simple class based symbol probably as an array.
+     */
+    public static SymbolType classValueOf(final String className, final int arrayCount) {
+        return new SymbolType(className, arrayCount);
+    }
+
+    /**
      * Builds a symbol for a type variable from a (Java class) name.
      */
     public static SymbolType typeVariableOf(final String typeVariable, final String name) {
@@ -639,7 +671,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      * Builds a symbol for a type variable.
      */
     private static SymbolType typeVariableOf(String typeVariable, final String name, final int arrayCount,
-                                             final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
+            final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
         return new SymbolType(name, arrayCount, upperBounds, lowerBounds, typeVariable);
     }
 
@@ -647,7 +679,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      * Builds a symbol for a type variable.
      */
     private static SymbolType typeVariableOf(final String typeVariable, final int arrayCount,
-                                             List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
+            List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
         return new SymbolType(arrayCount, upperBounds, lowerBounds, typeVariable);
     }
 
@@ -696,16 +728,14 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private static SymbolType valueOfClass(Class<?> type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping,
             Map<String, SymbolType> typeMapping) throws InvalidTypeException {
-        SymbolType returnType;
         Class<?> aux = type;
-        returnType = new SymbolType();
         int arrayCount = 0;
         while (aux.isArray()) {
             arrayCount++;
             aux = aux.getComponentType();
         }
+        final SymbolType returnType = new SymbolType(aux.getName());
         returnType.setArrayCount(arrayCount);
-        returnType.setName(aux.getName());
         Type[] typeParams = aux.getTypeParameters();
         if (typeParams.length > 0) {
 
@@ -837,7 +867,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
                     arg = returnType;
                 }
-                returnType = typeVariableOf(variableName, arg.getName(), arg.getArrayCount(), arg.getBounds(), arg.getLowerBounds());
+                returnType = typeVariableOf(variableName, arg.getName(), arg.getArrayCount(), arg.getBounds(),
+                        arg.getLowerBounds());
                 Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
                 auxMap.put(variableName, returnType);
 
@@ -895,12 +926,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     private static SymbolType valueOfParameterizedType(ParameterizedType type, SymbolType arg,
             Map<String, SymbolType> updatedTypeMapping, Map<String, SymbolType> typeMapping)
             throws InvalidTypeException {
-        SymbolType returnType;
-        Class<?> auxClass = (Class<?>) type.getRawType();
+        final Class<?> auxClass = (Class<?>) type.getRawType();
 
-        Type[] types = type.getActualTypeArguments();
+        final Type[] types = type.getActualTypeArguments();
 
-        returnType = new SymbolType(auxClass.getName());
+        final SymbolType returnType = new SymbolType(auxClass.getName());
 
         if (types != null) {
 
@@ -1262,5 +1292,4 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
         return argClasses;
     }
-
 }

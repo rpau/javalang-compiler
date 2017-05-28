@@ -92,8 +92,7 @@ public class GenericsBuilderFromArgs implements Builder<Map<String, SymbolType>>
                                                 "Invalid class into the generics resolution", e);
                                     }
 
-                                    SymbolType auxType = new SymbolType();
-                                    auxType.setName(paramClass.getName());
+                                    SymbolType auxType = new SymbolType(paramClass.getName());
                                     obj.put(variableName, auxType);
                                 }
                             }
