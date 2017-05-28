@@ -171,7 +171,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                     try {
                         SymbolType st = valueOf(bound, null);
                         if (result == null) {
-                            result = new LinkedList<SymbolType>();
+                            result = new LinkedList<>();
                         }
                         result.add(st);
                     } catch (InvalidTypeException e) {
@@ -230,7 +230,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
                         // if (!name.equals(st.getName())) {
                         if (aux == null) {
-                            aux = new LinkedList<SymbolType>();
+                            aux = new LinkedList<>();
                         }
                         aux.add(st);
 
@@ -247,7 +247,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public void setParameterizedTypes(List<SymbolType> parameterizedTypes) {
         this.parameterizedTypes = parameterizedTypes != null
-                ? Collections.unmodifiableList(new ArrayList<SymbolType>(parameterizedTypes))
+                ? Collections.unmodifiableList(new ArrayList<>(parameterizedTypes))
                 : null;
     }
 
@@ -290,7 +290,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         List<SymbolType> paramTypes = getParameterizedTypes();
         if (paramTypes != null) {
             TypeVariable<?>[] vars = getClazz().getTypeParameters();
-            result = new HashMap<String, SymbolType>();
+            result = new HashMap<>();
             for (int i = 0; i < vars.length; i++) {
                 result.put(vars[i].getName(), paramTypes.get(i));
             }
@@ -325,7 +325,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             Set<Type> paramTypes = ClassInspector.getEquivalentParametrizableClasses(other.getClazz());
             Iterator<Type> paramTypesIt = paramTypes.iterator();
             boolean found = false;
-            Set<Integer> recursiveParamDefs = new HashSet<Integer>();
+            Set<Integer> recursiveParamDefs = new HashSet<>();
             try {
                 Map<String, SymbolType> otherMap = other.getTypeMappingVariables();
                 Class<?> clazz = getClazz();
@@ -415,7 +415,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                     bounds = other.getBounds();
                 }
                 if (bounds == null) {
-                    bounds = new LinkedList<SymbolType>();
+                    bounds = new LinkedList<>();
                     bounds.add(other);
                 }
                 Iterator<SymbolType> otherIt = bounds.iterator();
@@ -463,7 +463,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public List<Class<?>> getBoundClasses() {
-        List<Class<?>> compatibleClasses = new LinkedList<Class<?>>();
+        List<Class<?>> compatibleClasses = new LinkedList<>();
         if (hasBounds()) {
             List<SymbolType> bounds = getBounds();
             for (SymbolType bound : bounds) {
@@ -545,8 +545,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         result.setMethod(method);
         result.typeVariable = typeVariable;
         if (parent == null) {
-            parent = new Stack<SymbolType>();
-            created = new Stack<SymbolType>();
+            parent = new Stack<>();
+            created = new Stack<>();
         }
         Iterator<SymbolType> it = parent.iterator();
         Iterator<SymbolType> it2 = created.iterator();
@@ -563,7 +563,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             parent.push(this);
             created.push(result);
             if (parameterizedTypes != null) {
-                List<SymbolType> list = new LinkedList<SymbolType>();
+                List<SymbolType> list = new LinkedList<>();
 
                 for (SymbolData type : parameterizedTypes) {
                     list.add(((SymbolType) type).clone(parent, created));
@@ -573,14 +573,14 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 result.setParameterizedTypes(null);
             }
             if (upperBounds != null) {
-                List<SymbolType> list = new LinkedList<SymbolType>();
+                List<SymbolType> list = new LinkedList<>();
                 for (SymbolData type : upperBounds) {
                     list.add(((SymbolType) type).clone(parent, created));
                 }
                 result.upperBounds = list;
             }
             if (lowerBounds != null) {
-                List<SymbolType> list = new LinkedList<SymbolType>();
+                List<SymbolType> list = new LinkedList<>();
                 for (SymbolData type : lowerBounds) {
                     list.add(((SymbolType) type).clone(parent, created));
                 }
@@ -750,8 +750,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         Type[] typeParams = aux.getTypeParameters();
         if (typeParams.length > 0) {
 
-            List<SymbolType> params = new LinkedList<SymbolType>();
-            List<SymbolType> implParams = new LinkedList<SymbolType>();
+            List<SymbolType> params = new LinkedList<>();
+            List<SymbolType> implParams = new LinkedList<>();
             boolean isParameterizedImplementation = false;
             List<SymbolType> parameterizedTypes = null;
             Iterator<SymbolType> it = null;
@@ -767,7 +767,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
                 Iterator<Type> itTypes = implementations.iterator();
                 Type[] typeParamsAux = typeParams;
-                Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
+                Map<String, SymbolType> auxMap = new HashMap<>(typeMapping);
                 while (itTypes.hasNext()) {
                     Type implementation = itTypes.next();
                     if (implementation instanceof ParameterizedType) {
@@ -798,7 +798,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         isParameterizedImplementation = true;
                         it = implParams.iterator();
                         params = implParams;
-                        implParams = new LinkedList<SymbolType>();
+                        implParams = new LinkedList<>();
                         parameterizedTypes = params;
                     } else if (implementation instanceof Class<?>) {
                         Class<?> auxClass = (Class<?>) implementation;
@@ -880,7 +880,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 }
                 returnType = typeVariableOf(variableName, arg.getName(), arg.getArrayCount(), arg.getBounds(),
                         arg.getLowerBounds());
-                Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
+                Map<String, SymbolType> auxMap = new HashMap<>(typeMapping);
                 auxMap.put(variableName, returnType);
 
                 for (Type bound : bounds) {
@@ -893,9 +893,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 if (bounds.length == 0) {
                     returnType = typeVariableOf(variableName, "java.lang.Object");
                 } else {
-                    List<SymbolType> boundsList = new LinkedList<SymbolType>();
+                    List<SymbolType> boundsList = new LinkedList<>();
                     SymbolType initReturnType = typeVariableOf(variableName, boundsList);
-                    Map<String, SymbolType> auxMap = new HashMap<String, SymbolType>(typeMapping);
+                    Map<String, SymbolType> auxMap = new HashMap<>(typeMapping);
                     auxMap.put(variableName, initReturnType);
                     for (Type bound : bounds) {
                         SymbolType st = valueOf(bound, null, updatedTypeMapping, auxMap);
@@ -945,7 +945,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
         if (types != null) {
 
-            List<SymbolType> params = new LinkedList<SymbolType>();
+            List<SymbolType> params = new LinkedList<>();
 
             List<SymbolType> paramTypes = null;
             if (arg != null) {
@@ -991,7 +991,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                                         if (tvs.length > i) {
                                             SymbolType templateVarType =
                                                     valueOf(tvs[i], null, updatedTypeMapping, typeMapping);
-                                            bounds = new LinkedList<SymbolType>();
+                                            bounds = new LinkedList<>();
                                             bounds.add(templateVarType);
                                             st = typeVariableOf("?", bounds);
                                         }
@@ -1052,7 +1052,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         List<SymbolType> upperBounds = null;
         List<SymbolType> lowerBounds = null;
         if (types != null && types.length > 0) {
-            upperBounds = new LinkedList<SymbolType>();
+            upperBounds = new LinkedList<>();
             for (Type type : types) {
                 SymbolType st = valueOf(type, arg, updatedTypeMapping, typeMapping);
                 if (st != null) {
@@ -1066,7 +1066,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
         types = wt.getLowerBounds();
         if (types != null && types.length > 0) {
-            lowerBounds = new LinkedList<SymbolType>();
+            lowerBounds = new LinkedList<>();
             for (Type type : types) {
 
                 SymbolType st = valueOf(type, arg, updatedTypeMapping, typeMapping);
@@ -1104,7 +1104,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             throws ClassNotFoundException, InvalidTypeException {
         java.lang.reflect.Type type = null;
         if (typeMapping == null) {
-            typeMapping = new HashMap<String, SymbolType>();
+            typeMapping = new HashMap<>();
             type = method.getGenericReturnType();
         } else {
             TypeVariable<Method>[] tvs = method.getTypeParameters();
@@ -1112,7 +1112,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             if (tvs.length > 0) {
                 for (TypeVariable<Method> tv : tvs) {
                     Type[] bounds = tv.getBounds();
-                    List<SymbolType> boundsList = new LinkedList<SymbolType>();
+                    List<SymbolType> boundsList = new LinkedList<>();
                     for (Type bound : bounds) {
                         SymbolType st = valueOf(bound, typeMapping);
                         if (st != null) {
@@ -1161,7 +1161,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 } else if (bounds.size() == 1) {
                     result = new SymbolType(bounds.get(0));
                 } else {
-                    List<SymbolType> boundsList = new LinkedList<SymbolType>();
+                    List<SymbolType> boundsList = new LinkedList<>();
                     for (Class<?> bound : bounds) {
                         boundsList.add(new SymbolType(bound));
                     }
@@ -1169,7 +1169,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 }
                 if (result != null) {
                     if (lowerBounds != null) {
-                        result.lowerBounds = new LinkedList<SymbolType>();
+                        result.lowerBounds = new LinkedList<>();
                         for (SymbolType st : lowerBounds) {
                             result.lowerBounds.add(st.clone());
                         }
@@ -1209,7 +1209,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     @Override
     public List<Class<?>> getLowerBoundClasses() {
-        List<Class<?>> upperBoundClasses = new LinkedList<Class<?>>();
+        List<Class<?>> upperBoundClasses = new LinkedList<>();
         if (lowerBounds != null) {
             for (SymbolType bound : lowerBounds) {
                 upperBoundClasses.add(bound.getClazz());
@@ -1226,7 +1226,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             SymbolType aux;
             if (this.parameterizedTypes != null) {
                 aux = this.clone();
-                List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+                List<SymbolType> parameterizedTypes = new LinkedList<>();
                 for (SymbolType param : this.parameterizedTypes) {
                     param = param.refactor_rec(variable, st, dynamicVar);
                     parameterizedTypes.add(param);
@@ -1253,7 +1253,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
             SymbolType aux;
             if (this.parameterizedTypes != null) {
                 aux = this.clone();
-                List<SymbolType> parameterizedTypes = new LinkedList<SymbolType>();
+                List<SymbolType> parameterizedTypes = new LinkedList<>();
                 for (SymbolType param : this.parameterizedTypes) {
                     param = param.refactor_rec(variable, st, dynamicVar);
                     parameterizedTypes.add(param);
