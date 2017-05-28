@@ -807,10 +807,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         parameterizedTypes = params;
                     } else if (implementation instanceof Class<?>) {
                         Class<?> auxClass = (Class<?>) implementation;
-                        boolean isRecursiveThenOmit = false;
-                        if (type instanceof Class<?>) {
-                            isRecursiveThenOmit = ((Class<?>) type).getName().equals(auxClass.getName());
-                        }
+                        boolean isRecursiveThenOmit = type.getName().equals(auxClass.getName());
                         if (!isRecursiveThenOmit) {
                             typeParamsAux = auxClass.getTypeParameters();
                             loadTypeParams(it, typeParamsAux, parameterizedTypes, typeMapping, auxMap);
@@ -835,9 +832,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         TypeVariable<?> tv = (TypeVariable<?>) typeParam;
                         Type[] types = tv.getBounds();
                         if (types.length == 1) {
-                            if (types[0] instanceof Class<?> && type instanceof Class<?>) {
-                                isRecursiveThenOmit =
-                                        ((Class<?>) type).getName().equals(((Class<?>) types[0]).getName());
+                            if (types[0] instanceof Class<?>) {
+                                isRecursiveThenOmit = type.getName().equals(((Class<?>) types[0]).getName());
                             }
                         }
                     }
