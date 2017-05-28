@@ -156,9 +156,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
             for (TypeVariable<?> td : typeParams) {
                 Type[] bounds = td.getBounds();
-                for (int i = 0; i < bounds.length; i++) {
+                for (Type bound : bounds) {
                     try {
-                        SymbolType st = valueOf(bounds[i], null);
+                        SymbolType st = valueOf(bound, null);
                         if (result == null) {
                             result = new LinkedList<SymbolType>();
                         }
@@ -587,13 +587,13 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         if (parameterizedTypes != null) {
             it = parameterizedTypes.iterator();
         }
-        for (int i = 0; i < typeParams.length; i++) {
+        for (Type typeParam : typeParams) {
             SymbolType ref = null;
             if (it != null && it.hasNext()) {
                 ref = it.next();
             }
 
-            valueOf(typeParams[i], ref, auxMap, typeMapping);
+            valueOf(typeParam, ref, auxMap, typeMapping);
 
         }
 
@@ -764,11 +764,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         Map<String, SymbolType> typeMappingVars = arg.getTypeMappingVariables();
 
                         Type[] targuments = ptype.getActualTypeArguments();
-                        for (int i = 0; i < targuments.length; i++) {
+                        for (Type targument : targuments) {
 
                             SymbolType st = null;
-                            if (targuments[i] instanceof TypeVariable) {
-                                String name = ((TypeVariable<?>) targuments[i]).getName();
+                            if (targument instanceof TypeVariable) {
+                                String name = ((TypeVariable<?>) targument).getName();
                                 if (typeMappingVars != null && typeMappingVars.containsKey(name)) {
                                     st = typeMappingVars.get(name);
                                 } else if (it != null && it.hasNext()) {
@@ -778,7 +778,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                                 }
                             } else {
 
-                                st = SymbolType.valueOf(targuments[i], auxMap);
+                                st = SymbolType.valueOf(targument, auxMap);
                             }
                             if (st != null) {
                                 implParams.add(st);
@@ -808,15 +808,15 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 if (parameterizedTypes != null) {
                     it = parameterizedTypes.iterator();
                 }
-                for (int i = 0; i < typeParams.length; i++) {
+                for (Type typeParam : typeParams) {
                     SymbolType ref = null;
                     if (it != null && it.hasNext()) {
                         ref = it.next();
                     }
                     boolean isRecursiveThenOmit = false;
 
-                    if (typeParams[i] instanceof TypeVariable) {
-                        TypeVariable<?> tv = (TypeVariable<?>) typeParams[i];
+                    if (typeParam instanceof TypeVariable) {
+                        TypeVariable<?> tv = (TypeVariable<?>) typeParam;
                         Type[] types = tv.getBounds();
                         if (types.length == 1) {
                             if (types[0] instanceof Class<?> && type instanceof Class<?>) {
@@ -826,7 +826,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                         }
                     }
                     if (!isRecursiveThenOmit) {
-                        SymbolType tp = valueOf(typeParams[i], ref, updatedTypeMapping, typeMapping);
+                        SymbolType tp = valueOf(typeParam, ref, updatedTypeMapping, typeMapping);
                         if (arg != null || !Object.class.getName().equals(tp.getName())) {
                             if (tp != null) {
                                 params.add(tp);
@@ -1042,8 +1042,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         List<SymbolType> lowerBounds = null;
         if (types != null && types.length > 0) {
             upperBounds = new LinkedList<SymbolType>();
-            for (int i = 0; i < types.length; i++) {
-                SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
+            for (Type type : types) {
+                SymbolType st = valueOf(type, arg, updatedTypeMapping, typeMapping);
                 if (st != null) {
                     upperBounds.add(st);
                 }
@@ -1056,9 +1056,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         types = wt.getLowerBounds();
         if (types != null && types.length > 0) {
             lowerBounds = new LinkedList<SymbolType>();
-            for (int i = 0; i < types.length; i++) {
+            for (Type type : types) {
 
-                SymbolType st = valueOf(types[i], arg, updatedTypeMapping, typeMapping);
+                SymbolType st = valueOf(type, arg, updatedTypeMapping, typeMapping);
                 if (st != null) {
                     lowerBounds.add(st);
                 }
@@ -1102,8 +1102,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
                 for (TypeVariable<Method> tv : tvs) {
                     Type[] bounds = tv.getBounds();
                     List<SymbolType> boundsList = new LinkedList<SymbolType>();
-                    for (int i = 0; i < bounds.length; i++) {
-                        SymbolType st = valueOf(bounds[i], typeMapping);
+                    for (Type bound : bounds) {
+                        SymbolType st = valueOf(bound, typeMapping);
                         if (st != null) {
                             boundsList.add(st);
                         }
