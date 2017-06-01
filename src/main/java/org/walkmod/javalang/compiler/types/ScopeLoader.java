@@ -165,7 +165,18 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
                 }
                 String name = symbolTable.generateAnonymousClass();
 
-                final SymbolType type = new SymbolType(name);
+                SymbolType type = new SymbolType(name);
+                try {
+                    type.getClazz();
+                } catch (TypeNotFoundException e) {
+                    // The java compiler does not generate classes for dead code.
+                    // For definition of desd code see JLS TODO
+                    if (ConditionalCompilationUtil.isDeadCode(n)) {
+                        type = new SymbolType(Object.class);
+                    } else {
+                        throw e;
+                    }
+                }
                 Symbol<?> anonymousType = symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n);
                 anonymousType.setInnerScope(scope);
 
