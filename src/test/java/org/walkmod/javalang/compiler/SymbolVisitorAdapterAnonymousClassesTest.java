@@ -25,6 +25,23 @@ public class SymbolVisitorAdapterAnonymousClassesTest extends SymbolVisitorAdapt
 		Assert.assertNotNull(cu);
 	}
 
+	@Test
+	public void testAnonymousClassNameGenerationInConstructorBug() throws Exception {
+		// the bug incremented the anonymous counter twice, so the CompilationUnit could not be created
+		// because the class could not be resolved
+		String code = ""
+				+ "public final class A {\n"
+				+ "    public static class Base { Base(Object o) {} }\n"
+				+ "    public static class Usage extends Base {\n"
+				+ "        Usage() {\n"
+				+ "            super(new java.io.Serializable() {});\n"
+				+ "        }\n"
+				+ "    }\n"
+				+ "}\n";
+		CompilationUnit cu = run(code);
+		Assert.assertNotNull(cu);
+	}
+
     @Test
     public void testConditionalCompilationEliminatesAnonymousClasses() throws Exception {
 		// Note: The anonymous class counter is incremented for dead code but no class is generated.
