@@ -12,7 +12,7 @@ import org.walkmod.javalang.ast.stmt.IfStmt;
  * http://docs.oracle.com/javase/specs/jls/se8/html/jls-14.html#jls-14.21
  */
 class ConditionalCompilationUtil {
-    static boolean isDeadCode(ObjectCreationExpr n) {
+    static boolean isDisabledCode(ObjectCreationExpr n) {
         Node child = n;
         Node node = child.getParentNode();
         while (node != null) {

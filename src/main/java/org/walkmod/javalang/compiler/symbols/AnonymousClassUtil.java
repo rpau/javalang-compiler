@@ -13,20 +13,20 @@ public class AnonymousClassUtil {
     /**
      * For anonymous creations the initial symbol data is symbol data of super class.
      * That needs to be replaced with symbol data of anonymous class.
-     * If we don't have a super class we can't say and assume we need proper info.
+     * If we don't have symbol data we assume we need one. ;-)
      */
     public static boolean needsSymbolData(ObjectCreationExpr n) {
-        final Class<?> typeRefClass = symbolDataClazz(n.getType());
-        final Class<?> clazz = symbolDataClazz(n);
-        return typeRefClass == null || clazz == null || clazz.equals(typeRefClass);
-    }
-
-    /* @Nullable */ private static Class<?> symbolDataClazz(Node n) {
-        final SymbolData sd = symbolData(n);
-        return sd != null ? sd.getClazz() : null;
+        final SymbolType st = symbolDataType(n);
+        return st == null || !st.isLoadedAnonymousClass();
     }
 
     /* @Nullable */ private static SymbolData symbolData(Node n) {
         return n instanceof SymbolDataAware ? ((SymbolDataAware) n).getSymbolData() : null;
+    }
+
+
+    /* @Nullable */ private static SymbolType symbolDataType(Node n) {
+        final SymbolData sd = symbolData(n);
+        return sd instanceof SymbolType ? (SymbolType) sd : null;
     }
 }
