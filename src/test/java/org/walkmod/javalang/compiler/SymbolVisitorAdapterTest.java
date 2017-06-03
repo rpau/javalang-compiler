@@ -2444,4 +2444,38 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
                 .symbolData().asMethodSymbolData()
                 .method().hasToString("public abstract java.lang.String A$Base.get()");
     }
+
+    @Test
+    public void testForwardExtendingBetweenInnerInterfaces() throws Exception {
+        /*
+         * Bug description:
+         * while resolving "this" of "Derived" scope the "Base" scope is used via LoadMethodDeclarationAction
+         * but the "Base" scope did not get a "this" symbol yet.
+         */
+        CompilationUnit cu = run(""
+                + "public class A {\n"
+                + " public interface StringifierRegistry extends Stringifier<Object> {\n"
+                + "  @Override\n"
+                + "  Object stringify(Object o);\n"
+                + " }\n"
+                + " public interface Stringifier<T> {\n"
+                + "  Object stringify(T o);\n"
+                + " }\n"
+                + "}\n"
+        );
+        AstAssertions.assertThat(cu)
+                .types().item(0)
+                .members().item(0).asClassOrInterfaceDeclaration()
+                .hasName("StringifierRegistry")
+                .members().item(0).asMethodDeclaration()
+                .symbolData().asMethodSymbolData()
+                .method().hasToString("public abstract java.lang.Object A$StringifierRegistry.stringify(java.lang.Object)");
+        AstAssertions.assertThat(cu)
+                .types().item(0)
+                .members().item(1).asClassOrInterfaceDeclaration()
+                .hasName("Stringifier")
+                .members().item(0).asMethodDeclaration()
+                .symbolData().asMethodSymbolData()
+                .method().hasToString("public abstract java.lang.Object A$Stringifier.stringify(java.lang.Object)");
+    }
 }
