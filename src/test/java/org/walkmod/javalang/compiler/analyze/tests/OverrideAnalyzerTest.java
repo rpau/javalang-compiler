@@ -27,6 +27,7 @@ import org.walkmod.javalang.compiler.analyze.OverrideAnalyzer;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -233,6 +234,22 @@ public class OverrideAnalyzerTest extends SemanticTest {
         MethodDeclaration method = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
 
         assertNoMethods(method);
+    }
+
+    @Test
+    public void testGenericCollectionParameterOverrideBug() throws Exception {
+        CompilationUnit cu = compile(""
+                        + "import java.util.Collection;"
+                        + "import java.util.HashSet;"
+                        + "public class A extends HashSet<String> {"
+                        + " public boolean removeAll(Collection<?> x) { return false; }"
+                        + " public boolean removeAll(HashSet<String> x) { return false; }"
+                        + "}");
+        MethodDeclaration overwrittenMethod = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(0);
+        assertMethods(overwrittenMethod, methods(HashSet.class.getMethod("removeAll", Collection.class)));
+
+        MethodDeclaration unrelatedMethod = (MethodDeclaration) cu.getTypes().get(0).getMembers().get(1);
+        assertNoMethods(unrelatedMethod);
     }
 
     @Test
