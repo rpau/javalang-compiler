@@ -240,9 +240,16 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
         Symbol added = null;
         if (oldSymbol == null || !oldSymbol.getType().equals(st)) {
             added = new Symbol(keyName, st, type, ReferenceType.TYPE, false, actions);
-            added.setInnerScope(new Scope(added));
-            symbolTable.pushSymbol(added, true);
+            final Scope addedScope = new Scope(added);
+            added.setInnerScope(addedScope);
 
+            // preliminary "this" to allow depth first inheritance tree scope loading
+            Symbol<TypeDeclaration> thisSymbol =
+                    new Symbol<TypeDeclaration>("this", added.getType(), type, ReferenceType.VARIABLE);
+            thisSymbol.setInnerScope(addedScope);
+            addedScope.addSymbol(thisSymbol);
+
+            symbolTable.pushSymbol(added, true);
         } else {
 
             Node location = oldSymbol.getLocation();
