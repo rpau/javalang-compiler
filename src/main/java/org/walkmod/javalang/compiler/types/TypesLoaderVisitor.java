@@ -240,16 +240,21 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
         Symbol added = null;
         if (oldSymbol == null || !oldSymbol.getType().equals(st)) {
             added = new Symbol(keyName, st, type, ReferenceType.TYPE, false, actions);
-            added.setInnerScope(new Scope(added));
-            symbolTable.pushSymbol(added, true);
+            final Scope addedScope = new Scope(added);
+            added.setInnerScope(addedScope);
 
+            addPreliminaryThis(addedScope, added, type);
+
+            symbolTable.pushSymbol(added, true);
         } else {
 
             Node location = oldSymbol.getLocation();
             if ((location == null || location instanceof ImportDeclaration) && !st.belongsToAnonymousClass()) {
                 added = oldSymbol;
-                overrideSymbol(added, type, st, new Scope(added));
+                final Scope addedScope = new Scope(added);
+                overrideSymbol(added, type, st, addedScope);
 
+                addPreliminaryThis(addedScope, added, type);
             } else {
                 if (startingNode != null && startingNode != type) {
 
@@ -266,6 +271,14 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             pushCanonicalName(added, st);
         }
         return st.getName();
+    }
+
+    /** preliminary "this" to allow depth first inheritance tree scope loading */
+    private void addPreliminaryThis(Scope scope, Symbol symbol, TypeDeclaration type) {
+        Symbol<TypeDeclaration> thisSymbol =
+                new Symbol<TypeDeclaration>("this", symbol.getType(), type, ReferenceType.VARIABLE);
+        thisSymbol.setInnerScope(scope);
+        scope.addSymbol(thisSymbol);
     }
 
     public void visit(ClassOrInterfaceDeclaration type, T context) {

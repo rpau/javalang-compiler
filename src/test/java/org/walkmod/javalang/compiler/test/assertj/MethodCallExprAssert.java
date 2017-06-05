@@ -17,7 +17,7 @@ public class MethodCallExprAssert extends AbstractExpressionAssert<MethodCallExp
         return AssertUtil.assertThat(actual.getArgs(), AbstractExpressionAssert.class, navigationDescription("args"));
     }
 
-    public SymbolDataAssert symbolData() {
+    public SymbolDataAssert<?,?> symbolData() {
         return symbolData(actual);
     }
 

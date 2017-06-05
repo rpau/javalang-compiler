@@ -54,11 +54,12 @@ public class SymbolDataAssert<S extends SymbolDataAssert<S, A>, A extends Symbol
     }
 
     public AbstractCharSequenceAssert<?, String> name() {
-        return Assertions.assertThat(actual.getName());
+        return Assertions.assertThat(actual.getName()).as(navigationDescription("name"));
     }
 
     public AbstractClassAssert<?> clazz() {
-        return Assertions.assertThat(actual.getClazz());
+        Assertions.assertThat(actual).as(descriptionText()).isNotNull();
+        return Assertions.assertThat(actual.getClazz()).describedAs(navigationDescription("clazz"));
     }
 
     public AbstractIntegerAssert<?> arrayCount() {
@@ -67,5 +68,14 @@ public class SymbolDataAssert<S extends SymbolDataAssert<S, A>, A extends Symbol
 
     public AbstractBooleanAssert<?> isTemplateVariable() {
         return Assertions.assertThat(actual.isTemplateVariable());
+    }
+
+    public SymbolDataAssert<?,?> hasName(String name) {
+        name().isEqualTo(name);
+        return this;
+    }
+
+    public ExtListAssert<? extends SymbolDataAssert, ? extends SymbolData> parameterizedTypes() {
+        return AssertUtil.assertThat(asActual().getParameterizedTypes(), SymbolDataAssert.class, "parameterizedTypes");
     }
 }

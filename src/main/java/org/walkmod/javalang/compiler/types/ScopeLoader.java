@@ -95,7 +95,10 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
         Symbol<TypeDeclaration> thisSymbol =
                 new Symbol<TypeDeclaration>("this", sym.getType(), declaration, ReferenceType.VARIABLE, false, actions);
         thisSymbol.setInnerScope(sym.getInnerScope());
-        symbolTable.pushSymbol(thisSymbol);
+        // The preliminary "this" is replaced here.
+        // The preliminary "this" is set on scope creation to allow us to do depth first
+        // resolution of "extends" axis of thisSymbol here.
+        symbolTable.pushSymbol(thisSymbol, true);
         List<BodyDeclaration> members = declaration.getMembers();
         if (members != null) {
             for (BodyDeclaration member : members) {

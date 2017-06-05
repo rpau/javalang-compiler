@@ -59,6 +59,8 @@ import org.walkmod.javalang.compiler.providers.RemoveUnusedSymbolsProvider;
 import org.walkmod.javalang.compiler.symbols.SymbolAction;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 import org.walkmod.javalang.compiler.symbols.SymbolVisitorAdapter;
+import org.walkmod.javalang.compiler.test.assertj.AstAssertions;
+import org.walkmod.javalang.compiler.test.assertj.ClassOrInterfaceDeclarationAssert;
 import org.walkmod.javalang.compiler.test.assertj.ExtListAssert;
 import org.walkmod.javalang.compiler.test.assertj.StatementAssert;
 import org.walkmod.javalang.test.SemanticTest;
@@ -2407,5 +2409,65 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
                 + "}\n";
         CompilationUnit cu = run(code);
         Assert.assertNotNull(cu);
+    }
+
+    @Test
+    public void testForwardInheritanceBetweenStaticInnerClasses() throws Exception {
+   		/*
+   		 * Bug description:
+   		 * while resolving "this" of "Derived" scope the "Base" scope is used via LoadMethodDeclarationAction
+         * but the "Base" scope did not get a "this" symbol yet.
+         */
+        final CompilationUnit cu = run(""
+                + "public class A {\n"
+                + " private static class Derived extends Base {\n"
+                + "  public String get() { return null; }\n"
+                + " }\n"
+                + " private abstract static class Base {\n"
+                + "  abstract public String get();\n"
+                + " }\n"
+                + "}\n"
+        );
+        AstAssertions.assertThat(cu)
+                .types().item(0)
+                .members().item(1).asClassOrInterfaceDeclaration()
+                .hasName("Base")
+                .members().item(0).asMethodDeclaration()
+                .symbolData().asMethodSymbolData()
+                .method().hasToString("public abstract java.lang.String A$Base.get()");
+    }
+
+    @Test
+    public void testForwardExtendingBetweenInnerInterfaces() throws Exception {
+        /*
+         * Bug description:
+         * while resolving "this" of "Derived" scope the "Base" scope is used via LoadMethodDeclarationAction
+         * but the "Base" scope did not get a "this" symbol yet.
+         */
+        CompilationUnit cu = run(""
+                + "public class A {\n"
+                + " public interface StringifierRegistry extends Stringifier<Object> {\n"
+                + "  @Override\n"
+                + "  Object stringify(Object o);\n"
+                + " }\n"
+                + " public interface Stringifier<T> {\n"
+                + "  Object stringify(T o);\n"
+                + " }\n"
+                + "}\n"
+        );
+        AstAssertions.assertThat(cu)
+                .types().item(0)
+                .members().item(0).asClassOrInterfaceDeclaration()
+                .hasName("StringifierRegistry")
+                .members().item(0).asMethodDeclaration()
+                .symbolData().asMethodSymbolData()
+                .method().hasToString("public abstract java.lang.Object A$StringifierRegistry.stringify(java.lang.Object)");
+        AstAssertions.assertThat(cu)
+                .types().item(0)
+                .members().item(1).asClassOrInterfaceDeclaration()
+                .hasName("Stringifier")
+                .members().item(0).asMethodDeclaration()
+                .symbolData().asMethodSymbolData()
+                .method().hasToString("public abstract java.lang.Object A$Stringifier.stringify(java.lang.Object)");
     }
 }

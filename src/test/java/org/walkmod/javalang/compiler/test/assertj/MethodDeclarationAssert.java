@@ -21,4 +21,8 @@ public class MethodDeclarationAssert extends AbstractNodeAssert<MethodDeclaratio
     public AbstractCharSequenceAssert<?, String> name() {
         return Assertions.assertThat(actual.getName()).as(navigationDescription("name"));
     }
+
+    public SymbolDataAssert symbolData() {
+        return symbolData(actual);
+    }
 }
