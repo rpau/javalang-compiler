@@ -25,6 +25,8 @@ import java.util.Set;
 
 import javax.lang.model.SourceVersion;
 
+import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Condition;
 import org.junit.Assert;
 import org.junit.Test;
 import org.walkmod.javalang.ASTManager;
@@ -598,6 +600,38 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
     public void testInnerClassInsideAnnonymousClass() throws Exception {
         run("public class A{ public Object foo() {  A a = new A() { public Object foo() { return new B(); } class B{ int c; }}; return a; }}");
         Assert.assertTrue(true);
+    }
+
+    @Test
+    public void testAssertThatMethodChainingOfTypeVariableHasClazz() throws Exception {
+        // ... otherwise NPE exceptions may be thrown in SymbolType.findSymbol
+        CompilationUnit cu = run("import static org.assertj.core.api.Assertions.assertThat;\n"
+                + "public class A { public static interface MyIf {} " + "public void f(MyIf a, MyIf b, MyIf c) {\n"
+                + "assertThat(a).isNotNull().isNotSameAs(b).isNotSameAs(c);\n" + "}}");
+        assertThat(cu).types().item(0).asClassOrInterfaceDeclaration().members().item(1).asMethodDeclaration()
+                .body().stmts().item(0).asExpressionStmt().expression().asMethodCallExpr()
+                .hasName("isNotSameAs")
+                .has(hasSymbolDataWithClazz())
+                .scope().asMethodCallExpr()
+                .hasName("isNotSameAs")
+                .has(hasSymbolDataWithClazz())
+                .scope().asMethodCallExpr()
+                .hasName("isNotNull")
+                .has(hasSymbolDataWithClazz())
+                .scope().asMethodCallExpr()
+                .hasName("assertThat")
+                .symbolData()
+                .clazz().isNotNull();
+    }
+
+    private static Condition<MethodCallExpr> hasSymbolDataWithClazz() {
+        return new Condition<MethodCallExpr>() {
+            @Override
+            public boolean matches(MethodCallExpr value) {
+                Assertions.assertThat(value.getSymbolData().getClazz()).describedAs("symbolData.clazz").isNotNull();
+                return true;
+            }
+        };
     }
 
     @Test
