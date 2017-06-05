@@ -66,7 +66,7 @@ import org.walkmod.javalang.util.FileUtils;
 
 import static org.walkmod.javalang.compiler.test.assertj.AstAssertions.assertThat;
 
-public class SymbolVisitorAdapterTest extends SemanticTest {
+public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
 
     @Test
     public void testNoActions() throws Exception {
@@ -130,14 +130,6 @@ public class SymbolVisitorAdapterTest extends SemanticTest {
     }
 
     public void populateSemantics() throws Exception {}
-
-    private CompilationUnit run(String... code) throws Exception {
-        CompilationUnit cu = compile(code);
-        SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
-        visitor.setClassLoader(getClassLoader());
-        visitor.visit(cu, new HashMap<String, Object>());
-        return cu;
-    }
 
     @Test
     public void testRemoveUnusedMethods() throws Exception {
