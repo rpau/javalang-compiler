@@ -10,6 +10,7 @@ import org.walkmod.javalang.compiler.reflection.MethodInspector;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
@@ -115,11 +116,12 @@ public class OverrideAnalyzer {
         int modifiers = m.getModifiers();
         boolean valid = ModifierSet.isPublic(modifiers) || ModifierSet.isProtected(modifiers);
         for (int i = 0; i < parameterTypes.length && valid; i++) {
-            if (parameterTypes[i] instanceof Class) {
-                valid = (args[i].getClazz().getName().equals(((Class<?>) parameterTypes[i]).getName()));
-            } else if (parameterTypes[i] instanceof TypeVariable) {
-
-                TypeVariable<?> tv = (TypeVariable<?>) parameterTypes[i];
+            final Type parameterType = parameterTypes[i];
+            final SymbolData arg = args[i];
+            if (parameterType instanceof Class) {
+                valid = (arg.getClazz().getName().equals(((Class<?>) parameterType).getName()));
+            } else if (parameterType instanceof TypeVariable) {
+                TypeVariable<?> tv = (TypeVariable<?>) parameterType;
                 if (returnType != null) {
                     TypeVariable<?>[] tvs = returnType.getTypeParameters();
                     int pos = -1;
@@ -132,11 +134,14 @@ public class OverrideAnalyzer {
                         Type[] bounds = tvs[pos].getBounds();
                         for (int k = 0; k < bounds.length && valid; k++) {
                             if (bounds[k] instanceof Class<?>) {
-                                valid = args[i].getClazz().isAssignableFrom((Class) bounds[k]);
+                                valid = arg.getClazz().isAssignableFrom((Class) bounds[k]);
                             }
                         }
                     }
                 }
+            } else if (parameterType instanceof ParameterizedType) {
+                ParameterizedType pt = (ParameterizedType) parameterType;
+                valid = arg.getClazz().isAssignableFrom((Class<?>) pt.getRawType());
             }
         }
         return valid;
