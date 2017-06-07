@@ -50,6 +50,22 @@ import static java.util.Arrays.asList;
 
 public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData, ConstructorSymbolData {
 
+    /**
+     * Marker to aid symbol resolution.
+     * Incomplete, avoid making public.
+     */
+    private enum Marker {
+        None,
+        AnonymousClass,
+        EnumConstantClass,
+        /**
+         * @see {@link #markDisabledCode()}
+         */
+        DisabledAnonymousClass
+    }
+
+    private final Marker marker;
+
     private String name;
 
     private List<SymbolType> upperBounds = null;
@@ -70,7 +86,17 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private Constructor<?> constructor = null;
 
-    public SymbolType() {}
+    private SymbolType(Marker marker, String name) {
+        this.marker = marker;
+        this.name = name;
+        if (marker == null) {
+            throw new IllegalArgumentException("marker");
+        }
+    }
+
+    public SymbolType() {
+        this(Marker.None, null);
+    }
 
     private SymbolType(List<SymbolType> upperBounds, String typeVariable) {
         this(upperBounds, (List<SymbolType>) null);
@@ -89,7 +115,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
-        this.name = name(upperBounds, lowerBounds);
+        this(Marker.None, name(upperBounds, lowerBounds));
         this.upperBounds = upperBounds;
         this.lowerBounds = lowerBounds;
         if (upperBounds != null) {
@@ -103,8 +129,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     private static String name(List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
         String name = null;
-        if (upperBounds != null && !upperBounds.isEmpty()) {
-            name = upperBounds.get(0).getName();
+        if (upperBounds != null) {
+            if (!upperBounds.isEmpty()) {
+                name = upperBounds.get(0).getName();
+            }
         } else if (lowerBounds != null) {
             name = "java.lang.Object";
         }
@@ -112,7 +140,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType(String name, List<SymbolType> upperBounds) {
-        this.name = name;
+        this(Marker.None, name);
         if (upperBounds != null) {
             this.upperBounds = upperBounds;
             if (!upperBounds.isEmpty()) {
@@ -129,8 +157,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType(String name, List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
-
-        this.name = name;
+        this(Marker.None, name);
         this.lowerBounds = lowerBounds;
         if (upperBounds != null) {
             this.upperBounds = upperBounds;
@@ -146,11 +173,24 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType(Class<?> clazz) {
-
+        this(Marker.None, clazz.getName());
         setClazz(clazz);
-        setName(clazz.getName());
         setParameterizedTypes(resolveGenerics(clazz));
         setArrayCount(resolveDimmensions(clazz));
+    }
+
+    private SymbolType(String name, String typeVariable) {
+        this(Marker.None, name);
+        this.typeVariable = typeVariable;
+    }
+
+    public SymbolType(String name) {
+        this(Marker.None, name);
+    }
+
+    private SymbolType(String name, int arrayCount) {
+        this(Marker.None, name);
+        this.arrayCount = arrayCount;
     }
 
     private int resolveDimmensions(Class<?> clazz) {
@@ -195,20 +235,6 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     public void setClazz(Class<?> clazz) {
         this.clazz = clazz;
-    }
-
-    private SymbolType(String name, String typeVariable) {
-        this.name = name;
-        this.typeVariable = typeVariable;
-    }
-
-    public SymbolType(String name) {
-        this.name = name;
-    }
-
-    private SymbolType(String name, int arrayCount) {
-        this.name = name;
-        this.arrayCount = arrayCount;
     }
 
     public String getName() {
@@ -484,6 +510,14 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return isCompatible;
     }
 
+    /**
+     * Is symbol for anonymous class that has been either being loaded successfully
+     * or being detected as disabled code on load?
+     */
+    public boolean isLoadedAnonymousClass() {
+        return marker == Marker.AnonymousClass || marker == Marker.DisabledAnonymousClass;
+    }
+
     public Class<?> getClazz() {
         if (clazz == null) {
             try {
@@ -543,7 +577,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /** clone with name replaced */
     public SymbolType withName(String name) {
-        return clone(name, arrayCount, typeVariable, null, null);
+        return clone(marker, name, arrayCount, typeVariable, null, null);
     }
 
     public SymbolType clone() {
@@ -551,7 +585,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType cloneAsTypeVariable(String typeVariable) {
-        return clone(name != null ? name : name(upperBounds, lowerBounds), arrayCount, typeVariable, null, null);
+        return clone(marker, name != null ? name : name(upperBounds, lowerBounds), arrayCount, typeVariable, null, null);
     }
 
     public static SymbolType cloneAsArrayOrNull(/* Nullable */ SymbolType type, final int arrayCount) {
@@ -559,20 +593,34 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     public SymbolType cloneAsArray(int arrayCount) {
-        return clone(name, arrayCount, typeVariable, null, null);
+        return clone(marker, name, arrayCount, typeVariable, null, null);
     }
 
     public SymbolType cloneAsArray(String name, int arrayCount) {
-        return clone(name, arrayCount, typeVariable, null, null);
+        return clone(marker, name, arrayCount, typeVariable, null, null);
     }
+
+    /**
+     * If code is disabled via conditional compilation the symbol information
+     * is typically incomplete because no class has been created.
+     * (For conditional compilation see JLS 14.21. Unreachable Statements,
+     * http://docs.oracle.com/javase/specs/jls/se8/html/jls-14.html#jls-14.21)
+     */
+    public SymbolType markDisabledCode() {
+        if (marker != Marker.None && marker != Marker.DisabledAnonymousClass) {
+            throw new IllegalStateException("disabled code marker not supported for symbol marked with " + marker);
+        }
+        return clone(Marker.DisabledAnonymousClass, name, arrayCount, typeVariable, null, null);
+    }
+
 
     private SymbolType clone(final Stack<SymbolType> parent, final Stack<SymbolType> created) {
-        return clone(name, arrayCount, typeVariable, parent, created);
+        return clone(marker, name, arrayCount, typeVariable, parent, created);
     }
 
-    private SymbolType clone(final String name, final int arrayCount, final String typeVariable,
+    private SymbolType clone(final Marker marker, final String name, final int arrayCount, final String typeVariable,
                              Stack<SymbolType> parent, Stack<SymbolType> created) {
-        SymbolType result = new SymbolType(name);
+        SymbolType result = new SymbolType(marker, name);
         result.setClazz(clazz);
         result.setArrayCount(arrayCount);
         result.setField(field);
@@ -684,11 +732,26 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
+
+    /**
+     * Build symbol representing an anonymous class.
+     */
+    public static SymbolType anonymousClassOf(String name) {
+        return new SymbolType(Marker.AnonymousClass, name);
+    }
+
     /**
      * Build a simple class based symbol probably as an array.
      */
     public static SymbolType classValueOf(final String className, final int arrayCount) {
         return new SymbolType(className, arrayCount);
+    }
+
+    /**
+     * Build symbol representing an enum constant class.
+     */
+    public static SymbolType enumConstantOf(String name) {
+        return new SymbolType(Marker.EnumConstantClass, name);
     }
 
     /**

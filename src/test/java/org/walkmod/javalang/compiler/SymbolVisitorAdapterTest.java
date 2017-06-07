@@ -1938,39 +1938,6 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
     }
 
     @Test
-    public void testAnonymousClassNameGenerationBug() throws Exception {
-	    // the bug incremented the anonymous counter twice, so the CompilationUnit could not be created
-        // because the class could not be resolved
-        String code = ""
-                + "public final class AProvider {\n"
-                + "    public final static class Factory {\n"
-                + "        protected Object[] create() {\n"
-                + "            return new Object[] {\n"
-                + "                    new java.io.Serializable() {\n"
-                + "                    }\n"
-                + "            };\n"
-                + "        }\n"
-                + "    }\n"
-                + "}\n";
-        CompilationUnit cu = run(code);
-        Assert.assertNotNull(cu);
-	}
-
-	@Test
-    public void testNestedMultipleAnonymousClasses() throws Exception {
-        String otherIteratorCode = "public interface OtherIterator{ public void expand(); } "; // $1$1
-        String adaptedIteratorCode =
-                "import java.util.Iterator; public abstract class AdaptedIterator<T> implements Iterator<T>{ public AdaptedIterator(OtherIterator aux){} public abstract String adapt(); public T next() { return null; } public void remove(){} public boolean hasNext() { return false; } }"; // $1$2
-        String iteratorCode =
-                "public Iterator<String> iterator() { return new AdaptedIterator<String>( new OtherIterator() { public void expand() {} }){ public String adapt() { return null; }}; }";
-        String code =
-                "import java.util.Iterator; public class NestedMultipleAnonymousClasses { public Iterable<String> list() { return new Iterable<String>() { "
-                        + iteratorCode + "}; } }";
-        CompilationUnit cu = run(code, adaptedIteratorCode, otherIteratorCode);
-        Assert.assertNotNull(cu);
-    }
-
-    @Test
     public void testTypeArgsOnClassGenericsInInnerClasses() throws Exception {
         String code =
                 "import java.util.List; public class A { public void foo(InnerClass a) { bar(a.annotationType); } public void bar (Class<? extends List> aux) {}  static abstract class InnerClass<T extends List> { public final Class<T> annotationType = null; } }";

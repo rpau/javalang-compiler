@@ -168,14 +168,18 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
                 }
                 String name = symbolTable.generateAnonymousClass();
 
-                SymbolType type = new SymbolType(name);
+                SymbolType type = SymbolType.anonymousClassOf(name);
                 try {
                     type.getClazz();
                 } catch (TypeNotFoundException e) {
-                    // The java compiler does not generate classes for dead code.
-                    // For definition of desd code see JLS TODO
-                    if (ConditionalCompilationUtil.isDeadCode(n)) {
-                        type = new SymbolType(Object.class);
+                    // The java compiler does not generate classes for code disabled via conditional compilation.
+                    // For definition of conditional compilation see
+                    // JLS 14.21. Unreachable Statements,
+                    // http://docs.oracle.com/javase/specs/jls/se8/html/jls-14.html#jls-14.21
+                    if (ConditionalCompilationUtil.isDisabledCode(n)) {
+                        // if we have symbol data of base type we keep that.
+                        final SymbolType base = (SymbolType) n.getSymbolData();
+                        type = base != null ? base.markDisabledCode() : new SymbolType(Object.class).markDisabledCode();
                     } else {
                         throw e;
                     }
@@ -224,7 +228,7 @@ public class ScopeLoader extends GenericVisitorAdapter<Scope, SymbolTable> {
                 (List<SymbolAction>) null);
 
         String name = symbolTable.generateAnonymousClass();
-        final SymbolType type = new SymbolType(name);
+        final SymbolType type = SymbolType.enumConstantOf(name);
         symbolTable.pushSymbol(name, ReferenceType.TYPE, type, n, actions);
 
         symbolTable.pushSymbol("this", ReferenceType.VARIABLE, type, n, actions);

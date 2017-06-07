@@ -103,6 +103,7 @@ import org.walkmod.javalang.compiler.reflection.MethodInspector;
 import org.walkmod.javalang.compiler.reflection.MethodsByNamePredicate;
 import org.walkmod.javalang.compiler.reflection.SymbolDataOfMethodReferenceBuilder;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
+import org.walkmod.javalang.compiler.symbols.AnonymousClassUtil;
 import org.walkmod.javalang.compiler.symbols.MethodSymbol;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Scope;
@@ -608,8 +609,10 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
         }
         n.getType().accept(this, arg);
 
-        SymbolType st = (SymbolType) n.getType().getSymbolData();
-        resolveConstructor(n, n.getArgs(), st, arg);
+        if (!AnonymousClassUtil.isAnonymousClass(n) || AnonymousClassUtil.needsSymbolData(n)) {
+            SymbolType st = (SymbolType) n.getType().getSymbolData();
+            resolveConstructor(n, n.getArgs(), st, arg);
+        }
 
         // we need to update the symbol table
         if (semanticVisitor != null) {
