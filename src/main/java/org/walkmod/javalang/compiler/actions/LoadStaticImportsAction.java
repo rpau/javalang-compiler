@@ -17,6 +17,7 @@ package org.walkmod.javalang.compiler.actions;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
 import java.util.List;
 
 import org.walkmod.javalang.ast.CompilationUnit;
@@ -161,9 +162,9 @@ public class LoadStaticImportsAction extends SymbolAction {
                             boolean isVisible = Modifier.isPublic(modifiers)
                                     || (!Modifier.isPrivate(modifiers) && importPkgName.equals(pkgName));
                             if (isVisible) {
-                                Class<?> type = field.getType();
-                                SymbolType st = new SymbolType(type);
-                                st.setParameterizedTypes(null);
+
+                                SymbolType st = SymbolType.valueOf(field.getGenericType(),
+                                        Collections.<String, SymbolType>emptyMap());
                                 Symbol<?> s = new Symbol(field.getName(), st, n, ReferenceType.VARIABLE, true, null);
                                 table.pushSymbol(s);
                             }
