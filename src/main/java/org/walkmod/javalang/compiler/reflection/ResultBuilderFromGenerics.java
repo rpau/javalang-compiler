@@ -1,14 +1,14 @@
 /*
  * Copyright (C) 2015 Raquel Pau and Albert Coroleu.
- * 
+ *
  * Walkmod is free software: you can redistribute it and/or modify it under the terms of the GNU
  * Lesser General Public License as published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
- * 
+ *
  * Walkmod is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License along with Walkmod. If
  * not, see <http://www.gnu.org/licenses/>.
  */
@@ -68,22 +68,20 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
     @Override
     public SymbolTable build(SymbolTable genericsSymbolTable) throws Exception {
 
-        if (generics != null) {
-            SymbolType[] syms = ASTSymbolTypeResolver.getInstance().valueOf(generics);
-            SymbolType scope = new SymbolType();
-            scope.setParameterizedTypes(Arrays.asList(syms));
-            genericsSymbolTable.pushScope();
-            updateTypeMapping(method.getGenericReturnType(), genericsSymbolTable, scope, true, new HashSet<String>());
-        } else if (scope != null) {
-            String symbolName = scope.getClazz().getName();
-            if (scope.getClazz().isMemberClass()) {
-                symbolName = scope.getClazz().getCanonicalName();
-            }
-            Symbol<?> s = symbolTable.findSymbol(symbolName, ReferenceType.TYPE);
-            if (s != null) {
-                Scope scope = s.getInnerScope();
-                if (scope != null) {
-                    Map<String, SymbolType> typeParams = scope.getTypeParams();
+		if (generics != null) {
+			SymbolType[] syms = ASTSymbolTypeResolver.getInstance().valueOf(generics);
+			genericsSymbolTable.pushScope();
+			updateTypeMappings(Arrays.asList(syms),method.getTypeParameters(), true, genericsSymbolTable,new HashSet<String>());
+		} else if (scope != null) {
+			String symbolName = scope.getClazz().getName();
+			if (scope.getClazz().isMemberClass()) {
+				symbolName = scope.getClazz().getCanonicalName();
+			}
+			Symbol<?> s = symbolTable.findSymbol(symbolName, ReferenceType.TYPE);
+			if (s != null) {
+				Scope scope = s.getInnerScope();
+				if (scope != null) {
+					Map<String, SymbolType> typeParams = scope.getTypeParams();
 
                     Scope newScope = new Scope();
                     for (String key : typeParams.keySet()) {
@@ -118,7 +116,7 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
     }
 
     private void updateTypeMapping(java.lang.reflect.Type type, SymbolTable genericsSymbolTable,
-            SymbolType parameterizedType, boolean genericArgs, Set<String> processedTypeVariables)
+            SymbolType parameterizedType, final boolean genericArgs, Set<String> processedTypeVariables)
             throws InvalidTypeException {
         if (parameterizedType != null) {
             if (type instanceof TypeVariable) {
@@ -174,20 +172,9 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
                     }
                 }
 
-            } else if (type instanceof ParameterizedType) {
-                ParameterizedType paramType = (ParameterizedType) type;
-                java.lang.reflect.Type[] typeArgs = paramType.getActualTypeArguments();
-                List<SymbolType> paramTypeParams = parameterizedType.getParameterizedTypes();
-                if (paramTypeParams != null) {
+			} else if (type instanceof ParameterizedType) {
+				updateTypeMappings(parameterizedType.getParameterizedTypes(), ( (ParameterizedType) type).getActualTypeArguments(), genericArgs, genericsSymbolTable,processedTypeVariables);
 
-                    for (int i = 0; i < typeArgs.length; i++) {
-                        SymbolType st = null;
-                        if (i < paramTypeParams.size()) {
-                            st = paramTypeParams.get(i);
-                        }
-                        updateTypeMapping(typeArgs[i], genericsSymbolTable, st, genericArgs, processedTypeVariables);
-                    }
-                }
 
             } else if (type instanceof GenericArrayType) {
                 GenericArrayType arrayType = (GenericArrayType) type;
@@ -220,4 +207,17 @@ public class ResultBuilderFromGenerics implements Builder<SymbolTable> {
             }
         }
     }
+
+	private void updateTypeMappings(final List<SymbolType> paramTypeParams, final java.lang.reflect.Type[] typeArgs, boolean genericArgs, SymbolTable genericsSymbolTable, Set<String> processedTypeVariables) throws InvalidTypeException {
+		if (paramTypeParams != null) {
+
+            for (int i = 0; i < typeArgs.length; i++) {
+                SymbolType st = null;
+                if (i < paramTypeParams.size()) {
+                    st = paramTypeParams.get(i);
+                }
+                updateTypeMapping(typeArgs[i], genericsSymbolTable, st, genericArgs, processedTypeVariables);
+            }
+        }
+	}
 }
