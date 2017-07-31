@@ -1,7 +1,8 @@
-javalang-compiler: Java 8 semantic analysis customized for walkmod
-===================================================================
+javalang-compiler: Symbol and type resolution for Javalang
+==========================================================
 
 image:https://travis-ci.org/rpau/javalang-compiler.svg?branch=master["Build Status", link="https://travis-ci.org/rpau/javalang-compiler"]
+image:https://coveralls.io/repos/github/rpau/javalang-compiler/badge.svg?branch=master["Coverage Status", link="https://coveralls.io/repos/github/rpau/javalang-compiler?branch=master"]
 
 Java 8 semantic analysis for the http://github.com/rpau/javalang[javalang] project. Therefore, the Java 8 AST is enriched with data calculated during the semantic analysis. Mainly, the calculated data is:
 
