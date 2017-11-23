@@ -59,30 +59,18 @@ public class Compiler {
         for (String code : codes) {
             CompilationUnit cu = ASTManager.parse(code);
 
-            List<TypeDeclaration> types = cu.getTypes();
-            String name = null;
-            if (types != null) {
-
-                TypeDeclaration next = types.get(0);
-
-                name = next.getName() + ".java";
-
-            }
-            PackageDeclaration pd = cu.getPackage();
-
-            if (pd != null) {
-                String pckg = pd.getName().toString();
-                sourcesDir = new File(sourcesDir, pckg.replaceAll(".", "//"));
-            }
-
+            String fileName = cu.getFileName();
             if ((sourcesDir.mkdirs() || sourcesDir.exists()) && sourcesDir.canWrite()) {
 
-                File tmpClass = new File(sourcesDir, name);
-                FileWriter fw = new FileWriter(tmpClass);
-                fw.write(code);
-                fw.flush();
-                fw.close();
-                sources[i] = tmpClass;
+                File tmpClass = new File(sourcesDir, fileName);
+
+                if (tmpClass.getParentFile().exists() || tmpClass.getParentFile().mkdirs()) {
+                    FileWriter fw = new FileWriter(tmpClass);
+                    fw.write(code);
+                    fw.flush();
+                    fw.close();
+                    sources[i] = tmpClass;
+                }
 
             }
             i++;
