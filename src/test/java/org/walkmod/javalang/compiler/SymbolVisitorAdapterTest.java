@@ -125,7 +125,7 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
         Assert.assertTrue(counter.getReadsCounter() > 0);
     }
 
-    private CompilationUnit runRemoveUnusedMembers(String code) throws Exception {
+    private CompilationUnit runRemoveUnusedMembers(String... code) throws Exception {
 
         CompilationUnit cu = compile(code);
         SymbolVisitorAdapter<HashMap<String, Object>> visitor = new SymbolVisitorAdapter<HashMap<String, Object>>();
@@ -2595,5 +2595,34 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
         body.stmts().item(1).asExpressionStmt().expression()
                 .asAssignExpr().value().asMethodCallExpr().symbolData().asMethodSymbolData()
                 .method().hasToString("public static long java.lang.Math.max(long,long)");
+    }
+
+    @Test
+    public void testMethodResolvesMethodReferencesAsStatements() throws Exception {
+        if (SourceVersion.latestSupported().ordinal() >= 8) {
+            String externalClass = "package blah;" +
+                    "import java.util.function.Supplier;" +
+                    "public class MyClassThatNeedsToBeImported {" +
+                    "public static <T> Supplier<T> memoize(Supplier<T> delegate) {" +
+                    "return null;" + //Implementation not relevant to testcase
+                    "}" +
+                    "}";
+            String code =
+                    "import blah.MyClassThatNeedsToBeImported;" +
+                            "import java.util.function.Supplier;" +
+                            "public class MyClass {" +
+                            "Supplier o;" +
+                            "public MyClass() {" +
+                            " this.o = MyClassThatNeedsToBeImported.memoize(this::load)::get;" +
+                            "load();" +
+                            "}" +
+                            "private Object load() {" +
+                            "return null;" + //Implementation not relevant to testcase
+                            "}}";
+            CompilationUnit cu = run(code, externalClass);
+            Assert.assertEquals(1, cu.getImports().get(0).getUsages().size());
+            Assert.assertEquals(2,
+                    ((MethodDeclaration) cu.getTypes().get(0).getMembers().get(2)).getUsages().size());
+        }
     }
 }
