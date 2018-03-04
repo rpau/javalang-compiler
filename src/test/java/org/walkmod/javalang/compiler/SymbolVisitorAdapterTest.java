@@ -1631,6 +1631,34 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
     }
 
     @Test
+    public void testEnsureLambdasInMethodDeclarationUsages() throws Exception {
+        String code = "import java.util.function.Supplier;" +
+                "class MyClass {" +
+                "Supplier o;" +
+                "public MyClass() {" +
+                " this.o = memoize(this::load)::get;" +
+
+                "load();" +
+
+                "}" +
+                "private Object load() {" +
+                "return null;"+ //Implementation not relevant to testcase
+                "}" +
+                "public static <T> Supplier<T> memoize(Supplier<T> delegate) {" +
+                "return null;" + //Implementation not relevant to testcase
+                "}" +
+                "}";
+
+        CompilationUnit cu = compile(code);
+        MethodDeclaration method = (MethodDeclaration) cu.getTypes().get(0).getChildren().get(2);
+        Assert.assertEquals("load", method.getName());
+        Assert.assertNotNull(method.getUsages());
+        method = (MethodDeclaration) cu.getTypes().get(0).getChildren().get(3);
+        Assert.assertEquals("memoize", method.getName());
+        Assert.assertNotNull(method.getUsages());
+    }
+
+    @Test
     public void testStaticFieldImportedButUnnecessary() throws Exception {
         String code1 = "package foo; public class A { public static String name; }";
         String code2 = "package foo; import static foo.A.name; public class B { String c = A.name; }";
