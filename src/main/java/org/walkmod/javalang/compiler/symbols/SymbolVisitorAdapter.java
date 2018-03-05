@@ -893,6 +893,10 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
             scopeType = symbolTable.getType("this", ReferenceType.VARIABLE);
         } else {
             scopeType = (SymbolType) n.getScope().getSymbolData();
+            if (scopeType == null) {
+                n.getScope().accept(expressionTypeAnalyzer, arg);
+                scopeType = (SymbolType) n.getScope().getSymbolData();
+            }
         }
         SymbolType[] argsType = (SymbolType[]) n.getReferencedArgsSymbolData();
 
