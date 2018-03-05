@@ -1631,34 +1631,6 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
     }
 
     @Test
-    public void testEnsureLambdasInMethodDeclarationUsages() throws Exception {
-        String code = "import java.util.function.Supplier;" +
-                "class MyClass {" +
-                "Supplier o;" +
-                "public MyClass() {" +
-                " this.o = memoize(this::load)::get;" +
-
-                "load();" +
-
-                "}" +
-                "private Object load() {" +
-                "return null;"+ //Implementation not relevant to testcase
-                "}" +
-                "public static <T> Supplier<T> memoize(Supplier<T> delegate) {" +
-                "return null;" + //Implementation not relevant to testcase
-                "}" +
-                "}";
-
-        CompilationUnit cu = run(code);
-        MethodDeclaration method = (MethodDeclaration) cu.getTypes().get(0).getChildren().get(2);
-        Assert.assertEquals("load", method.getName());
-        Assert.assertNotNull(method.getUsages());
-        method = (MethodDeclaration) cu.getTypes().get(0).getChildren().get(3);
-        Assert.assertEquals("memoize", method.getName());
-        Assert.assertNotNull(method.getUsages());
-    }
-
-    @Test
     public void testEnsureLambdasInImportDeclarationUsages() throws Exception {
         String code = "package example;" +
                 "import java.util.Collection;" +
