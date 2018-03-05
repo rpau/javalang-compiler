@@ -1649,13 +1649,49 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
                 "}" +
                 "}";
 
-        CompilationUnit cu = compile(code);
+        CompilationUnit cu = run(code);
         MethodDeclaration method = (MethodDeclaration) cu.getTypes().get(0).getChildren().get(2);
         Assert.assertEquals("load", method.getName());
         Assert.assertNotNull(method.getUsages());
         method = (MethodDeclaration) cu.getTypes().get(0).getChildren().get(3);
         Assert.assertEquals("memoize", method.getName());
         Assert.assertNotNull(method.getUsages());
+    }
+
+    @Test
+    public void testEnsureLambdasInImportDeclarationUsages() throws Exception {
+        String code = "package example;" +
+                "import java.util.Collection;" +
+                "import java.util.Objects;" +
+                "import static java.util.stream.Collectors.toSet;" +
+                "		public class ExampleGroupPickerSearcher {" +
+                "			public ExampleGroupPickerSearcher() {" +
+                "				final Resolver<String> nameResolver = rawValues ->" +
+                "						rawValues.stream()" +
+                "								.map(this::convertToIndexValue)" +
+                "								.filter(Objects::nonNull)" +
+                "								.collect(toSet());" +
+                "			}" +
+                "			public String convertToIndexValue(final Object rawValue) {" +
+                "				return \"\";" +
+                "			}" +
+                "			public interface Resolver<T> {" +
+                "				Collection<T> resolveNames(Collection<Object> rawValues);" +
+                "			}" +
+                "		}";
+        CompilationUnit cu = run(code);
+        String codeBefore = cu.toString();
+        ImportDeclaration importDeclaration = cu.getImports().get(0);
+        Assert.assertEquals("java.util.Collection", importDeclaration.getName().toString());
+        Assert.assertNotNull(importDeclaration.getUsages());
+
+        importDeclaration = cu.getImports().get(1);
+        Assert.assertEquals("java.util.Objects", importDeclaration.getName().toString());
+        Assert.assertNotNull(importDeclaration.getUsages());
+
+        importDeclaration = cu.getImports().get(2);
+        Assert.assertEquals("java.util.stream.Collectors.toSet", importDeclaration.getName().toString());
+        Assert.assertNotNull(importDeclaration.getUsages());
     }
 
     @Test
