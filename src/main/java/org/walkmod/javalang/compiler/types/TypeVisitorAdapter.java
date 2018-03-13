@@ -612,7 +612,16 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
         if (!AnonymousClassUtil.isAnonymousClass(n) || AnonymousClassUtil.needsSymbolData(n)) {
             SymbolType st = (SymbolType) n.getType().getSymbolData();
             resolveConstructor(n, n.getArgs(), st, arg);
+
+            try {
+                SymbolDataOfMethodReferenceBuilder<A> typeBuilder =
+                        new SymbolDataOfMethodReferenceBuilder<A>(new HashMap<String, SymbolType>(), this, arg);
+                typeBuilder.build(n);
+            } catch (Exception e) {
+                throw new NoSuchExpressionTypeException(e);
+            }
         }
+
 
         // we need to update the symbol table
         if (semanticVisitor != null) {
@@ -672,6 +681,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
         try {
             SymbolType aux = ConstructorInspector.findConstructor(st, symbolTypes, filter, builder, typeMapping);
             n.setSymbolData(aux);
+
         } catch (Exception e) {
             throw new NoSuchExpressionTypeException(e);
         }

@@ -2625,4 +2625,31 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
                     ((MethodDeclaration) cu.getTypes().get(0).getMembers().get(2)).getUsages().size());
         }
     }
+
+    @Test
+    public void testDontRemoveImportsUsedByLambdas() throws Exception {
+        if (SourceVersion.latestSupported().ordinal() >= 8) {
+            String code = "package example;" +
+                    "import java.util.function.Supplier;" +
+                    "public class ExampleDefaultTemplateManager {" +
+                    "public ExampleDefaultTemplateManager() {" +
+                    "ContextFreeReference<Object> holderRef = new ContextFreeReference<>(this::initTemplates);" +
+                    "}" +
+                    "private Object initTemplates() {" +
+                    "return null;" +
+                    "}" +
+
+                    "public class ContextFreeReference<T> implements Supplier<T> {" +
+                    "public ContextFreeReference(Supplier<T> supplier) {" +
+                    "}" +
+                    "public T get() {" +
+                    "return null;" +
+                    "}" +
+                    "}" +
+                    "}";
+            CompilationUnit cu = run(code);
+            Assert.assertEquals(1,
+                    ((MethodDeclaration) cu.getTypes().get(0).getMembers().get(1)).getUsages().size());
+        }
+    }
 }
