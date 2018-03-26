@@ -865,6 +865,8 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
                 stmt.setSymbolData(((ExpressionStmt) stmt).getExpression().getSymbolData());
             }
             symbolTable.popScope();
+
+            n.accept(semanticVisitor, arg);
         }
     }
 
@@ -1110,6 +1112,7 @@ public class TypeVisitorAdapter<A extends Map<String, Object>> extends VoidVisit
                 }
                 if (init instanceof LambdaExpr) {
                     init.setSymbolData(sd);
+                    init.accept(this, arg);
                 } else {
                     init.setSymbolData(scope);
                     MethodReferenceExpr methodRef = (MethodReferenceExpr) init;
