@@ -28,6 +28,7 @@ import org.walkmod.javalang.ast.expr.Expression;
 import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
 import org.walkmod.javalang.ast.expr.SuperExpr;
 import org.walkmod.javalang.compiler.ArrayFilter;
+import org.walkmod.javalang.compiler.CompositeBuilder;
 import org.walkmod.javalang.compiler.Predicate;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.SymbolTable;
@@ -67,17 +68,29 @@ public class CompatibleMethodReferencePredicate<A, T> extends CompatibleArgsPred
         int elemParameterCount = 0;
         Type[] genericParameterTypes = null;
         Class<?> declaringClass = null;
+
+
+        Map<String, SymbolType> typeMapping = getTypeMapping();
+        //TODO: Use T elem instead of md
+        FunctionalGenericsBuilder<MethodReferenceExpr> builder =
+              null;
+
+
         if (elem instanceof Method) {
             elemParameterCount = ((Method) elem).getParameterTypes().length;
             genericParameterTypes = ((Method) elem).getGenericParameterTypes();
             declaringClass = ((Method) elem).getDeclaringClass();
+            builder = new FunctionalGenericsBuilder<>(((Method) elem), typeResolver, typeMapping);
+
         } else if (elem instanceof Constructor) {
             elemParameterCount = ((Constructor<?>) elem).getParameterTypes().length;
             genericParameterTypes = ((Constructor<?>) elem).getGenericParameterTypes();
             declaringClass = ((Constructor<?>) elem).getDeclaringClass();
+            builder = new FunctionalGenericsBuilder<>(((Constructor<?>) elem), typeResolver, typeMapping);
         } else {
             return false;
         }
+        builder.build(expression);
         Object equivalentMethod = null;
 
         sd = (SymbolType) expression.getScope().getSymbolData();
@@ -106,18 +119,15 @@ public class CompatibleMethodReferencePredicate<A, T> extends CompatibleArgsPred
         }
         boolean found = false;
         if (!expression.getIdentifier().equals("new")) {
+
             Iterator<Method> it = methodCallCandidates.iterator();
 
+            SymbolType[] args = builder.getArgs();
             while (it.hasNext() && !found) {
 
                 Method md = it.next();
                 int mdParameterCount = md.getParameterTypes().length;
 
-                Map<String, SymbolType> typeMapping = getTypeMapping();
-                FunctionalGenericsBuilder<MethodReferenceExpr> builder =
-                        new FunctionalGenericsBuilder<MethodReferenceExpr>(md, typeResolver, typeMapping);
-                builder.build(expression);
-                SymbolType[] args = builder.getArgs();
                 if (!Modifier.isStatic(md.getModifiers())) {
 
                     if (mdParameterCount == elemParameterCount - 1) {
@@ -181,29 +191,15 @@ public class CompatibleMethodReferencePredicate<A, T> extends CompatibleArgsPred
 
             }
         } else {
-            Constructor<?>[] constructors = sd.getClazz().getDeclaredConstructors();
-
-            for (int i = 0; i < constructors.length && !found; i++) {
-
-                FunctionalGenericsBuilder<MethodReferenceExpr> builder =
-                        new FunctionalGenericsBuilder<MethodReferenceExpr>(constructors[i], typeResolver,
-                                getTypeMapping());
-                builder.build(expression);
-
-                SymbolType[] args = builder.getArgs();
-                setTypeArgs(args);
-
-                found = super.filter(elem);
-                if (found) {
-                    equivalentMethod = constructors[i];
-                }
-            }
+            SymbolType[] args = builder.getArgs();
+            setTypeArgs(args);
+            found = super.filter(elem);
         }
         if (found && elem instanceof Method) {
 
             Map<String, SymbolType> mapping = getTypeMapping();
             SymbolType realResultType = null;
-            if (equivalentMethod instanceof Method) {
+            if (equivalentMethod!= null && equivalentMethod instanceof Method) {
 
                 // R apply(T t); -> Quote::parse ( T= String y R = Quote)
                 realResultType = SymbolType.valueOf((Method) equivalentMethod, mapping);
