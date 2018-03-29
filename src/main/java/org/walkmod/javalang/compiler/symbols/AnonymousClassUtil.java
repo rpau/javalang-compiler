@@ -14,6 +14,8 @@ public class AnonymousClassUtil {
      * For anonymous creations the initial symbol data is symbol data of super class.
      * That needs to be replaced with symbol data of anonymous class.
      * If we don't have symbol data we assume we need one. ;-)
+     * @param n object creation expression
+     * @return if the expression does NOT contains a resolved type
      */
     public static boolean needsSymbolData(ObjectCreationExpr n) {
         final SymbolType st = symbolDataType(n);
