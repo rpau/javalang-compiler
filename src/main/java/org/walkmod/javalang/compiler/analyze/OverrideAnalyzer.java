@@ -23,12 +23,21 @@ import java.util.List;
  *
  */
 public class OverrideAnalyzer {
-    /** @return true if method declaration overrides or implements another method */
+
+    /**
+     * Returns if a method declaration overrides or implements another method.
+     * @param md the method declaration
+     * @return true if method declaration overrides or implements another method
+     * */
     public static boolean isMethodOverride(MethodDeclaration md) {
         return collectOverriddenMethods(md, null);
     }
 
-    /** @return the methods overridden by given method declaration */
+    /**
+     * Returns the methods overridden by given method declaration
+     * @param md the method declaration
+     * @return the methods overridden by given method declaration
+     * */
     public static List<Method> findOverriddenMethods(MethodDeclaration md) {
         final List<Method> methods = new ArrayList<Method>();
         collectOverriddenMethods(md, methods);
@@ -36,8 +45,10 @@ public class OverrideAnalyzer {
     }
 
     /**
+     * Returns if any of the overriddenMethods overrides an specific method declaration.
+     * @param md the method declaration
     * @param overriddenMethods if != null add all methods to collection otherwise return on first match
-    * @return true if method found
+    * @return true if at least one method of the overriddenMethods overrides an specific method declaration.
     */
     private static boolean collectOverriddenMethods(MethodDeclaration md,
             /* Nullable */ List<Method> overriddenMethods) {

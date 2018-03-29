@@ -89,7 +89,12 @@ public class ClassInspector {
         }
     }
 
-    /** @return intersection of raw types of classes and all super classes and interfaces */
+    /**
+     * Returns the intersection of raw types of classes and all super classes and interfaces.
+     * @param classes1 first set of classes to intersect
+     * @param classes2 first set of classes to intersect
+     * @return intersection of raw types of classes and all super classes and interfaces
+     * */
 	public static List<? extends Class<?> > intersectRawTypes(List<Class<?> > classes1, List<Class<?>> classes2) {
         // most typical case
         if (classes1.size() == 1 && classes2.size() == 1) {
@@ -103,7 +108,12 @@ public class ClassInspector {
         return Collections.unmodifiableList(new ArrayList<>(coll));
     }
 
-    /** @return intersection of raw types of classes and all super classes and interfaces */
+    /**
+     * Looks for intersection of raw types of classes and all super classes and interfaces.
+     * @param clazz1 one of the classes to intersect
+     * @param clazz2 one of the classes to intersect
+     * @return intersection of raw types of classes and all super classes and interfaces
+     * */
     public static List<? extends Class<?>> intersectRawTypes(Class<?> clazz1,
 			Class<?> clazz2) {
 		if (clazz2 == null) {
@@ -191,13 +201,25 @@ public class ClassInspector {
         return set;
     }
 
-    /** @deprecated use {@link #intersectRawTypes} */
+    /**
+     * Looks for intersection of raw types of classes and all super classes and interfaces
+     * @param clazz1 one of the classes to intersect.
+     * @param clazz2 one of the classes to intersect.
+     * @deprecated use {@link #intersectRawTypes}
+     * @return #interectRawTypes(clazz1, clazz2).get(0)
+     * */
     @Deprecated
     public static Class<?> getTheNearestSuperClass(Class<?> clazz1, Class<?> clazz2) {
         return intersectRawTypes(clazz1, clazz2).get(0);
 	}
 
-    /** @deprecated use {@link #intersectRawTypes} */
+    /**
+     * Looks for intersection of raw types of classes and all super classes and interfaces
+     * @deprecated use {@link #intersectRawTypes}
+     * @param classes the first set of classes to intersect
+     * @param otherClasses the second set of classes to intersect
+     * @return #interectRawTypes(classes, otherClasses)
+     * */
     @Deprecated
 	public static List<Class<?>> getTheNearestSuperClasses(
 			List<Class<?>> classes, List<Class<?>> otherClasses) {
