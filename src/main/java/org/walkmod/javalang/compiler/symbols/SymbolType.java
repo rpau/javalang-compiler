@@ -242,6 +242,10 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     }
 
     /** @deprecated do not use directly but via specialized constructors of factory methods */
+    /**
+     * Sets the full class name that is representing the symbol type
+     * @param name the complete class name
+     */
     @Deprecated
     public void setName(String name) {
         this.name = name;
@@ -318,7 +322,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         return typeVariable != null;
     }
 
-    /** @deprecated use factory methods "templateVariableOf" instead */
+    /**
+     * @deprecated use factory methods "templateVariableOf" instead
+     * Sets the template variable
+     * @param templateVariable name of the template variable (e.g "T")
+     */
     public void setTemplateVariable(String templateVariable) {
         this.typeVariable = templateVariable;
     }
@@ -513,6 +521,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     /**
      * Is symbol for anonymous class that has been either being loaded successfully
      * or being detected as disabled code on load?
+     * @return returns if the symbol type represents an anonymous class
      */
     public boolean isLoadedAnonymousClass() {
         return marker == Marker.AnonymousClass || marker == Marker.DisabledAnonymousClass;
@@ -575,7 +584,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
         }
     }
 
-    /** clone with name replaced */
+    /**
+     * Clones replacing the symbol type name.
+     * @param name the symbol type name
+     * @return Returns a copy of this symbol type replacing the name
+     * */
     public SymbolType withName(String name) {
         return clone(marker, name, arrayCount, typeVariable, null, null);
     }
@@ -605,6 +618,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
      * is typically incomplete because no class has been created.
      * (For conditional compilation see JLS 14.21. Unreachable Statements,
      * http://docs.oracle.com/javase/specs/jls/se8/html/jls-14.html#jls-14.21)
+     * @return a copy of this symbol type marked as a disabled anonymous class.
      */
     public SymbolType markDisabledCode() {
         if (marker != Marker.None && marker != Marker.DisabledAnonymousClass) {
@@ -735,6 +749,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Build symbol representing an anonymous class.
+     * @param name the full class name of an anonymous class
+     * @return a new SymbolType that represents an anonymous class
      */
     public static SymbolType anonymousClassOf(String name) {
         return new SymbolType(Marker.AnonymousClass, name);
@@ -742,6 +758,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Build a simple class based symbol probably as an array.
+     * @param className the name of the array type
+     * @param arrayCount the array dimensions (1 an array, 2 matrix, etc..)
+     * @return a SymbolType that represents an array.
      */
     public static SymbolType classValueOf(final String className, final int arrayCount) {
         return new SymbolType(className, arrayCount);
@@ -749,6 +768,8 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Build symbol representing an enum constant class.
+     * @param name is the enumeration class name
+     * @return a SymbolType that represents an enumeration.
      */
     public static SymbolType enumConstantOf(String name) {
         return new SymbolType(Marker.EnumConstantClass, name);
@@ -756,6 +777,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Builds a symbol for a type variable from a (Java class) name.
+     * @param typeVariable the name of the variable
+     * @param name the (upper bound) type of the variable
+     * @return a SymbolType that represents a variable (for generics)
      */
     public static SymbolType typeVariableOf(final String typeVariable, final String name) {
         return new SymbolType(name, typeVariable);
@@ -763,6 +787,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Builds a symbol for a type variable from a Java class.
+     * @param typeVariable the name of the variable
+     * @param clazz the (upper bound) type of the variable
+     * @return a SymbolType that represents a variable (for generics)
      */
     public static SymbolType typeVariableOf(final String typeVariable, final Class<Object> clazz) {
         return new SymbolType(clazz, typeVariable);
@@ -770,6 +797,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Builds a symbol for a type variable from a list of upper bounds.
+     * @param typeVariable the name of the variable
+     * @param upperBounds the upper bounds of the type variable
+     * @return a SymbolType that represents a variable (for generics)
      */
     public static SymbolType typeVariableOf(final String typeVariable, List<SymbolType> upperBounds) {
         return new SymbolType(upperBounds, typeVariable);
@@ -777,7 +807,13 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Builds a symbol for a type variable.
-     */
+     * @param typeVariable the name of the variable
+     * @param name type name of the variable
+     * @param arrayCount the array dimensions
+     * @param upperBounds the upper bounds of the variable
+     * @param lowerBounds the lower bounds of the variable
+     * @return a SymbolType that represents a variable (for generics)
+     * */
     private static SymbolType typeVariableOf(String typeVariable, final String name, final int arrayCount,
             final List<SymbolType> upperBounds, final List<SymbolType> lowerBounds) {
         return new SymbolType(name, arrayCount, upperBounds, lowerBounds, typeVariable);
@@ -785,6 +821,11 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Builds a symbol for a type variable.
+     * @param typeVariable the name of the variable
+     * @param arrayCount the array dimensions
+     * @param upperBounds the upper bounds of the variable
+     * @param lowerBounds the lower bounds of the variable
+     * @return a SymbolType that represents a variable (for generics)
      */
     private static SymbolType typeVariableOf(final String typeVariable, final int arrayCount,
             List<SymbolType> upperBounds, List<SymbolType> lowerBounds) {
@@ -793,6 +834,9 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
 
     /**
      * Builds a symbol for a type variable from a TypeVariable.
+     * @param typeVariable The loaded type variable by reflection
+     * @return a SymbolType that represents a variable (for generics)
+     * @throws InvalidTypeException when the type cannot be loaded
      */
     public static SymbolType typeVariableOf(TypeVariable<?> typeVariable) throws InvalidTypeException {
         return valueOf(typeVariable, null).cloneAsTypeVariable(typeVariable.getName());
@@ -810,7 +854,7 @@ public class SymbolType implements SymbolData, MethodSymbolData, FieldSymbolData
     * @param typeMapping
     *           reference type mapping for generic variables.
     * @return the representative symbol type
-    * @throws InvalidTypeException
+    * @throws InvalidTypeException when the type cannot be loaded
     */
     public static SymbolType valueOf(Type type, SymbolType arg, Map<String, SymbolType> updatedTypeMapping,
             Map<String, SymbolType> typeMapping) throws InvalidTypeException {
