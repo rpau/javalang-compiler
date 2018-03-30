@@ -22,23 +22,19 @@ import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.SymbolType;
 
 public class SymbolTypesClassLoader extends ClassLoader {
-    private static Map<String, Class<?>> primitiveClasses = new HashMap<String, Class<?>>();
-
-    static {
-        // static block to resolve primitive classes
-        primitiveClasses.put("boolean", boolean.class);
-        primitiveClasses.put("int", int.class);
-        primitiveClasses.put("long", long.class);
-        primitiveClasses.put("double", double.class);
-        primitiveClasses.put("char", char.class);
-        primitiveClasses.put("float", float.class);
-        primitiveClasses.put("short", short.class);
-        primitiveClasses.put("byte", byte.class);
-        primitiveClasses.put("void", void.class);
-    }
+    private Map<String, Class<?>> cache = new HashMap<String, Class<?>>();
 
     public SymbolTypesClassLoader(ClassLoader parent) {
         super(parent);
+        cache.put("boolean", boolean.class);
+        cache.put("int", int.class);
+        cache.put("long", long.class);
+        cache.put("double", double.class);
+        cache.put("char", char.class);
+        cache.put("float", float.class);
+        cache.put("short", short.class);
+        cache.put("byte", byte.class);
+        cache.put("void", void.class);
     }
 
     public Class<?> loadClass(Type t) throws ClassNotFoundException {
@@ -48,14 +44,16 @@ public class SymbolTypesClassLoader extends ClassLoader {
 
     public Class<?> loadClass(SymbolType t) throws ClassNotFoundException {
         String name = t.getName();
-        Class<?> primClass = primitiveClasses.get(name);
-        if (primClass == null) {
+        Class<?> cachedClass = cache.get(name);
+        if (cachedClass == null) {
             if (name == null) {
                 return null;
             }
-            return loadClass(t.getName());
+            Class<?> clazz = loadClass(t.getName());
+            cache.put(t.getName(), clazz);
+            return clazz;
         } else {
-            return primClass;
+            return cachedClass;
         }
     }
 }
