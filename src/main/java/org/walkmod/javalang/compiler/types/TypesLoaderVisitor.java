@@ -165,7 +165,9 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
     }
 
     public void setClassLoader(ClassLoader cl) {
-        classLoader = new SymbolTypesClassLoader(cl);
+        if (classLoader.getParent() != cl) {
+            classLoader = new SymbolTypesClassLoader(cl);
+        }
     }
 
     public static SymbolTypesClassLoader getClassLoader() {
