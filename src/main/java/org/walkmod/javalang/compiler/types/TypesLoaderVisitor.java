@@ -17,17 +17,8 @@ package org.walkmod.javalang.compiler.types;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
-import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -67,37 +58,16 @@ import org.walkmod.javalang.visitors.VoidVisitorAdapter;
  */
 public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
-    private enum FileFlag {
-        Directory, Readable;
-
-        private final int mask;
-
-        FileFlag() {
-            this.mask = 1 << ordinal();
-        }
-
-        public boolean isSetIn(int flags) {
-            return (mask & flags) != 0;
-        }
-    }
-
     private String contextName = null;
 
     private String packageName = null;
 
-    private static SymbolTypesClassLoader classLoader =
-            new SymbolTypesClassLoader(Thread.currentThread().getContextClassLoader());
+    private static CachedClassLoader classLoader =
+            new CachedClassLoader(new IndexedURLClassLoader(Thread.currentThread().getContextClassLoader()));
 
-    private static Set<String> defaultJavaLangClasses = new HashSet<String>();
-
-    private static Map<String, Class<?>> primitiveClasses = new HashMap<String, Class<?>>();
+    private static ClassLoader applicationClassLoader = null;
 
     private static Map<String, List<String>> jarFileClassNames = new HashMap<String, List<String>>();
-
-    /** conceptually a Map<File.absoluteFilePath,EnumSet<FileFlag>> */
-    private static Map<String, Integer> fileFlagCache = new HashMap<String, Integer>();
-
-    private static JarFile SDKJar;
 
     private SymbolTable symbolTable = null;
 
@@ -107,20 +77,50 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
     private Node startingNode = null;
 
+    private static List<String> SDKFiles = new LinkedList<>();
+
     public TypesLoaderVisitor(SymbolTable symbolTable, SymbolActionProvider actionProvider,
             List<SymbolAction> actions) {
         this.symbolTable = symbolTable;
         this.actions = actions;
         this.actionProvider = actionProvider;
-        for (String defaultType : primitiveClasses.keySet()) {
-            SymbolType st = new SymbolType(primitiveClasses.get(defaultType));
+    }
+
+    private void loadPrimitives() {
+        for (String defaultType : CachedClassLoader.PRIMITIVES.keySet()) {
+            SymbolType st = new SymbolType(CachedClassLoader.PRIMITIVES.get(defaultType));
             symbolTable.pushSymbol(defaultType, ReferenceType.TYPE, st, null, actions);
 
         }
-        for (String defaultType : defaultJavaLangClasses) {
+    }
 
-            SymbolType st = new SymbolType(defaultType);
-            symbolTable.pushSymbol(resolveSymbolName(defaultType, false, false), ReferenceType.TYPE, st, null, actions);
+    private void loadLangPackage() {
+        Iterator<String> it = SDKFiles.iterator();
+        while(it.hasNext()) {
+            String next = it.next();
+            if (next.endsWith(".class")) {
+                String[] split = next.split("\\$\\d");
+                if (split.length == 1) {
+                    String asClass = next.replaceAll(File.separator, "\\.");
+                    String fullName = asClass.substring(0, asClass.length() - 6); //extract .class
+                    symbolTable.pushSymbol(resolveSymbolName(fullName, false, false), ReferenceType.TYPE, new SymbolType(fullName), null, actions);
+                }
+            }
+        }
+    }
+
+    private void addTypes(List<String> files, List<SymbolAction> actions, Node node) {
+        Iterator<String> it = files.iterator();
+        while(it.hasNext()) {
+            String next = it.next();
+            if (next.endsWith(".class")) {
+                String[] split = next.split("\\$\\d");
+                if (split.length == 1) {
+                    String asClass = next.replaceAll(File.separator, "\\.");
+                    String fullName = asClass.substring(0, asClass.length() - 6); //extract .class
+                    addType(fullName, false, node, actions);
+                }
+            }
         }
     }
 
@@ -165,12 +165,23 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
     }
 
     public void setClassLoader(ClassLoader cl) {
-        if (classLoader.getParent() != cl) {
-            classLoader = new SymbolTypesClassLoader(cl);
+        if (applicationClassLoader != cl) {
+            applicationClassLoader = cl;
+            if (cl instanceof URLClassLoader) {
+                URLClassLoader aux = (URLClassLoader) cl;
+                IndexedURLClassLoader icl = new IndexedURLClassLoader(aux.getURLs(), aux.getParent());
+                classLoader = new CachedClassLoader(icl);
+
+            } else {
+                classLoader = new CachedClassLoader(new IndexedURLClassLoader(cl));
+            }
+            SDKFiles = classLoader.getSDKContents("java.lang");
         }
+
+
     }
 
-    public static SymbolTypesClassLoader getClassLoader() {
+    public static CachedClassLoader getClassLoader() {
         return classLoader;
     }
 
@@ -547,190 +558,15 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
         }
     }
 
-    /**
-    * Note: only one of jarFile or jar is set
-    */
-    private void loadClassesFromJar(File jarFile, JarFile jar, String directory, Node node) {
-        List<String> classNames = getClassNamesForJar(jarFile, jar, directory);
-
-        for (String name : classNames) {
-            String[] split = name.split("\\$\\d");
-            if (split.length == 1) {
-                addType(name, false, node, actions);
-            }
-        }
-    }
-
-    private JarFile jarFile(File file) {
-        try {
-            return new JarFile(file);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-    * Note: only one of jarFile or jar is set
-    */
-    private List<String> getClassNamesForJar(File jarFile, JarFile jar, String directory) {
-        final String jarFilePath = jarFile != null ? jarFile.getPath() : jar.getName();
-        final String key = jarFilePath + "@" + directory;
-        final List<String> classNames = jarFileClassNames.get(key);
-        if (classNames != null) {
-            return classNames;
-        }
-        List<String> allClassNames = jarFileClassNames.get(jarFilePath);
-        if (allClassNames == null) {
-            // creating a JarFile instance is costly so only do it when needed.
-            allClassNames = readClassNamesFromJar(jar != null ? jar : jarFile(jarFile));
-            jarFileClassNames.put(jarFilePath, allClassNames);
-        }
-        final List<String> selectedClassNames = selectClassNamesByPackage(allClassNames, directory.replace("/", "."));
-        jarFileClassNames.put(key, selectedClassNames);
-        return selectedClassNames;
-    }
-
-    private List<String> readClassNamesFromJar(JarFile jar) {
-        List<String> classNames = new ArrayList<String>();
-        Enumeration<JarEntry> entries = jar.entries();
-        while (entries.hasMoreElements()) {
-            JarEntry entry = entries.nextElement();
-            String name = entry.getName();
-
-            if (name.endsWith(".class")) {
-
-                name = name.replaceAll("/", ".");
-                name = name.substring(0, name.length() - 6);
-
-                classNames.add(name);
-            }
-        }
-        return Collections.unmodifiableList(classNames);
-    }
-
-    private List<String> selectClassNamesByPackage(List<String> allClassNames, String packageName) {
-        List<String> classNames = new ArrayList<String>();
-        for (String name : allClassNames) {
-            int index = name.indexOf(packageName);
-
-            if (index != -1 && name.lastIndexOf(".") == packageName.length()) {
-                classNames.add(name);
-            }
-        }
-        return Collections.unmodifiableList(classNames);
-    }
-
     private void loadClassesFromPackage(String packageName, List<SymbolAction> actions, Node node) {
-
-        URL[] urls = ((URLClassLoader) classLoader.getParent()).getURLs();
-        String directory = packageName.replaceAll("\\.", "/");
-
-        loadClassesFromJar(null, SDKJar, directory, node);
-
-        for (URL url : urls) {
-            File file = new File(url.getFile());
-
-            final boolean isDirectory = isDirectory(file);
-            final boolean canRead = canRead(file);
-            if (!isDirectory && canRead) {
-                // it is a jar file
-                loadClassesFromJar(file, null, directory, node);
-
-            } else if (isDirectory && canRead) {
-                File aux = new File(file, directory);
-                if (aux.exists() && isDirectory(aux)) {
-                    File[] contents = aux.listFiles();
-                    if (contents != null) {
-                        for (File resource : contents) {
-                            if (resource.getName().endsWith(".class")) {
-                                String simpleName =
-                                        resource.getName().substring(0, resource.getName().lastIndexOf(".class"));
-                                String name = simpleName;
-                                if (!"".equals(packageName)) {
-                                    name = packageName + "." + simpleName;
-                                }
-
-                                String[] split = resource.getName().split("\\$\\d");
-                                if (split.length == 1) {
-                                    addType(name, false, node, actions);
-                                }
-
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-    }
-
-    private boolean canRead(File file) {
-        return FileFlag.Readable.isSetIn(cachedFileFlags(file));
-    }
-
-    private boolean isDirectory(File file) {
-        return FileFlag.Directory.isSetIn(cachedFileFlags(file));
-    }
-
-    private int cachedFileFlags(File file) {
-        final String absolutePath = file.getAbsolutePath();
-        Integer v = fileFlagCache.get(absolutePath);
-        if (v == null) {
-            v = (file.isDirectory() ? FileFlag.Directory.mask : 0) | (file.canRead() ? FileFlag.Readable.mask : 0);
-            fileFlagCache.put(absolutePath, v);
-        }
-        return v;
-    }
-
-    static {
-        // static block to resolve java.lang package classes
-        String[] bootPath = System.getProperties().get("sun.boot.class.path").toString()
-                .split(Character.toString(File.pathSeparatorChar));
-        for (String lib : bootPath) {
-            if (lib.endsWith("rt.jar")) {
-                File f = new File(lib);
-                try {
-                    JarFile jar = new JarFile(f);
-                    SDKJar = jar;
-                    Enumeration<JarEntry> entries = jar.entries();
-                    while (entries.hasMoreElements()) {
-                        JarEntry entry = entries.nextElement();
-                        String name = entry.getName();
-
-                        int index = name.indexOf("java/lang/");
-
-                        if (index != -1 && name.lastIndexOf("/") == "java/lang/".length() - 1) {
-
-                            name = name.replaceAll("/", ".");
-                            name = name.substring(0, name.length() - 6);
-                            String[] split = name.split("\\$\\d");
-                            if (split.length == 1) {
-                                defaultJavaLangClasses.add(split[0]);
-                            }
-                        }
-                    }
-
-                } catch (IOException e) {
-                    throw new RuntimeException("The java.lang classes cannot be loaded", e.getCause());
-                }
-            }
-        }
-    }
-
-    static {
-        // static block to resolve primitive classes
-        primitiveClasses.put("boolean", boolean.class);
-        primitiveClasses.put("int", int.class);
-        primitiveClasses.put("long", long.class);
-        primitiveClasses.put("double", double.class);
-        primitiveClasses.put("char", char.class);
-        primitiveClasses.put("float", float.class);
-        primitiveClasses.put("short", short.class);
-        primitiveClasses.put("byte", byte.class);
+        addTypes(classLoader.getPackageContents(packageName), actions, node);
     }
 
     @Override
     public void visit(CompilationUnit cu, T context) {
+
+        loadPrimitives();
+        loadLangPackage();
 
         if (cu.getPackage() != null) {
             contextName = cu.getPackage().getName().toString();
@@ -752,26 +588,6 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             }
         }
         startingNode = null;
-    }
-
-    public Class<?> loadClass(Type t) throws ClassNotFoundException {
-
-        Class<?> result = ASTSymbolTypeResolver.getInstance().valueOf(t).getClazz();
-        if (result == null) {
-            throw new ClassNotFoundException("The class " + t.toString() + " is not found");
-        }
-        return result;
-    }
-
-    public String getFullName(TypeDeclaration type) {
-        String name = type.getName();
-        Node parentNode = type.getParentNode();
-        // if it is an inner class, we build the unique name
-        while (parentNode instanceof TypeDeclaration) {
-            name = ((TypeDeclaration) parentNode).getName() + "." + name;
-            parentNode = parentNode.getParentNode();
-        }
-        return symbolTable.findSymbol(name, ReferenceType.TYPE).getType().getName();
     }
 
     public void clear() {
