@@ -16,11 +16,11 @@ package org.walkmod.javalang.compiler.types;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+
 import java.net.URLClassLoader;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-
 
 import java.io.IOException;
 import java.io.InputStream;
