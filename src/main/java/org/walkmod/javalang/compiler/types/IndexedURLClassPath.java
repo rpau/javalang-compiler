@@ -145,13 +145,17 @@ public class IndexedURLClassPath extends URLClassPath {
         }
     }
 
+  /**
+   * Callers may request the directory itself as a resource, and may
+   * do so with or without trailing slashes.  We do this in a while-loop
+   * in case the classpath element has multiple superfluous trailing slashes.
+   * @param relPath relative path
+   * @param delegate value to insert
+   */
     private void maybeIndexResource(String relPath, URLClassPath delegate) {
 
         if (!index.containsKey(relPath)) {
             index.put(relPath, delegate);
-            // Callers may request the directory itself as a resource, and may
-            // do so with or without trailing slashes.  We do this in a while-loop
-            // in case the classpath element has multiple superfluous trailing slashes.
             if (relPath.endsWith(File.separator)) {
                 maybeIndexResource(relPath.substring(0, relPath.length() - File.separator.length()), delegate);
             }
