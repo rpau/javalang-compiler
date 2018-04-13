@@ -8,22 +8,19 @@ import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-import sun.misc.Resource;
-import sun.misc.URLClassPath;
-
 /**
  * A modified URLClassPath that indexes the contents of classpath elements, for faster resource locating.
  *
  * The standard URLClassPath does a linear scan of the classpath for each resource, which becomes
  * prohibitively expensive for classpaths with many elements.
  */
-public class IndexedURLClassPath extends URLClassPath {
+public class IndexedURLClassPath  {
 
     private final URL[] urls;
     private int lastIndexed = 0;
     private static URL RT_JAR;
     // Map from resource name to URLClassPath to delegate loading that resource to.
-    private final PathTree<URLClassPath> index = new PathTree<URLClassPath>();
+    private final PathTree<URL> index = new PathTree<URL>();
 
     static {
         // static block to resolve java.lang package classes
@@ -42,36 +39,25 @@ public class IndexedURLClassPath extends URLClassPath {
     }
 
     public IndexedURLClassPath(final URL[] urls) {
-        super(urls);
         this.urls =  urls;
     }
 
-    @Override
-    public Resource getResource(final String name, boolean check) {
-        URLClassPath delegate = index.get(name);
-        if (delegate == null) {
-            if (lastIndexed < urls.length) {
-                indexURLs(urls[lastIndexed]);
-                lastIndexed ++;
-                return getResource(name, check);
-            }
-            return null;
-        }
-        return delegate.getResource(name, check);
-    }
 
-    @Override
-    public URL findResource(final String name, boolean check) {
-        URLClassPath delegate = index.get(name);
+    public URL findResource(final String name) {
+        URL delegate = index.get(name);
         if (delegate == null) {
             if (lastIndexed < urls.length) {
                 indexURLs(urls[lastIndexed]);
                 lastIndexed ++;
-                return findResource(name, check);
+                return findResource(name);
             }
             return null;
         }
-        return delegate.findResource(name, check);
+        try {
+            return new URL(delegate, name);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
@@ -98,15 +84,13 @@ public class IndexedURLClassPath extends URLClassPath {
                throw new RuntimeException("Classpath element is not a file: " + url);
            }
            File root = new File(url.getPath());
-           URL[] args = {url};
-           URLClassPath delegate = new URLClassPath(args);
 
            if (root.isDirectory()) {
                String rootPath = root.getPath();
                if (!rootPath.endsWith(File.separator)) {
                    rootPath = rootPath + File.separator;
                }
-               addFilesToIndex(rootPath.length(), root, delegate);
+               addFilesToIndex(rootPath.length(), root, url);
            } else if (root.isFile() && root.getName().endsWith(".jar")) {
                JarFile jarFile = new JarFile(root);
                try {
@@ -114,7 +98,7 @@ public class IndexedURLClassPath extends URLClassPath {
                    while (entries.hasMoreElements()) {
                        JarEntry entry = entries.nextElement();
                        String name = entry.getName();
-                       maybeIndexResource(name, delegate);
+                       maybeIndexResource(name, url);
                    }
                } finally {
                    jarFile.close();
@@ -125,7 +109,7 @@ public class IndexedURLClassPath extends URLClassPath {
        }
     }
 
-    private void addFilesToIndex(int basePrefixLen, File f, URLClassPath delegate) throws IOException {
+    private void addFilesToIndex(int basePrefixLen, File f, URL delegate) throws IOException {
         if (f.isDirectory()) {
             if (f.getPath().length() > basePrefixLen) {  // Don't index the root itself.
                 String relPath = f.getPath().substring(basePrefixLen);
@@ -145,6 +129,10 @@ public class IndexedURLClassPath extends URLClassPath {
         }
     }
 
+    public URL[] getURLs() {
+        return urls;
+    }
+
   /**
    * Callers may request the directory itself as a resource, and may
    * do so with or without trailing slashes.  We do this in a while-loop
@@ -152,7 +140,7 @@ public class IndexedURLClassPath extends URLClassPath {
    * @param relPath relative path
    * @param delegate value to insert
    */
-    private void maybeIndexResource(String relPath, URLClassPath delegate) {
+    private void maybeIndexResource(String relPath, URL delegate) {
 
         if (!index.containsKey(relPath)) {
             index.put(relPath, delegate);
