@@ -73,7 +73,7 @@ public class IndexedURLClassPath extends URLClassPath {
     }
 
 
-    public List<String> listPackageContents(final String packageName, boolean check) {
+    public List<String> listPackageContents(final String packageName) {
 
         String packageFile = packageName.replaceAll("\\.", File.separator);
         while (lastIndexed < urls.length) {
@@ -83,7 +83,7 @@ public class IndexedURLClassPath extends URLClassPath {
         return index.list(packageFile);
     }
 
-    public List<String> listSDKContents(final String packageName, boolean check) {
+    public List<String> listSDKContents(final String packageName) {
         String packageFile = packageName.replaceAll("\\.", File.separator);
         indexURLs(RT_JAR);
         return index.list(packageFile);
@@ -155,5 +155,5 @@ public class IndexedURLClassPath extends URLClassPath {
 
 
     // Map from resource name to URLClassPath to delegate loading that resource to.
-    private final ClassPathTree index = new ClassPathTree("/", "/", new HashMap<String, ClassPathTree>(), null);
+    private final PathTree<URLClassPath> index = new PathTree<URLClassPath>();
 }

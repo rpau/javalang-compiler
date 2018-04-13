@@ -1,46 +1,47 @@
 package org.walkmod.javalang.compiler.types;
 
 
-import sun.misc.URLClassPath;
 
 import java.io.File;
 import java.util.*;
 
-public class ClassPathTree {
-    private String key;
-    private Map<String, ClassPathTree> children;
-    private TreeValue value;
+public class PathTree<T> {
 
-    public ClassPathTree(String key, String path, Map<String, ClassPathTree> children, URLClassPath value) {
-        this.key = key;
-        this.children = children;
-        this.value = new TreeValue(path, value);
+    private final Map<String, PathTree<T>> children;
+    private final TreeValue<T> value;
+
+    public PathTree() {
+      this(new HashMap<String, PathTree<T>>(), null);
     }
 
-    public void put(String key, URLClassPath value) {
-        insertTree(key, Arrays.asList(key.split(File.separator)), value);
+    public PathTree(Map<String, PathTree<T>> children, TreeValue<T> value) {
+      this.children = children;
+      this.value = value;
     }
 
-    private void insertTree(String path, List<String> keys, URLClassPath value) {
+    public void put(String key, T value) {
+        insertTree(key, Arrays.asList(key.split(File.separator)), new TreeValue(key, value));
+    }
+
+    private void insertTree(String path, List<String> keys, TreeValue<T> value) {
         if (keys.isEmpty()) {
             return;
         }
+
         String currentKey = keys.get(0);
-        ClassPathTree tree = children.get(currentKey);
+        PathTree tree = children.get(currentKey);
+
         if (tree != null) {
             tree.insertTree(path, keys.subList(1, keys.size()), value);
         } else {
-            if (children.isEmpty()) {
-                String originalKey = this.value.path.substring(this.value.path.lastIndexOf("/") + 1);
+          TreeValue<T> valueToInsert = null;
+          if (keys.size() == 1) {
+            valueToInsert = value;
+          }
 
-                children.put(originalKey, new ClassPathTree(
-                        originalKey,
-                        this.value.path,
-                        new HashMap<String, ClassPathTree>(),
-                        this.value.delegate));
-                this.value = null;
-            }
-            children.put(currentKey, new ClassPathTree(currentKey, path, new HashMap<String, ClassPathTree>(), value));
+          PathTree<T> aux = new PathTree(new HashMap<String, PathTree>(), valueToInsert);
+          children.put(currentKey, aux);
+          aux.insertTree(path, keys.subList(1, keys.size()), value);
         }
     }
 
@@ -57,16 +58,16 @@ public class ClassPathTree {
             if (value != null) {
                 list.add(value.path);
             }
-            Iterator<ClassPathTree> it = children.values().iterator();
+            Iterator<PathTree<T>> it = children.values().iterator();
             while (it.hasNext()) {
-                ClassPathTree tree = it.next();
+                PathTree tree = it.next();
                 if (tree.value != null) {
                     list.add(tree.value.path);
                 }
             }
         } else {
             String next = keys.get(0);
-            ClassPathTree tree = children.get(next);
+            PathTree tree = children.get(next);
             if (tree != null) {
                 return tree.findAll(keys.subList(1, keys.size()));
             }
@@ -74,7 +75,7 @@ public class ClassPathTree {
         return list;
     }
 
-    public URLClassPath get(String key) {
+    public T get(String key) {
         return findOne(Arrays.asList(key.split(File.separator)));
     }
 
@@ -82,7 +83,7 @@ public class ClassPathTree {
         return get(key) != null;
     }
 
-    private URLClassPath findOne(List<String> keys) {
+    private T findOne(List<String> keys) {
         if (keys.isEmpty()) {
             if (value != null) {
                 return value.delegate;
@@ -90,18 +91,18 @@ public class ClassPathTree {
             return null;
         }
         String next = keys.get(0);
-        ClassPathTree tree  = children.get(next);
+        PathTree<T> tree  = children.get(next);
         if (tree != null) {
             return tree.findOne(keys.subList(1, keys.size()));
         }
         return null;
     }
 
-    class TreeValue {
-        String path;
-        URLClassPath delegate;
+    class TreeValue<T> {
+        final String path;
+        final T delegate;
 
-        public TreeValue(String path, URLClassPath delegate) {
+        public TreeValue(String path, T delegate) {
             this.path = path;
             this.delegate = delegate;
         }

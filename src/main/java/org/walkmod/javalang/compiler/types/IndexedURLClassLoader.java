@@ -42,11 +42,11 @@ public class IndexedURLClassLoader extends ClassLoader {
     }
 
     public List<String> getPackageClasses(String packageName) {
-        return ucp.listPackageContents(packageName,false);
+        return ucp.listPackageContents(packageName);
     }
 
     public List<String> getSDKContents(String packageName) {
-        return ucp.listSDKContents(packageName,false);
+        return ucp.listSDKContents(packageName);
     }
 
     private static URL[] getClassPathURLs() {
