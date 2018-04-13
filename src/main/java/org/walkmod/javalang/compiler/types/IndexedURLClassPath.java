@@ -22,6 +22,8 @@ public class IndexedURLClassPath extends URLClassPath {
     private final URL[] urls;
     private int lastIndexed = 0;
     private static URL RT_JAR;
+    // Map from resource name to URLClassPath to delegate loading that resource to.
+    private final PathTree<URLClassPath> index = new PathTree<URLClassPath>();
 
     static {
         // static block to resolve java.lang package classes
@@ -152,8 +154,4 @@ public class IndexedURLClassPath extends URLClassPath {
             }
         }
     }
-
-
-    // Map from resource name to URLClassPath to delegate loading that resource to.
-    private final PathTree<URLClassPath> index = new PathTree<URLClassPath>();
 }
