@@ -67,8 +67,6 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
 
     private static ClassLoader applicationClassLoader = null;
 
-    private static Map<String, List<String>> jarFileClassNames = new HashMap<String, List<String>>();
-
     private SymbolTable symbolTable = null;
 
     private List<SymbolAction> actions;
@@ -95,33 +93,32 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
     }
 
     private void loadLangPackage() {
-        Iterator<String> it = SDKFiles.iterator();
-        while(it.hasNext()) {
-            String next = it.next();
-            if (next.endsWith(".class")) {
-                String[] split = next.split("\\$\\d");
-                if (split.length == 1) {
-                    String asClass = next.replaceAll(File.separator, "\\.");
+        for(String sdkFile: SDKFiles) {
+            if (isClassFile(sdkFile) && !isAnonymousClass(sdkFile)) {
+                    String asClass = sdkFile.replaceAll(File.separator, "\\.");
                     String fullName = asClass.substring(0, asClass.length() - 6); //extract .class
                     symbolTable.pushSymbol(resolveSymbolName(fullName, false, false), ReferenceType.TYPE, new SymbolType(fullName), null, actions);
-                }
             }
         }
     }
 
     private void addTypes(List<String> files, List<SymbolAction> actions, Node node) {
-        Iterator<String> it = files.iterator();
-        while(it.hasNext()) {
-            String next = it.next();
-            if (next.endsWith(".class")) {
-                String[] split = next.split("\\$\\d");
-                if (split.length == 1) {
-                    String asClass = next.replaceAll(File.separator, "\\.");
-                    String fullName = asClass.substring(0, asClass.length() - 6); //extract .class
-                    addType(fullName, false, node, actions);
-                }
+        for (String classFile: files) {
+            if (isClassFile(classFile) && !isAnonymousClass(classFile)) {
+                String asClass = classFile.replaceAll(File.separator, "\\.");
+                String fullName = asClass.substring(0, asClass.length() - 6); //extract .class
+                addType(fullName, false, node, actions);
             }
         }
+    }
+
+    private boolean isClassFile(String classFile) {
+        return classFile.endsWith(".class");
+    }
+
+    private boolean isAnonymousClass(String classFile) {
+        String[] split = classFile.split("\\$\\d");
+        return split.length > 1;
     }
 
     /**
