@@ -34,11 +34,11 @@ public class ASMClass extends ClassNode {
         }
     }
 
-    public Boolean isAnonymous() {
+    public boolean isAnonymous() {
         return anonymous != null && anonymous;
     }
 
-    public Boolean isMemberClass() {
+    public boolean isMemberClass() {
         return anonymous != null && !anonymous;
     }
 
@@ -46,7 +46,7 @@ public class ASMClass extends ClassNode {
         return actualName;
     }
 
-    public Boolean isPrivate() {
+    public boolean isPrivate() {
         return isPrivate;
     }
 
@@ -54,7 +54,7 @@ public class ASMClass extends ClassNode {
         if (!actualName.contains(File.separator)){
             return null;
         }
-        return getActualName().substring(0, getActualName().lastIndexOf(File.separator) + 1)
+        return getActualName().substring(0, getActualName().lastIndexOf("/") + 1)
                 .replaceAll(File.separator, "\\.");
     }
 
