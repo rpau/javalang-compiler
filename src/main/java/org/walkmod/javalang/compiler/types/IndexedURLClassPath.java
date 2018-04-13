@@ -132,7 +132,10 @@ public class IndexedURLClassPath extends URLClassPath {
                 maybeIndexResource(relPath, delegate);
             }
             File[] directoryEntries = f.listFiles();
-            assert(directoryEntries != null);
+
+            if (directoryEntries == null) {
+              throw new RuntimeException("The list of directories of " + f.getAbsolutePath() + " is null");
+            }
             for (int i = 0; i < directoryEntries.length; ++i) {
                 addFilesToIndex(basePrefixLen, directoryEntries[i], delegate);
             }
