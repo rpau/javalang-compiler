@@ -19,7 +19,7 @@ import sun.misc.URLClassPath;
  */
 public class IndexedURLClassPath extends URLClassPath {
 
-    private URL[] urls;
+    private final URL[] urls;
     private int lastIndexed = 0;
     private static URL RT_JAR;
 
@@ -39,7 +39,7 @@ public class IndexedURLClassPath extends URLClassPath {
         }
     }
 
-    public IndexedURLClassPath(URL[] urls) {
+    public IndexedURLClassPath(final URL[] urls) {
         super(urls);
         this.urls =  urls;
     }
