@@ -14,35 +14,59 @@
  */
 package org.walkmod.javalang.compiler.types;
 
-import java.util.HashMap;
-import java.util.Map;
 
+import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
-import org.walkmod.javalang.compiler.symbols.SymbolType;
 
-public class SymbolTypesClassLoader extends ClassLoader {
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
+public class CachedClassLoader extends ClassLoader {
+
+    public static final Map<String, Class<?>> PRIMITIVES;
+
+    static {
+
+        Map<String, Class<?>> aux = new HashMap<>();
+        // static block to resolve primitive classes
+        aux.put("boolean", boolean.class);
+        aux.put("int", int.class);
+        aux.put("long", long.class);
+        aux.put("double", double.class);
+        aux.put("char", char.class);
+        aux.put("float", float.class);
+        aux.put("short", short.class);
+        aux.put("byte", byte.class);
+        aux.put("void", void.class);
+        PRIMITIVES = Collections.unmodifiableMap(aux);
+    }
+
     private Map<String, Class<?>> cache = new HashMap<String, Class<?>>();
 
-    public SymbolTypesClassLoader(ClassLoader parent) {
+    public CachedClassLoader(IndexedURLClassLoader parent) {
         super(parent);
-        cache.put("boolean", boolean.class);
-        cache.put("int", int.class);
-        cache.put("long", long.class);
-        cache.put("double", double.class);
-        cache.put("char", char.class);
-        cache.put("float", float.class);
-        cache.put("short", short.class);
-        cache.put("byte", byte.class);
-        cache.put("void", void.class);
+
+        cache.putAll(PRIMITIVES);
+
     }
 
     public Class<?> loadClass(Type t) throws ClassNotFoundException {
-
         return ASTSymbolTypeResolver.getInstance().valueOf(t).getClazz();
     }
 
-    public Class<?> loadClass(SymbolType t) throws ClassNotFoundException {
+
+    public List<String> getPackageContents(String packageName) {
+        return ((IndexedURLClassLoader)getParent()).getPackageClasses(packageName);
+    }
+
+    public List<String> getSDKContents(String packageName) {
+        return ((IndexedURLClassLoader)getParent()).getSDKContents(packageName);
+    }
+
+    public Class<?> loadClass(SymbolData t) throws ClassNotFoundException {
         String name = t.getName();
         Class<?> cachedClass = cache.get(name);
         if (cachedClass == null) {
