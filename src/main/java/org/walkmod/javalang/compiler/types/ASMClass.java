@@ -55,11 +55,11 @@ public class ASMClass extends ClassNode {
             return null;
         }
         return getActualName().substring(0, getActualName().lastIndexOf("/") + 1)
-                .replaceAll(File.separator, "\\.");
+                .replace("/", "\\.");
     }
 
     public String getSimpleName() {
-        int index = getActualName().lastIndexOf(File.separator);
+        int index = getActualName().lastIndexOf("/");
         if (index != -1){
             return actualName;
         } else {
@@ -68,6 +68,6 @@ public class ASMClass extends ClassNode {
     }
 
     public String getCanonicalName() {
-        return getPackage() + "." + getSimpleName().replaceAll("$", "\\.");
+        return getPackage() + "." + getSimpleName().replace("$", "\\.");
     }
 }
