@@ -1,7 +1,9 @@
 package org.walkmod.javalang.compiler.types;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.AllPermission;
@@ -10,10 +12,7 @@ import java.security.PermissionCollection;
 import java.security.Permissions;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
-import java.util.Enumeration;
 import java.util.List;
-
-import sun.misc.Resource;
 
 
 /**
@@ -44,11 +43,11 @@ public class IndexedURLClassLoader extends ClassLoader {
     }
 
     public List<String> getPackageClasses(String packageName) {
-        return ucp.listPackageContents(packageName,false);
+        return ucp.listPackageContents(packageName);
     }
 
     public List<String> getSDKContents(String packageName) {
-        return ucp.listSDKContents(packageName,false);
+        return ucp.listSDKContents(packageName);
     }
 
     private static URL[] getClassPathURLs() {
@@ -66,14 +65,14 @@ public class IndexedURLClassLoader extends ClassLoader {
 
     @Override
     public URL findResource(String name) {
-        return ucp.findResource(name, false);
+        return ucp.findResource(name);
     }
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         try {
             String path = name.replace('.', '/').concat(".class");
-            Resource res = ucp.getResource(path);
+            URL res = ucp.findResource(path);
             if (res != null) {
                 int i = name.lastIndexOf('.');
                 if (i != -1) {
@@ -84,35 +83,34 @@ public class IndexedURLClassLoader extends ClassLoader {
                         definePackage(pkgname, null, null, null, null, null, null, null);
                     }
                 }
-                byte[] data = res.getBytes();
+                byte[] data = loadResource(res);
                 // Add a CodeSource via a ProtectionDomain, as code may use this to find its own jars.
-                CodeSource cs = new CodeSource(res.getCodeSourceURL(), (Certificate[])null);
+                CodeSource cs = new CodeSource(res, (Certificate[])null);
                 PermissionCollection pc = new Permissions();
                 pc.add(new AllPermission());
                 ProtectionDomain pd = new ProtectionDomain(cs, pc);
                 return defineClass(name, data, 0, data.length, pd);
             } else {
-                throw new ClassNotFoundException(String.format("IndexedURLClassLoader can't find class %s", name));
+                throw new ClassNotFoundException(String.format("IndexedURLClassLoader failed to read class %s", name));
             }
         } catch (IOException e) {
             throw new ClassNotFoundException(String.format("IndexedURLClassLoader failed to read class %s", name), e);
         }
     }
 
-    @Override
-    public Enumeration<URL> findResources(final String name) throws IOException {
-        final Enumeration e = ucp.findResources(name, true);
+    private byte[] loadResource(URL toDownload) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
-        return new Enumeration<URL>() {
-            public URL nextElement() {
-                return (URL)e.nextElement();
+        byte[] chunk = new byte[4096];
+        int bytesRead;
+        InputStream stream = toDownload.openStream();
+        try {
+            while ((bytesRead = stream.read(chunk)) > 0) {
+                outputStream.write(chunk, 0, bytesRead);
             }
-
-            public boolean hasMoreElements() {
-                return e.hasMoreElements();
-            }
-        };
+        } finally {
+            stream.close();
+        }
+        return outputStream.toByteArray();
     }
-
-
 }

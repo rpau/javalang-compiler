@@ -5,13 +5,9 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-
-import sun.misc.Resource;
-import sun.misc.URLClassPath;
 
 /**
  * A modified URLClassPath that indexes the contents of classpath elements, for faster resource locating.
@@ -19,11 +15,14 @@ import sun.misc.URLClassPath;
  * The standard URLClassPath does a linear scan of the classpath for each resource, which becomes
  * prohibitively expensive for classpaths with many elements.
  */
-public class IndexedURLClassPath extends URLClassPath {
+public class IndexedURLClassPath  {
 
-    private URL[] urls;
+    private final URL[] urls;
     private int lastIndexed = 0;
-    private static final URL RT_JAR;
+
+    private static URL RT_JAR;
+    // Map from resource name to URLClassPath to delegate loading that resource to.
+    private final PathTree<URL> index = new PathTree<URL>();
 
     static {
 
@@ -44,41 +43,30 @@ public class IndexedURLClassPath extends URLClassPath {
         RT_JAR = foundJar;
     }
 
-    public IndexedURLClassPath(URL[] urls) {
-        super(urls);
+    public IndexedURLClassPath(final URL[] urls) {
         this.urls =  urls;
     }
 
-    @Override
-    public Resource getResource(final String name, boolean check) {
-        URLClassPath delegate = index.get(name);
+
+    public URL findResource(final String name) {
+        URL delegate = index.get(name);
         if (delegate == null) {
             if (lastIndexed < urls.length) {
                 indexURLs(urls[lastIndexed]);
                 lastIndexed ++;
-                return getResource(name, check);
+                return findResource(name);
             }
             return null;
         }
-        return delegate.getResource(name, check);
-    }
-
-    @Override
-    public URL findResource(final String name, boolean check) {
-        URLClassPath delegate = index.get(name);
-        if (delegate == null) {
-            if (lastIndexed < urls.length) {
-                indexURLs(urls[lastIndexed]);
-                lastIndexed ++;
-                return findResource(name, check);
-            }
-            return null;
+        try {
+            return new URL(delegate, name);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
         }
-        return delegate.findResource(name, check);
     }
 
 
-    public List<String> listPackageContents(final String packageName, boolean check) {
+    public List<String> listPackageContents(final String packageName) {
 
         String packageFile = packageName.replaceAll("\\.", File.separator);
         while (lastIndexed < urls.length) {
@@ -88,7 +76,7 @@ public class IndexedURLClassPath extends URLClassPath {
         return index.list(packageFile);
     }
 
-    public List<String> listSDKContents(final String packageName, boolean check) {
+    public List<String> listSDKContents(final String packageName) {
         String packageFile = packageName.replaceAll("\\.", File.separator);
         indexURLs(RT_JAR);
         return index.list(packageFile);
@@ -101,15 +89,13 @@ public class IndexedURLClassPath extends URLClassPath {
                throw new RuntimeException("Classpath element is not a file: " + url);
            }
            File root = new File(url.getPath());
-           URL[] args = {url};
-           URLClassPath delegate = new URLClassPath(args);
 
            if (root.isDirectory()) {
                String rootPath = root.getPath();
                if (!rootPath.endsWith(File.separator)) {
                    rootPath = rootPath + File.separator;
                }
-               addFilesToIndex(rootPath.length(), root, delegate);
+               addFilesToIndex(rootPath.length(), root, url);
            } else if (root.isFile() && root.getName().endsWith(".jar")) {
                JarFile jarFile = new JarFile(root);
                try {
@@ -117,7 +103,7 @@ public class IndexedURLClassPath extends URLClassPath {
                    while (entries.hasMoreElements()) {
                        JarEntry entry = entries.nextElement();
                        String name = entry.getName();
-                       maybeIndexResource(name, delegate);
+                       maybeIndexResource(name, url);
                    }
                } finally {
                    jarFile.close();
@@ -128,14 +114,17 @@ public class IndexedURLClassPath extends URLClassPath {
        }
     }
 
-    private void addFilesToIndex(int basePrefixLen, File f, URLClassPath delegate) throws IOException {
+    private void addFilesToIndex(int basePrefixLen, File f, URL delegate) throws IOException {
         if (f.isDirectory()) {
             if (f.getPath().length() > basePrefixLen) {  // Don't index the root itself.
                 String relPath = f.getPath().substring(basePrefixLen);
                 maybeIndexResource(relPath, delegate);
             }
             File[] directoryEntries = f.listFiles();
-            assert(directoryEntries != null);
+
+            if (directoryEntries == null) {
+              throw new RuntimeException("The list of directories of " + f.getAbsolutePath() + " is null");
+            }
             for (int i = 0; i < directoryEntries.length; ++i) {
                 addFilesToIndex(basePrefixLen, directoryEntries[i], delegate);
             }
@@ -145,20 +134,24 @@ public class IndexedURLClassPath extends URLClassPath {
         }
     }
 
-    private void maybeIndexResource(String relPath, URLClassPath delegate) {
+    public URL[] getURLs() {
+        return urls;
+    }
+
+  /**
+   * Callers may request the directory itself as a resource, and may
+   * do so with or without trailing slashes.  We do this in a while-loop
+   * in case the classpath element has multiple superfluous trailing slashes.
+   * @param relPath relative path
+   * @param delegate value to insert
+   */
+    private void maybeIndexResource(String relPath, URL delegate) {
 
         if (!index.containsKey(relPath)) {
             index.put(relPath, delegate);
-            // Callers may request the directory itself as a resource, and may
-            // do so with or without trailing slashes.  We do this in a while-loop
-            // in case the classpath element has multiple superfluous trailing slashes.
             if (relPath.endsWith(File.separator)) {
                 maybeIndexResource(relPath.substring(0, relPath.length() - File.separator.length()), delegate);
             }
         }
     }
-
-
-    // Map from resource name to URLClassPath to delegate loading that resource to.
-    private final ClassPathTree index = new ClassPathTree("/", "/", new HashMap<String, ClassPathTree>(), null);
 }
