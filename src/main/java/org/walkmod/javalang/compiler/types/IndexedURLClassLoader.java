@@ -2,7 +2,6 @@ package org.walkmod.javalang.compiler.types;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.AllPermission;
@@ -24,6 +23,9 @@ import sun.misc.Resource;
  * becomes prohibitively expensive for classpaths with many elements.
  */
 public class IndexedURLClassLoader extends ClassLoader {
+
+    /* The search path for classes and resources */
+    private IndexedURLClassPath ucp;
 
     public IndexedURLClassLoader(ClassLoader parent) {
         // parent is the default system classloader, which we want to bypass entirely in
@@ -61,9 +63,6 @@ public class IndexedURLClassLoader extends ClassLoader {
             throw new RuntimeException(e);
         }
     }
-
-    /* The search path for classes and resources */
-    private IndexedURLClassPath ucp;
 
     @Override
     public URL findResource(String name) {

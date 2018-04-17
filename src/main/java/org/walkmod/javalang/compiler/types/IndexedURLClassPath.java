@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -21,22 +23,25 @@ public class IndexedURLClassPath extends URLClassPath {
 
     private URL[] urls;
     private int lastIndexed = 0;
-    private static URL RT_JAR;
+    private static final URL RT_JAR;
 
     static {
+
+        URL foundJar = null;
         // static block to resolve java.lang package classes
         String[] bootPath = System.getProperties().get("sun.boot.class.path").toString()
-                .split(Character.toString(File.pathSeparatorChar));
+                .split(File.pathSeparator);
         for (String lib : bootPath) {
             if (lib.endsWith("rt.jar")) {
                 File f = new File(lib);
                 try {
-                    RT_JAR = f.toURI().toURL();
+                    foundJar = f.toURI().toURL();
                 } catch (MalformedURLException e) {
                     throw new RuntimeException("The java.lang classes cannot be loaded", e.getCause());
                 }
             }
         }
+        RT_JAR = foundJar;
     }
 
     public IndexedURLClassPath(URL[] urls) {

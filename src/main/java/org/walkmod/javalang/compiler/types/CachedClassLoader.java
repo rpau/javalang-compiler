@@ -14,27 +14,34 @@
  */
 package org.walkmod.javalang.compiler.types;
 
-import java.util.*;
 
 import org.walkmod.javalang.ast.SymbolData;
 import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
 public class CachedClassLoader extends ClassLoader {
 
-    public static Map<String, Class<?>> PRIMITIVES = new HashMap<String, Class<?>>();
+    public static final Map<String, Class<?>> PRIMITIVES;
 
     static {
+
+        Map<String, Class<?>> aux = new HashMap<>();
         // static block to resolve primitive classes
-        PRIMITIVES.put("boolean", boolean.class);
-        PRIMITIVES.put("int", int.class);
-        PRIMITIVES.put("long", long.class);
-        PRIMITIVES.put("double", double.class);
-        PRIMITIVES.put("char", char.class);
-        PRIMITIVES.put("float", float.class);
-        PRIMITIVES.put("short", short.class);
-        PRIMITIVES.put("byte", byte.class);
-        PRIMITIVES.put("void", void.class);
+        aux.put("boolean", boolean.class);
+        aux.put("int", int.class);
+        aux.put("long", long.class);
+        aux.put("double", double.class);
+        aux.put("char", char.class);
+        aux.put("float", float.class);
+        aux.put("short", short.class);
+        aux.put("byte", byte.class);
+        aux.put("void", void.class);
+        PRIMITIVES = Collections.unmodifiableMap(aux);
     }
 
     private Map<String, Class<?>> cache = new HashMap<String, Class<?>>();
