@@ -84,6 +84,7 @@ public class IndexedURLClassLoader extends ClassLoader {
                     }
                 }
                 byte[] data = IOUtil.readStream(res.openStream(), true);
+
                 // Add a CodeSource via a ProtectionDomain, as code may use this to find its own jars.
                 CodeSource cs = new CodeSource(res, (Certificate[])null);
                 PermissionCollection pc = new Permissions();

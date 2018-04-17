@@ -17,6 +17,7 @@ package org.walkmod.javalang.compiler.types;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 
+import java.lang.reflect.Modifier;
 import java.net.URLClassLoader;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -105,7 +106,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             }
         }
     }
-
+  
     private void addTypes(List<String> files, List<SymbolAction> actions, Node node) {
         for (String classFile: files) {
             if (isClassFile(classFile) && !isAnonymousClass(classFile)) {
@@ -115,7 +116,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             }
         }
     }
-
+  
     private boolean isClassFile(String classFile) {
         return classFile.endsWith(".class");
     }
