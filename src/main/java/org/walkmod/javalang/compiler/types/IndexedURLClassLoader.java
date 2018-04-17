@@ -24,7 +24,7 @@ import java.util.List;
 public class IndexedURLClassLoader extends ClassLoader {
 
     /* The search path for classes and resources */
-    private IndexedURLClassPath ucp;
+    private final IndexedURLClassPath ucp;
 
     public IndexedURLClassLoader(ClassLoader parent) {
         // parent is the default system classloader, which we want to bypass entirely in
