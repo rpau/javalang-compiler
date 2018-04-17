@@ -83,7 +83,8 @@ public class IndexedURLClassLoader extends ClassLoader {
                         definePackage(pkgname, null, null, null, null, null, null, null);
                     }
                 }
-                byte[] data = loadResource(res);
+                byte[] data = IOUtil.readStream(res.openStream(), true);
+
                 // Add a CodeSource via a ProtectionDomain, as code may use this to find its own jars.
                 CodeSource cs = new CodeSource(res, (Certificate[])null);
                 PermissionCollection pc = new Permissions();
@@ -96,21 +97,5 @@ public class IndexedURLClassLoader extends ClassLoader {
         } catch (IOException e) {
             throw new ClassNotFoundException(String.format("IndexedURLClassLoader failed to read class %s", name), e);
         }
-    }
-
-    private byte[] loadResource(URL toDownload) throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-        byte[] chunk = new byte[4096];
-        int bytesRead;
-        InputStream stream = toDownload.openStream();
-        try {
-            while ((bytesRead = stream.read(chunk)) > 0) {
-                outputStream.write(chunk, 0, bytesRead);
-            }
-        } finally {
-            stream.close();
-        }
-        return outputStream.toByteArray();
     }
 }

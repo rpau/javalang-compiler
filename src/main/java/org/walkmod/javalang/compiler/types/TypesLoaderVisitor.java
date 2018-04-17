@@ -14,13 +14,21 @@
  */
 package org.walkmod.javalang.compiler.types;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+
 import java.lang.reflect.Modifier;
 import java.net.URLClassLoader;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import java.io.IOException;
+import java.io.InputStream;
 
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.InnerClassNode;
 import org.walkmod.javalang.ast.CompilationUnit;
 import org.walkmod.javalang.ast.ImportDeclaration;
 import org.walkmod.javalang.ast.Node;
@@ -33,10 +41,8 @@ import org.walkmod.javalang.ast.body.EnumDeclaration;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
 import org.walkmod.javalang.ast.expr.QualifiedNameExpr;
-import org.walkmod.javalang.ast.type.Type;
 import org.walkmod.javalang.compiler.actions.LoadStaticImportsAction;
 import org.walkmod.javalang.compiler.providers.SymbolActionProvider;
-import org.walkmod.javalang.compiler.symbols.ASTSymbolTypeResolver;
 import org.walkmod.javalang.compiler.symbols.ReferenceType;
 import org.walkmod.javalang.compiler.symbols.Scope;
 import org.walkmod.javalang.compiler.symbols.Symbol;
@@ -100,7 +106,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             }
         }
     }
-
+  
     private void addTypes(List<String> files, List<SymbolAction> actions, Node node) {
         for (String classFile: files) {
             if (isClassFile(classFile) && !isAnonymousClass(classFile)) {
@@ -110,7 +116,7 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             }
         }
     }
-
+  
     private boolean isClassFile(String classFile) {
         return classFile.endsWith(".class");
     }
@@ -446,13 +452,15 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
     /**
     * @param importedInner {@link @see #resolveSymbolName}
     */
-    private void loadNestedClasses(Class<?> clazz, boolean imported, Node node, final boolean importedInner) {
-        Class<?>[] innerClasses = clazz.getDeclaredClasses();
-        if (innerClasses != null) {
-            for (int i = 0; i < innerClasses.length; i++) {
-                if (!Modifier.isPrivate(innerClasses[i].getModifiers())) {
-                    String fullName = innerClasses[i].getName();
-                    SymbolType st = new SymbolType(innerClasses[i]);
+    private void loadNestedClasses(ASMClass clazz, boolean imported, Node node, final boolean importedInner) {
+
+        if (clazz.innerClasses != null) {
+            Iterator<InnerClassNode> it = clazz.innerClasses.iterator();
+            while(it.hasNext()) {
+                InnerClassNode innerClass = it.next();
+                if (innerClass.access != Opcodes.ACC_PRIVATE) {
+                    String fullName = innerClass.name;
+                    SymbolType st = new SymbolType(fullName);
                     symbolTable.pushSymbol(resolveSymbolName(fullName, imported, importedInner), ReferenceType.TYPE, st,
                             node, true);
                 }
@@ -461,15 +469,28 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
         }
     }
 
+    private ASMClass getASMClass(String name) throws IOException {
+        ASMClass visitor = new ASMClass();
+        ClassReader reader = new ClassReader(IOUtil.readStream(
+                classLoader.getResourceAsStream(name.replace('.', '/') + ".class"),
+                true));
+        reader.accept(visitor, 1);
+        return visitor;
+    }
+
     private void addType(final String name, boolean imported, Node node, List<SymbolAction> actions) {
         if (classLoader != null && name != null) {
+
+            //check if the file exists in the classpath
             try {
-                Class<?> clazz = Class.forName(name, false, classLoader);
-                if (!Modifier.isPrivate(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
+
+                ASMClass asmClass = getASMClass(name);
+
+                if (!asmClass.isPrivate() && !asmClass.isAnonymous()){ //anonymous?
 
                     boolean overrideSimpleName = true;
 
-                    SymbolType st = new SymbolType(clazz);
+                    SymbolType st = new SymbolType(name);
 
                     if (node instanceof ImportDeclaration) {
                         ImportDeclaration id = (ImportDeclaration) node;
@@ -477,27 +498,26 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
                             overrideSimpleName = false;
                         }
                     }
-                    symbolTable.pushSymbol(resolveSymbolName(name, imported, false), ReferenceType.TYPE, st, node,
-                            actions, overrideSimpleName);
+                    symbolTable.pushSymbol(resolveSymbolName(name, imported, false),
+                            ReferenceType.TYPE, st, node, actions, overrideSimpleName);
 
-                    if (clazz.isMemberClass()) {
-                        String cname = clazz.getCanonicalName();
-                        if (cname != null) {
-                            symbolTable.pushSymbol(cname, ReferenceType.TYPE, st, node, actions, true);
+                    if (asmClass.isMemberClass()) {
 
-                            Package pkg = clazz.getPackage();
-                            if (pkg != null) {
-                                if (pkg.getName().equals(packageName) && node != null) {
+                        symbolTable.pushSymbol(asmClass.getCanonicalName(), ReferenceType.TYPE, st, node, actions, true);
 
-                                    symbolTable.pushSymbol(clazz.getSimpleName(), ReferenceType.TYPE, st, node, actions,
-                                            true);
-                                }
+                        String pkg = asmClass.getPackage();
+                        if (pkg != null) {
+                            if (pkg.equals(packageName) && node != null) {
+
+                                symbolTable.pushSymbol(asmClass.getSimpleName(), ReferenceType.TYPE, st, node, actions,
+                                        true);
                             }
                         }
+
                     }
-                    loadNestedClasses(clazz, imported, node, true);
+                    loadNestedClasses(asmClass, imported, node, true);
                 }
-            } catch (ClassNotFoundException e) {
+            } catch (IOException e) {
                 loadInnerClass(name, imported, node, actions);
             } catch (IncompatibleClassChangeError e2) {
                 int index = name.lastIndexOf("$");
@@ -521,19 +541,19 @@ public class TypesLoaderVisitor<T> extends VoidVisitorAdapter<T> {
             String internalName = preffix + "$" + suffix;
 
             try {
-                Class<?> clazz = Class.forName(internalName, false, classLoader);
+                ASMClass asmClass = getASMClass(internalName);
 
-                if (!Modifier.isPrivate(clazz.getModifiers())) {
+                if (!asmClass.isPrivate()) {
                     String keyName = resolveSymbolName(internalName, imported, false);
-                    SymbolType st = new SymbolType(clazz);
+                    SymbolType st = new SymbolType(internalName);
                     Symbol<?> pushedSymbol =
                             symbolTable.pushSymbol(keyName, ReferenceType.TYPE, st, node, actions, true);
                     if (pushedSymbol != null) {
-                        loadNestedClasses(clazz, imported, node, false);
+                        loadNestedClasses(asmClass, imported, node, false);
                     }
 
                 }
-            } catch (ClassNotFoundException e1) {
+            } catch (IOException e1) {
                 int indexDot = internalName.indexOf(".");
                 if (indexDot == -1) {
                     throw new RuntimeException("The referenced class " + internalName + " does not exists");
