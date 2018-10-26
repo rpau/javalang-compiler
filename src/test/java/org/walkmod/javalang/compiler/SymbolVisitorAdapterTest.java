@@ -1631,6 +1631,42 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
     }
 
     @Test
+    public void testEnsureLambdasInImportDeclarationUsages() throws Exception {
+        String code = "package example;" +
+                "import java.util.Collection;" +
+                "import java.util.Objects;" +
+                "import static java.util.stream.Collectors.toSet;" +
+                "		public class ExampleGroupPickerSearcher {" +
+                "			public ExampleGroupPickerSearcher() {" +
+                "				final Resolver<String> nameResolver = rawValues ->" +
+                "						rawValues.stream()" +
+                "								.map(this::convertToIndexValue)" +
+                "								.filter(Objects::nonNull)" +
+                "								.collect(toSet());" +
+                "			}" +
+                "			public String convertToIndexValue(final Object rawValue) {" +
+                "				return \"\";" +
+                "			}" +
+                "			public interface Resolver<T> {" +
+                "				Collection<T> resolveNames(Collection<Object> rawValues);" +
+                "			}" +
+                "		}";
+        CompilationUnit cu = run(code);
+        String codeBefore = cu.toString();
+        ImportDeclaration importDeclaration = cu.getImports().get(0);
+        Assert.assertEquals("java.util.Collection", importDeclaration.getName().toString());
+        Assert.assertNotNull(importDeclaration.getUsages());
+
+        importDeclaration = cu.getImports().get(1);
+        Assert.assertEquals("java.util.Objects", importDeclaration.getName().toString());
+        Assert.assertNotNull(importDeclaration.getUsages());
+
+        importDeclaration = cu.getImports().get(2);
+        Assert.assertEquals("java.util.stream.Collectors.toSet", importDeclaration.getName().toString());
+        Assert.assertNotNull(importDeclaration.getUsages());
+    }
+
+    @Test
     public void testStaticFieldImportedButUnnecessary() throws Exception {
         String code1 = "package foo; public class A { public static String name; }";
         String code2 = "package foo; import static foo.A.name; public class B { String c = A.name; }";
@@ -2678,5 +2714,41 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
         Assert.assertEquals(2, cu.getImports().get(0).getUsages().size());
         Assert.assertEquals(1, cu.getImports().get(1).getUsages().size());
         Assert.assertEquals(1, cu.getImports().get(2).getUsages().size());
+    }
+
+    @Test
+    public void testMethodUsageWhenUsedInLambda1() throws Exception {
+                       String code = "package example;" +
+                                 "public class ExampleCheck {" +
+                               "public boolean check(java.util.Map<String, Object> trials) { " +
+                                                "return new java.util.ArrayList<String>().stream() " +
+                                                    ".map(trials::get) " +
+                                                    ".anyMatch(this::isPaid); " +
+                                            "}" +
+                               "private boolean isPaid(final Object date) {" +
+                                    "return true;" +
+                               "}" +
+                               "}";
+        CompilationUnit cu = run(code);
+        Assert.assertNull(((MethodDeclaration)cu.getTypes().get(0).getMembers().get(0)).getUsages());
+        Assert.assertEquals(1, ((MethodDeclaration)cu.getTypes().get(0).getMembers().get(1)).getUsages().size());
+    }
+
+    @Test
+    public void testMethodUsageWhenUsedInLambda2() throws Exception {
+        String code = "package example;" +
+                "public class ExampleCheck {" +
+                "public boolean check(java.util.Map<String, java.time.LocalDate> trials) { " +
+                "return new java.util.ArrayList<String>().stream() " +
+                ".map(trials::get) " +
+                ".anyMatch(this::isPaid); " +
+                "}" +
+                "private boolean isPaid(final java.time.LocalDate date) {" +
+                "return true;" +
+                "}" +
+                "}";
+        CompilationUnit cu = run(code);
+        Assert.assertNull(((MethodDeclaration)cu.getTypes().get(0).getMembers().get(0)).getUsages());
+        Assert.assertEquals(1, ((MethodDeclaration)cu.getTypes().get(0).getMembers().get(1)).getUsages().size());
     }
 }
