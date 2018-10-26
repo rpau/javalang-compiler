@@ -14,17 +14,11 @@
  */
 package org.walkmod.javalang.compiler.symbols;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Method;
+import java.util.*;
 
 import org.walkmod.javalang.JavadocManager;
-import org.walkmod.javalang.ast.CompilationUnit;
-import org.walkmod.javalang.ast.PackageDeclaration;
-import org.walkmod.javalang.ast.SymbolData;
-import org.walkmod.javalang.ast.SymbolReference;
-import org.walkmod.javalang.ast.TypeParameter;
+import org.walkmod.javalang.ast.*;
 import org.walkmod.javalang.ast.body.AnnotationDeclaration;
 import org.walkmod.javalang.ast.body.AnnotationMemberDeclaration;
 import org.walkmod.javalang.ast.body.BodyDeclaration;
@@ -41,20 +35,7 @@ import org.walkmod.javalang.ast.body.Parameter;
 import org.walkmod.javalang.ast.body.TypeDeclaration;
 import org.walkmod.javalang.ast.body.VariableDeclarator;
 import org.walkmod.javalang.ast.body.VariableDeclaratorId;
-import org.walkmod.javalang.ast.expr.AnnotationExpr;
-import org.walkmod.javalang.ast.expr.AssignExpr;
-import org.walkmod.javalang.ast.expr.Expression;
-import org.walkmod.javalang.ast.expr.FieldAccessExpr;
-import org.walkmod.javalang.ast.expr.MarkerAnnotationExpr;
-import org.walkmod.javalang.ast.expr.MethodCallExpr;
-import org.walkmod.javalang.ast.expr.MethodReferenceExpr;
-import org.walkmod.javalang.ast.expr.NameExpr;
-import org.walkmod.javalang.ast.expr.NormalAnnotationExpr;
-import org.walkmod.javalang.ast.expr.ObjectCreationExpr;
-import org.walkmod.javalang.ast.expr.SingleMemberAnnotationExpr;
-import org.walkmod.javalang.ast.expr.SuperExpr;
-import org.walkmod.javalang.ast.expr.ThisExpr;
-import org.walkmod.javalang.ast.expr.VariableDeclarationExpr;
+import org.walkmod.javalang.ast.expr.*;
 import org.walkmod.javalang.ast.stmt.AssertStmt;
 import org.walkmod.javalang.ast.stmt.BlockStmt;
 import org.walkmod.javalang.ast.stmt.CatchClause;
@@ -902,6 +883,59 @@ public class SymbolVisitorAdapter<A extends Map<String, Object>> extends VoidVis
 
         symbolTable.lookUpSymbolForRead(n.getIdentifier(), n, scopeType, argsType, ReferenceType.METHOD);
 
+    }
+
+    private SymbolType[] argTypesFromLambda(LambdaExpr init) {
+        List<Parameter> params = init.getParameters();
+        Node n = init.getParentNode();
+        SymbolType[] paramTypes = new SymbolType[params.size()];
+        if (params != null && !params.isEmpty() && n instanceof VariableDeclarator) {
+            paramTypes = new SymbolType[params.size()];
+            VariableDeclarationExpr vde = (VariableDeclarationExpr) n.getParentNode();
+            Method[] methods = vde.getType().getSymbolData().getClazz().getDeclaredMethods();
+            if (methods.length == 1) {
+                Class<?>[] lambdaMethod = methods[0].getParameterTypes();
+               for(int i = 0; i < lambdaMethod.length; i++) {
+                    paramTypes[i] = new SymbolType(lambdaMethod[i]);
+                }
+            }
+        }
+        return paramTypes;
+    }
+
+    @Override
+    public void visit(LambdaExpr n, A arg) {
+
+        SymbolData sd = n.getSymbolData();
+        if (sd != null && sd instanceof MethodSymbolData) {
+            MethodSymbolData msd = (MethodSymbolData) sd;
+            List<Parameter> params = n.getParameters();
+            final SymbolType[] paramTypes;
+            if (params != null) {
+                paramTypes = argTypesFromLambda(n);
+                Iterator<Parameter> it = params.iterator();
+                int index = 0;
+                while (it.hasNext()) {
+                    Parameter param = it.next();
+                    Type type = param.getType();
+                    if (type != null) {
+                        paramTypes[index] = (SymbolType) type.getSymbolData();
+                    }
+                    index++;
+                }
+            } else {
+                paramTypes = new SymbolType[0];
+            }
+            try {
+                symbolTable.lookUpSymbolForRead(msd.getName(),
+                        n,
+                        SymbolType.valueOf(msd.getClazz(), new HashMap<String, SymbolType>()),
+                        paramTypes, ReferenceType.METHOD);
+
+            } catch (Exception e) {
+                throw new NoSuchExpressionTypeException("Error resolving the scope of " + msd.getClazz().getName());
+            }
+        }
     }
 
     @Override

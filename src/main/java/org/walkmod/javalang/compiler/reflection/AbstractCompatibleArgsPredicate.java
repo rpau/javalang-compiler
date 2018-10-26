@@ -140,6 +140,15 @@ public abstract class AbstractCompatibleArgsPredicate {
         return isCompatible;
     }
 
+    /**
+     * Sets the type of the method call arguments. In case of
+     * For foo(1) returns int
+     * For foo(1, 1, 1) returns int, int, int
+     * Then according the analyzed method, analyzes it can be called
+     * from the types.
+     * foo(int.. x) foo(int x) foo(Object x)
+     * @param typeArgs the type of the method call arguments.
+     */
     public void setTypeArgs(SymbolType[] typeArgs) {
         this.typeArgs = typeArgs;
     }

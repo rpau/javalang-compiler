@@ -72,6 +72,7 @@ public class FunctionalGenericsBuilder<A extends Expression> implements Builder<
                 generics = constructor.getGenericParameterTypes();
             }
             args = new SymbolType[generics.length];
+
             for (int i = 0; i < generics.length; i++) {
                 args[i] = SymbolType.valueOf(generics[i], mapping);
             }

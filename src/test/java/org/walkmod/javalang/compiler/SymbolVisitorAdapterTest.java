@@ -2661,4 +2661,58 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
                     ((MethodDeclaration) cu.getTypes().get(0).getMembers().get(2)).getUsages().size());
         }
     }
+
+    @Test
+    public void testDontRemoveImportsUsedByLambdas() throws Exception {
+        if (SourceVersion.latestSupported().ordinal() >= 8) {
+            String code = "package example;" +
+                    "import java.util.function.Supplier;" +
+                    "public class ExampleDefaultTemplateManager {" +
+                    "public ExampleDefaultTemplateManager() {" +
+                    "ContextFreeReference<Object> holderRef = new ContextFreeReference<>(this::initTemplates);" +
+                    "}" +
+                    "private Object initTemplates() {" +
+                    "return null;" +
+                    "}" +
+
+                    "public class ContextFreeReference<T> implements Supplier<T> {" +
+                    "public ContextFreeReference(Supplier<T> supplier) {" +
+                    "}" +
+                    "public T get() {" +
+                    "return null;" +
+                    "}" +
+                    "}" +
+                    "}";
+            CompilationUnit cu = run(code);
+            Assert.assertEquals(1,
+                    ((MethodDeclaration) cu.getTypes().get(0).getMembers().get(1)).getUsages().size());
+        }
+    }
+
+    @Test
+    public void testDontRemoveImportsUsedByLambdasExampleWithContext() throws Exception {
+        String code = "package example;" +
+                "import java.util.Collection;" +
+                "import java.util.Objects;" +
+                "import static java.util.stream.Collectors.toSet;" +
+                "		public class ExampleGroupPickerSearcher {" +
+                "			public ExampleGroupPickerSearcher() {" +
+                "				final Resolver<String> nameResolver = rawValues ->" +
+                "						rawValues.stream()" +
+                "								.map(this::convertToIndexValue)" +
+                "								.filter(Objects::nonNull)" +
+                "								.collect(toSet());" +
+                "			}" +
+                "			public String convertToIndexValue(final Object rawValue) {" +
+                "				return \"\";" +
+                "			}" +
+                "			public interface Resolver<T> {" +
+                "				Collection<T> resolveNames(Collection<Object> rawValues);" +
+                "			}" +
+                "		}";
+        CompilationUnit cu = run(code);
+        Assert.assertEquals(2, cu.getImports().get(0).getUsages().size());
+        Assert.assertEquals(1, cu.getImports().get(1).getUsages().size());
+        Assert.assertEquals(1, cu.getImports().get(2).getUsages().size());
+    }
 }
