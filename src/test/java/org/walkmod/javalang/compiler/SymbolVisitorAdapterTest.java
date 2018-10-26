@@ -2715,4 +2715,40 @@ public class SymbolVisitorAdapterTest extends SymbolVisitorAdapterTestSupport {
         Assert.assertEquals(1, cu.getImports().get(1).getUsages().size());
         Assert.assertEquals(1, cu.getImports().get(2).getUsages().size());
     }
+
+    @Test
+    public void testMethodUsageWhenUsedInLambda1() throws Exception {
+                       String code = "package example;" +
+                                 "public class ExampleCheck {" +
+                               "public boolean check(java.util.Map<String, Object> trials) { " +
+                                                "return new java.util.ArrayList<String>().stream() " +
+                                                    ".map(trials::get) " +
+                                                    ".anyMatch(this::isPaid); " +
+                                            "}" +
+                               "private boolean isPaid(final Object date) {" +
+                                    "return true;" +
+                               "}" +
+                               "}";
+        CompilationUnit cu = run(code);
+        Assert.assertNull(((MethodDeclaration)cu.getTypes().get(0).getMembers().get(0)).getUsages());
+        Assert.assertEquals(1, ((MethodDeclaration)cu.getTypes().get(0).getMembers().get(1)).getUsages().size());
+    }
+
+    @Test
+    public void testMethodUsageWhenUsedInLambda2() throws Exception {
+        String code = "package example;" +
+                "public class ExampleCheck {" +
+                "public boolean check(java.util.Map<String, java.time.LocalDate> trials) { " +
+                "return new java.util.ArrayList<String>().stream() " +
+                ".map(trials::get) " +
+                ".anyMatch(this::isPaid); " +
+                "}" +
+                "private boolean isPaid(final java.time.LocalDate date) {" +
+                "return true;" +
+                "}" +
+                "}";
+        CompilationUnit cu = run(code);
+        Assert.assertNull(((MethodDeclaration)cu.getTypes().get(0).getMembers().get(0)).getUsages());
+        Assert.assertEquals(1, ((MethodDeclaration)cu.getTypes().get(0).getMembers().get(1)).getUsages().size());
+    }
 }
