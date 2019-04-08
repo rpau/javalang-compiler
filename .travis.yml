@@ -8,3 +8,9 @@ script:
   - mvn test jacoco:report
 after_success:
   - mvn org.eluder.coveralls:coveralls-maven-plugin:report
+env:
+  global:
+    - secure: WlJP0Zke2nnD9s1322KtNUFY1w/VYGotWz+c7/41lhDRydE4wmAr6fUbLuDhFbOvi6tWMmiltzWtb4kriA+BijoldoihSnMH6fRWX6jJhs6Q3SVSgKg0NrQScIyRLrP625P7X8ZKKaRPwE8ovaj1E+xiVMjalL2XDj+IX2z1Z60=
+
+after_script:
+  - ./fixup.sh
